@@ -353,6 +353,8 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .pom a{font-weight:600;color:var(--ink)}
 .card-img{width:100%;max-width:300px;aspect-ratio:1080/1350;background:var(--paper);box-shadow:0 10px 30px rgba(0,0,0,.18);justify-self:center}
 
+.fresh{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;display:inline-flex;align-items:center;gap:10px;background:var(--red);color:#fff;border:0;padding:14px 22px;font:600 13px var(--f-data);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+
 /* scouting + rivalries */
 .scout{border-top:3px solid var(--ink);padding-top:14px;margin-top:10px}
 .scout ul{list-style:none;margin-top:10px}
@@ -618,7 +620,7 @@ let D,M,P,byName,WEEK,H,FX,BySlug;
 const RESERVED=new Set(["picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
-fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()})
+fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
   .catch(e=>{$("#cover").innerHTML=`<p class="err">Couldn't load the match data (data/cricket.json). Run "node sync.js" and reload.</p>`});
 
 function sessionDate(when,yr,syncMonth){
@@ -1160,6 +1162,14 @@ function playerPage(id){
   return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/player?id=${p.id}" target="_blank" rel="noopener">Scorecard, player profile ↗</a></p>`;
 }
 
+// When served by our own server, check every 2 minutes for new scores and offer a refresh (no effect inside Claude).
+function watchScores(){
+  let seen=null;
+  const check=()=>{if(document.hidden)return;fetch("data/cricket.json",{method:"HEAD",cache:"no-store"}).then(r=>{const lm=r.headers.get("last-modified");if(!lm)return;
+    if(seen&&lm!==seen&&!document.querySelector(".fresh")){const b=document.createElement("button");b.className="fresh";b.type="button";b.innerHTML="<span class=\"dot\"></span>New scores are in · Refresh";b.onclick=()=>location.reload();document.body.appendChild(b)}
+    seen=seen||lm}).catch(()=>{})};
+  check();setInterval(check,120000);document.addEventListener("visibilitychange",check);
+}
 let fromPage=false;
 // #match-19, #match-19-i2, #waqar-ahmed (old #player-2 links still work)
 function parseDetail(hash){

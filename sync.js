@@ -44,7 +44,11 @@ const TILDE = {
 // Fields only the umpire console uses; dropped from the stored copy.
 const UMPIRE_ONLY = ["umpire_open", "needs", "next_innings", "available_batsmen", "available_bowlers", "available_fielders"];
 
-async function main() {
+// opts.quiet: no per-item logging. opts.refreshAssets: re-download images even if present (CLI default).
+async function sync(opts = {}) {
+  const log = opts.quiet ? () => {} : console.log;
+  const refresh = opts.refreshAssets ?? !opts.quiet;
+  const saveImg = async (file, url) => { if (refresh || !fs.existsSync(file)) fs.writeFileSync(file, await get(url, "buffer")); };
   // Match ids from the public match list
   const index = await get(SOURCE + "index");
   const ids = [...new Set([...index.matchAll(/match\?id=(\d+)/g)].map(m => +m[1]))].sort((a, b) => a - b);
@@ -57,14 +61,14 @@ async function main() {
     if (state.match) delete state.match.umpire_open;
     delete state.ok;
     matches.push(state);
-    console.log(`match ${id}: ${state.match.result || state.match.status_label}`);
+    log(`match ${id}: ${state.match.result || state.match.status_label}`);
   }
 
   // Players: id, name and listed team from the players page
   const playersHtml = await get(SOURCE + "players");
   const players = [...playersHtml.matchAll(/href="player\?id=(\d+)">\s*<strong>([^<]+)<\/strong>\s*<span class="card__sub">([^<]*)<\/span>/g)]
     .map(m => ({ id: +m[1], name: decode(m[2]), team: decode(m[3]) }));
-  console.log(`${players.length} players`);
+  log(`${players.length} players`);
 
   // Player photos and profile details from bodevs.com
   fs.mkdirSync(path.join(ASSET_DIR, "players"), { recursive: true });
@@ -76,24 +80,24 @@ async function main() {
     if (prof.captain) p.captain = true;
     if (prof.photo) {
       const file = `players/${p.id}${path.extname(prof.photo)}`;
-      fs.writeFileSync(path.join(ASSET_DIR, file), await get(BODEVS + prof.photo, "buffer"));
+      await saveImg(path.join(ASSET_DIR, file), BODEVS + prof.photo);
       p.photo = "assets/" + file;
     }
   }
-  console.log(`${players.filter(p => p.photo).length} player photos saved`);
+  log(`${players.filter(p => p.photo).length} player photos`);
 
   fs.mkdirSync(path.join(ASSET_DIR, "tilde"), { recursive: true });
   for (const [file, url] of Object.entries(TILDE)) {
-    fs.writeFileSync(path.join(ASSET_DIR, "tilde", file), await get(url, "buffer"));
+    await saveImg(path.join(ASSET_DIR, "tilde", file), url);
   }
-  console.log(`${Object.keys(TILDE).length} Tilde photos saved`);
+  log(`${Object.keys(TILDE).length} Tilde photos`);
 
   // Logo
   fs.mkdirSync(ASSET_DIR, { recursive: true });
   const logoMatch = index.match(/src="(img\/logo[^"?]*\.(?:png|svg|webp|jpg))/);
   if (logoMatch) {
-    fs.writeFileSync(path.join(ASSET_DIR, "logo" + path.extname(logoMatch[1])), await get(SOURCE + logoMatch[1], "buffer"));
-    console.log(`logo saved from ${logoMatch[1]}`);
+    await saveImg(path.join(ASSET_DIR, "logo" + path.extname(logoMatch[1])), SOURCE + logoMatch[1]);
+    log(`logo from ${logoMatch[1]}`);
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -102,13 +106,16 @@ async function main() {
   try {
     const old = JSON.parse(fs.readFileSync(file, "utf8"));
     if (JSON.stringify({ p: old.players, m: old.matches }) === JSON.stringify({ p: players, m: matches })) {
-      console.log(`no changes (${matches.length} matches)`);
-      return;
+      log(`no changes (${matches.length} matches)`);
+      return { changed: false, matches: matches.length };
     }
   } catch { /* first run or unreadable file: write a fresh one */ }
   const data = { source: SOURCE, synced_at: new Date().toISOString(), players, matches };
-  fs.writeFileSync(file, JSON.stringify(data));
+  fs.writeFileSync(file + ".tmp", JSON.stringify(data));
+  fs.renameSync(file + ".tmp", file); // atomic swap so the server never serves a half-written file
   console.log(`saved data/cricket.json (${matches.length} matches, ${(fs.statSync(file).size / 1024).toFixed(0)} KB)`);
+  return { changed: true, matches: matches.length };
 }
 
-main().catch(err => { console.error(err.message); process.exit(1); });
+module.exports = { sync };
+if (require.main === module) sync().catch(err => { console.error(err.message); process.exit(1); });

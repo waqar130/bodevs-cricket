@@ -1,0 +1,14 @@
+{
+  "name": "bodevs-cricket",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BoDevs Cricket: Tigers v Falcons box cricket at SportsX, G-12 Islamabad",
+  "scripts": {
+    "start": "node server.js",
+    "sync": "node sync.js",
+    "build": "node build.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
