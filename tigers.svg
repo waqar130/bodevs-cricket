@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Tassadduq Tigers crest">
+  <defs>
+    <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffa449"/><stop offset="1" stop-color="#d4501a"/>
+    </linearGradient>
+    <linearGradient id="tf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb35c"/><stop offset="1" stop-color="#f07a26"/>
+    </linearGradient>
+  </defs>
+  <path d="M100 4 L192 32 V118 C192 178 150 216 100 236 C50 216 8 178 8 118 V32 Z" fill="#1a1109"/>
+  <path d="M100 13 L183 38 V118 C183 172 145 206 100 225 C55 206 17 172 17 118 V38 Z" fill="url(#tg)"/>
+  <path d="M100 13 L183 38 V60 L17 60 V38 Z" fill="#000" opacity=".08"/>
+  <!-- background claw marks -->
+  <g fill="#1a1109" opacity=".14">
+    <path d="M30 70 L44 66 L36 150 L28 146 Z"/><path d="M156 66 L170 70 L172 146 L164 150 Z"/>
+  </g>
+  <!-- ears -->
+  <path d="M56 70 L50 36 L86 58 Z" fill="#1a1109"/>
+  <path d="M60 64 L57 46 L76 58 Z" fill="#fff1de"/>
+  <path d="M144 70 L150 36 L114 58 Z" fill="#1a1109"/>
+  <path d="M140 64 L143 46 L124 58 Z" fill="#fff1de"/>
+  <!-- head -->
+  <path d="M100 54 L136 58 L158 86 L156 128 L132 160 L100 176 L68 160 L44 128 L42 86 L64 58 Z" fill="url(#tf)" stroke="#1a1109" stroke-width="5" stroke-linejoin="round"/>
+  <!-- cheek ruffs -->
+  <path d="M44 120 L72 124 L60 148 Z" fill="#fff1de"/>
+  <path d="M156 120 L128 124 L140 148 Z" fill="#fff1de"/>
+  <!-- muzzle -->
+  <path d="M100 116 C84 116 72 128 74 142 C77 158 92 168 100 170 C108 168 123 158 126 142 C128 128 116 116 100 116 Z" fill="#fff1de"/>
+  <!-- stripes -->
+  <g fill="#1a1109">
+    <path d="M100 58 L92 76 L100 92 L108 76 Z"/>
+    <path d="M80 60 L86 80 L74 76 Z"/><path d="M120 60 L114 80 L126 76 Z"/>
+    <path d="M43 92 L66 100 L44 106 Z"/><path d="M157 92 L134 100 L156 106 Z"/>
+    <path d="M47 112 L64 116 L50 122 Z"/><path d="M153 112 L136 116 L150 122 Z"/>
+    <path d="M90 166 L100 158 L110 166 L100 176 Z"/>
+  </g>
+  <!-- eyes -->
+  <path d="M62 98 L90 104 L84 114 L66 110 Z" fill="#ffe14d" stroke="#1a1109" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M138 98 L110 104 L116 114 L134 110 Z" fill="#ffe14d" stroke="#1a1109" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M77 103 L80 112" stroke="#1a1109" stroke-width="4" stroke-linecap="round"/>
+  <path d="M123 103 L120 112" stroke="#1a1109" stroke-width="4" stroke-linecap="round"/>
+  <!-- nose + mouth -->
+  <path d="M88 122 H112 L100 136 Z" fill="#1a1109" stroke="#1a1109" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 136 V146 M100 146 C95 153 88 152 85 147 M100 146 C105 153 112 152 115 147" fill="none" stroke="#1a1109" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- ribbon -->
+  <path d="M10 180 H190 L180 196 L190 212 H10 L20 196 Z" fill="#1a1109"/>
+  <text x="100" y="204" text-anchor="middle" font-family="Anton, Impact, 'Arial Black', sans-serif" font-size="22" letter-spacing="3" fill="#ffb35c">TIGERS</text>
+</svg>

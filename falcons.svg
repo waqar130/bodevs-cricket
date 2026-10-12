@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" role="img" aria-label="Farhan Falcons crest">
+  <defs>
+    <linearGradient id="fg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b93ff"/><stop offset="1" stop-color="#1846a8"/>
+    </linearGradient>
+    <linearGradient id="fw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cfe0ff"/><stop offset="1" stop-color="#7fa9f5"/>
+    </linearGradient>
+  </defs>
+  <path d="M100 4 L192 32 V118 C192 178 150 216 100 236 C50 216 8 178 8 118 V32 Z" fill="#0b1a3a"/>
+  <path d="M100 13 L183 38 V118 C183 172 145 206 100 225 C55 206 17 172 17 118 V38 Z" fill="url(#fg)"/>
+  <path d="M100 13 L183 38 V60 L17 60 V38 Z" fill="#000" opacity=".08"/>
+  <!-- speed lines -->
+  <g stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity=".18">
+    <path d="M26 84 H52"/><path d="M22 100 H44"/><path d="M28 116 H48"/>
+  </g>
+  <!-- swept wing -->
+  <path d="M124 128 C134 96 150 70 176 46 L174 70 L184 66 L178 90 L188 88 L176 110 L184 112 L164 132 C150 140 134 140 124 128 Z" fill="url(#fw)" stroke="#0b1a3a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M146 112 L172 72 M152 124 L178 94 M140 98 L164 60" stroke="#0b1a3a" stroke-width="3" stroke-linecap="round" opacity=".45"/>
+  <!-- head and body -->
+  <path d="M132 64 C110 52 80 58 68 82 L46 98 L68 102 C64 120 70 140 86 156 L100 176 L118 160 C140 138 150 108 144 84 C141 74 137 68 132 64 Z" fill="#f4f8ff" stroke="#0b1a3a" stroke-width="5" stroke-linejoin="round"/>
+  <!-- dark cap -->
+  <path d="M132 64 C110 52 80 58 68 82 L82 84 C96 74 118 72 143 80 C140 72 137 68 132 64 Z" fill="#0b1a3a"/>
+  <!-- malar stripe -->
+  <path d="M96 92 C96 110 92 124 82 138 L90 142 C102 128 106 110 106 92 Z" fill="#0b1a3a"/>
+  <!-- chest bars -->
+  <g stroke="#7fa9f5" stroke-width="3.5" stroke-linecap="round">
+    <path d="M110 128 l8 -2"/><path d="M104 142 l8 -2"/><path d="M118 116 l8 -2"/><path d="M114 154 l6 -2"/>
+  </g>
+  <!-- beak -->
+  <path d="M68 82 L40 96 L48 110 L58 106 L68 102 Z" fill="#ffc93c" stroke="#0b1a3a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M48 110 L54 100" stroke="#0b1a3a" stroke-width="3" stroke-linecap="round"/>
+  <!-- eye -->
+  <circle cx="90" cy="88" r="10" fill="#ffc93c" stroke="#0b1a3a" stroke-width="3.5"/>
+  <circle cx="88" cy="88" r="5" fill="#0b1a3a"/>
+  <circle cx="86" cy="86" r="1.6" fill="#fff"/>
+  <!-- ribbon -->
+  <path d="M10 180 H190 L180 196 L190 212 H10 L20 196 Z" fill="#0b1a3a"/>
+  <text x="100" y="204" text-anchor="middle" font-family="Anton, Impact, 'Arial Black', sans-serif" font-size="22" letter-spacing="3" fill="#7fb2ff">FALCONS</text>
+</svg>
