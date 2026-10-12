@@ -97,9 +97,18 @@ async function main() {
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  const file = path.join(OUT_DIR, "cricket.json");
+  // Keep the old file (and its timestamp) when nothing changed, so scheduled runs don't commit empty updates.
+  try {
+    const old = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (JSON.stringify({ p: old.players, m: old.matches }) === JSON.stringify({ p: players, m: matches })) {
+      console.log(`no changes (${matches.length} matches)`);
+      return;
+    }
+  } catch { /* first run or unreadable file: write a fresh one */ }
   const data = { source: SOURCE, synced_at: new Date().toISOString(), players, matches };
-  fs.writeFileSync(path.join(OUT_DIR, "cricket.json"), JSON.stringify(data));
-  console.log(`saved data/cricket.json (${matches.length} matches, ${(fs.statSync(path.join(OUT_DIR, "cricket.json")).size / 1024).toFixed(0)} KB)`);
+  fs.writeFileSync(file, JSON.stringify(data));
+  console.log(`saved data/cricket.json (${matches.length} matches, ${(fs.statSync(file).size / 1024).toFixed(0)} KB)`);
 }
 
 main().catch(err => { console.error(err.message); process.exit(1); });

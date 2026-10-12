@@ -764,7 +764,7 @@ function render(){
   const range=`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
   $("#issueNo").textContent=`Issue ${W.issue} · Box cricket · SportsX, G-12 Islamabad`;
   $("#issueDate").textContent=`Week of ${range}`;
-  $("#synced").textContent=`Data synced ${new Date(D.synced_at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`;
+  $("#synced").textContent=`Scores updated ${new Date(D.synced_at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`;
 
   // cover
   const head=wr.s>=10?`<em>${wr.s}</em> sixes.`:`<em>${wr.r}</em> runs.`;
