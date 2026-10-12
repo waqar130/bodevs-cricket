@@ -1,6 +1,6 @@
 // BoDevs Cricket server: serves the magazine and keeps scores fresh by syncing from Scorecard on a timer.
 // Runs locally (node server.js -> http://localhost:8765) or on any Node host that sets PORT.
-// The public site is static on GitHub Pages (see .github/workflows/deploy.yml); this server is for local use.
+// Production: Railway (cricket.waqarahmed.net) runs this server; it syncs scores on its own timer.
 // index.html is written as a page body (it also publishes as a Claude artifact), so build.js wraps it in a full document.
 const http = require("http");
 const fs = require("fs");
