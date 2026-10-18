@@ -303,6 +303,63 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .dnb{font:400 15px/1.6 var(--f-body);padding:12px 0;border-bottom:1px solid var(--rule)}
 .dnb b{font:600 11px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:6px}
 
+/* awards */
+.awards{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:640px){.awards{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.awards{grid-template-columns:repeat(4,1fr)}.award.feat{grid-column:span 2;grid-row:span 2}}
+.award{border-top:4px solid var(--team);background:var(--paper-2);padding:18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.aw-who{display:flex;align-items:center;gap:12px;text-decoration:none;margin-top:4px}
+.aw-who .aw-ph{width:56px;flex:none;aspect-ratio:4/5}
+.aw-who .aw-ph img{filter:none}
+.aw-who b{display:block;font:600 18px/1.2 var(--f-body)}
+.aw-who small{display:block;font:500 11px var(--f-data);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.aw-big{font:900 64px/.9 var(--f-display);margin-top:6px}
+.aw-unit{font:600 12px var(--f-data);text-transform:uppercase;letter-spacing:.06em}
+.aw-det{font:400 14px var(--f-data);color:var(--muted)}
+.aw-run{font:400 14px var(--f-body);color:var(--ink-2);margin-top:auto;padding-top:8px;border-top:1px solid var(--rule)}
+.award.feat{background:var(--ink);color:var(--paper);border-top-color:var(--red)}
+.award.feat .aw-who .aw-ph{width:clamp(110px,14vw,170px)}
+.award.feat .aw-who b{font-size:30px;font-family:var(--f-display);font-weight:900;text-transform:uppercase;line-height:1}
+.award.feat .aw-big{font-size:clamp(96px,12vw,160px);color:var(--red)}
+.award.feat .aw-det,.award.feat .aw-run{color:#bdbdb6}
+.award.feat .aw-run{border-top-color:#333}
+.award.feat a{color:var(--paper)}
+.cap-card{--team:var(--ink)}
+.cap-row{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule);text-decoration:none}
+.cap-row img{width:40px}
+.cap-row b{display:block;font:600 16px var(--f-body)}
+.cap-row small{display:block;font:400 12px var(--f-data);color:var(--muted)}
+.cap-wl{text-align:right;font:900 30px/1 var(--f-display);color:var(--team)}
+
+/* form guide */
+.form-tbl td{vertical-align:middle}
+.spark{display:block}
+.form-chips{text-align:left!important;white-space:normal!important}
+.form-chips span{display:inline-block;font:500 12px var(--f-data);background:var(--paper-2);padding:3px 6px;margin:2px 3px 2px 0}
+.form-chips span:first-child{background:var(--ink);color:var(--paper)}
+.trend{font:600 11px var(--f-data);letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border:1px solid currentColor}
+.trend.hot{color:#fff;background:var(--red);border-color:var(--red)}
+.trend.cold{color:var(--falcon)}
+.trend.steady,.trend.new{color:var(--muted)}
+
+/* milestones */
+.ms-grid{display:grid;gap:36px}
+@media(min-width:1000px){.ms-grid{grid-template-columns:7fr 5fr;gap:48px}}
+.ms-grid>div{min-width:0}
+.ms-row{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--rule);text-decoration:none}
+.ms-row .thumb{width:44px;height:44px;flex:none}
+.ms-txt{min-width:0;flex:1;font:400 17px/1.4 var(--f-body)}
+.ms-txt em{font-style:normal;font:900 24px var(--f-display);color:var(--red)}
+.ms-txt strong{font-weight:600}
+.ms-bar{display:block;height:6px;background:var(--paper-2);margin-top:8px}
+.ms-bar i{display:block;height:100%;background:var(--team)}
+.ms-txt small{display:block;font:400 12px var(--f-data);color:var(--muted);margin-top:4px}
+.ms-done{list-style:none}
+.ms-done li{display:grid;grid-template-columns:76px 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font:400 16px/1.4 var(--f-body)}
+.ms-st{font:900 30px/1 var(--f-display);color:var(--team)}
+.ms-done small{display:block;font:400 12px var(--f-data);color:var(--muted)}
+.ms-done a{color:inherit}
+
 /* MVP slider */
 .mvp-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:22px}
 .mvp-nav{margin-left:auto;display:flex;gap:6px}
@@ -457,7 +514,9 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <span class="title">Cricket</span>
     <nav aria-label="Sections">
       <a class="hide" href="#rivalry">Rivalry</a>
+      <a class="hide" href="#awards">Awards</a>
       <a class="hide" href="#squads">Squads</a>
+      <a class="hide" href="#form">Form</a>
       <a class="hide" href="#picker">Pick sides</a>
       <a class="hide" href="#tables">Tables</a>
       <a class="hide" href="#records">Records</a>
@@ -500,6 +559,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="awards">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Trophy cabinet</p><h2 class="hd">Season awards</h2></div>
+        <p>Who's holding the silverware right now. The awards are re-counted every Monday, so any of them can change hands after Sunday night.</p>
+      </div>
+      <div class="awards" id="awardGrid"></div>
+    </div>
+  </section>
+
   <section class="dept" id="squads">
     <div class="wrap">
       <div class="dept-head">
@@ -507,6 +576,30 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p>The people who build BoDevs products on weekdays and hit sixes on Sunday nights. Tap a player for their full career record.</p>
       </div>
       <div class="sheets" id="sheets"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="form">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Form guide</p><h2 class="hd">Who's hot</h2></div>
+        <p>Career rankings reward the whole season. This shows who's playing well right now, based on each player's last 5 matches, with the most recent counting most.</p>
+      </div>
+      <div class="tbl-wrap"><table class="data form-tbl" id="formTable"></table></div>
+      <p class="rank-note" style="margin-top:12px">Match impact = runs + 20 per wicket + 10 per catch. The form score weights the last 5 matches 5-4-3-2-1, newest first. Hot means 20% or more above the player's season average, cold means 20% or more below it.</p>
+    </div>
+  </section>
+
+  <section class="dept" id="milestones">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Milestones</p><h2 class="hd">Nearly there</h2></div>
+        <p>Who's closest to the next big number, and the milestones already reached this season.</p>
+      </div>
+      <div class="ms-grid">
+        <div><h3 class="tbl-title">Coming up</h3><div id="msNext"></div></div>
+        <div><h3 class="tbl-title">Reached</h3><ol class="ms-done" id="msDone"></ol></div>
+      </div>
     </div>
   </section>
 
@@ -702,7 +795,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -945,6 +1038,7 @@ function render(){
     +rankCol("Bowling","rBowl","kBowl",p=>`${p.bowl.w} wkts · econ ${r1(p.bowl.econ)}`)
     +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl}`);
 
+  renderAwards();renderForm();renderMilestones();
   renderPicker();
   RECS=buildRecords();renderRecords();
   renderMatches("all");
@@ -994,6 +1088,92 @@ function matchPage(id,tab){
     ${sc.commentary?.length?`<details class="overs"><summary>Over by over</summary>${sc.commentary.filter(c=>c.type==="over").map(c=>`<div class="ovr"><span>Over ${c.over_no}</span><span>${esc(c.text)} · ${esc(c.score)}</span><span>${esc(c.bowler)}</span></div>`).join("")}</details>`:""}
     </section>`});
   return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Scorecard, match #${m.id} ↗</a></p>`;
+}
+
+/* ---------- season awards ---------- */
+function renderAwards(){
+  const ps=[...P.values()].filter(p=>p.matches);
+  const rank=(score,ok=()=>true)=>ps.filter(ok).sort((a,b)=>score(b)-score(a));
+  const mvpCount=new Map();WEEKS.forEach(w=>mvpCount.set(w.pow.id,(mvpCount.get(w.pow.id)||0)+1));
+  const pomCount=new Map();M.forEach(m=>m.pom&&pomCount.set(m.pom.id,(pomCount.get(m.pom.id)||0)+1));
+  const capWins=key=>{const c=ps.find(p=>p.captain&&p.tm.key===key);return c?{p:c,w:teamWins(key),l:M.filter(m=>m.win&&m.win.key!==key).length}:null};
+  const caps=["t","f"].map(capWins).filter(Boolean).sort((a,b)=>b.w/(b.w+b.l||1)-a.w/(a.w+a.l||1));
+  const A=[
+    {k:"MVP of the season",feat:1,list:rank(p=>(mvpCount.get(p.id)||0)*1000+(pomCount.get(p.id)||0)),v:p=>mvpCount.get(p.id)||0,u:"player-of-the-week awards",d:p=>`${pomCount.get(p.id)||0} player-of-the-match awards · ${p.bat.r} runs · ${p.bowl.w} wkts`},
+    {k:"Golden Bat",list:rank(p=>p.bat.r),v:p=>p.bat.r.toLocaleString(),u:"runs",d:p=>`Avg ${r1(p.bat.avg)} · SR ${r1(p.bat.sr)}`},
+    {k:"Golden Ball",list:rank(p=>p.bowl.w*1000-p.bowl.econ),v:p=>p.bowl.w,u:"wickets",d:p=>`Econ ${r1(p.bowl.econ)} · best ${p.bowl.best?p.bowl.best.w+"/"+p.bowl.best.r:"–"}`},
+    {k:"Six King",list:rank(p=>p.bat.s),v:p=>p.bat.s,u:"sixes",d:p=>`One every ${r1(p.bat.b/p.bat.s)} balls`},
+    {k:"Safest Hands",list:rank(p=>p.fld.c*10-p.fld.drop),v:p=>p.fld.c,u:"catches",d:p=>`${p.fld.drop} dropped`},
+    {k:"Mr Economy",note:"20+ overs",list:rank(p=>-p.bowl.econ,p=>p.bowl.b>=120),v:p=>r1(p.bowl.econ),u:"runs an over",d:p=>`${p.bowl.w} wkts in ${ovs(p.bowl.b)} overs`},
+    {k:"Strike Rate King",note:"150+ balls",list:rank(p=>p.bat.sr,p=>p.bat.b>=150),v:p=>Math.round(p.bat.sr),u:"strike rate",d:p=>`${p.bat.r} runs off ${p.bat.b}`},
+    {k:"Match Winner",list:rank(p=>(pomCount.get(p.id)||0)*1000+p.bat.r),v:p=>pomCount.get(p.id)||0,u:"player-of-the-match awards",d:p=>`in ${p.matches} matches`},
+  ];
+  const card=(a)=>{const w=a.list[0],r=a.list[1];if(!w)return"";
+    return `<article class="award ${a.feat?"feat":""} ${w.tm.key}">
+      <p class="kicker">${a.k}${a.note?` <span class="label">(${a.note})</span>`:""}</p>
+      <a class="aw-who" href="${purl(w.id)}">${photo(w,"aw-ph")}<span><b>${esc(w.full_name||w.name)}</b><small>${esc(w.title||"")}</small></span></a>
+      <div class="aw-big">${a.v(w)}</div><div class="aw-unit">${a.u}</div>
+      <p class="aw-det">${a.d(w)}</p>
+      ${r?`<p class="aw-run">Runner-up: <a href="${purl(r.id)}">${esc(r.full_name||r.name)}</a> · ${a.v(r)}</p>`:""}
+    </article>`};
+  $("#awardGrid").innerHTML=A.map(card).join("")+(caps.length?`<article class="award cap-card">
+      <p class="kicker">Captain's table</p>
+      ${caps.map((c,i)=>`<a class="cap-row ${c.p.tm.key}" href="${purl(c.p.id)}">${crest(c.p.team)}<span><b>${esc(c.p.full_name||c.p.name)}</b><small>${esc(c.p.team)}</small></span><span class="cap-wl">${c.w}–${c.l}<small>${Math.round(c.w/(c.w+c.l||1)*100)}% wins</small></span></a>`).join("")}
+    </article>`:"");
+}
+
+/* ---------- form guide ---------- */
+const impactOf=l=>l.bat.reduce((a,x)=>a+x.r,0)+20*l.bowl.reduce((a,x)=>a+x.w,0)+10*l.c;
+function formData(){
+  return [...P.values()].filter(p=>p.matches).map(p=>{
+    const log=[...p.log.values()].sort((a,b)=>b.mm.date-a.mm.date||b.mm.id-a.mm.id);
+    const last=log.slice(0,5),imp=last.map(impactOf),wts=[5,4,3,2,1];
+    const form=imp.length?imp.reduce((a,v,i)=>a+v*wts[i],0)/wts.slice(0,imp.length).reduce((a,b)=>a+b,0):0;
+    const avg=log.reduce((a,l)=>a+impactOf(l),0)/log.length;
+    const trend=log.length<3?"new":form>=avg*1.2?"hot":form<=avg*0.8?"cold":"steady";
+    return{p,last,imp,form,avg,trend}}).sort((a,b)=>b.form-a.form);
+}
+function renderForm(){
+  const F=formData(),max=Math.max(...F.flatMap(x=>x.imp),1);
+  const spark=x=>{const bars=[...x.imp].reverse();const w=16,g=5,h=34;
+    return `<svg class="spark" viewBox="0 0 ${5*(w+g)-g} ${h}" width="${5*(w+g)-g}" height="${h}" role="img" aria-label="Last ${bars.length} match impacts, oldest to newest: ${bars.join(", ")}">${bars.map((v,i)=>{const bh=Math.max(2,Math.round(v/max*h));return `<rect x="${i*(w+g)}" y="${h-bh}" width="${w}" height="${bh}" fill="var(--team)" opacity="${i===bars.length-1?1:.45}"/>`}).join("")}</svg>`};
+  const chips=(last,kind)=>last.map(l=>kind==="bat"?(l.bat.length?l.bat.map(x=>`${x.r}${x.no?"*":""}`).join("&"):"–"):(l.bowl.length?l.bowl.map(x=>`${x.w}/${x.r}`).join("&"):"–")).map(t=>`<span>${t}</span>`).join("");
+  const label={hot:"Hot",cold:"Cold",steady:"Steady",new:"New"};
+  $("#formTable").innerHTML=`<thead><tr><th></th><th>Player</th><th style="text-align:left">Last 5</th><th style="text-align:left">Batting, newest first</th><th style="text-align:left">Bowling, newest first</th><th>Form</th><th>Season avg</th><th></th></tr></thead><tbody>${F.map((x,i)=>`<tr class="${x.p.tm.key}">
+    <td class="rk">${i+1}</td><td class="nm"><a class="rec-who" href="${purl(x.p.id)}">${miniThumb(x.p)}<span>${esc(x.p.full_name||x.p.name)}</span></a></td>
+    <td style="text-align:left">${spark(x)}</td><td class="form-chips">${chips(x.last,"bat")}</td><td class="form-chips">${chips(x.last,"bowl")}</td>
+    <td class="hi">${Math.round(x.form)}</td><td>${Math.round(x.avg)}</td><td><span class="trend ${x.trend}">${label[x.trend]}</span></td></tr>`).join("")}</tbody>`;
+}
+
+/* ---------- milestones ---------- */
+const MS=[
+  {k:"r",name:"runs",steps:[250,500,750,1000,1250,1500,2000,2500,3000,4000,5000],near:200},
+  {k:"w",name:"wickets",steps:[10,15,20,25,30,40,50,75,100],near:5},
+  {k:"s",name:"sixes",steps:[50,100,150,200,250,300,400,500],near:30},
+  {k:"c",name:"catches",steps:[10,20,25,30,40,50,75,100],near:5},
+  {k:"m",name:"matches",steps:[10,20,25,30,40,50,75,100],near:3},
+];
+function renderMilestones(){
+  let next=[];const done=[];
+  P.forEach(p=>{
+    const log=[...p.log.values()].sort((a,b)=>a.mm.date-b.mm.date||a.mm.id-b.mm.id);
+    const tot={r:0,w:0,s:0,c:0,m:0};
+    log.forEach(l=>{const before={...tot};
+      tot.r+=l.bat.reduce((a,x)=>a+x.r,0);tot.s+=l.bat.reduce((a,x)=>a+x.s,0);tot.w+=l.bowl.reduce((a,x)=>a+x.w,0);tot.c+=l.c;tot.m++;
+      MS.forEach(m=>m.steps.forEach(st=>{if(before[m.k]<st&&tot[m.k]>=st)done.push({p,m,st,mm:l.mm})}))});
+    MS.forEach(m=>{const st=m.steps.find(x=>x>tot[m.k]);if(!st)return;const prev=[0,...m.steps].filter(x=>x<=tot[m.k]).pop();
+      if(st-tot[m.k]<=m.near&&tot.m>0)next.push({p,m,st,cur:tot[m.k],prev,gap:st-tot[m.k],ratio:(st-tot[m.k])/m.near})});
+  });
+  // "Nth match" milestones are grouped into one line; the list itself is for runs, wickets, sixes and catches
+  const games=next.filter(x=>x.m.k==="m"&&x.gap===1),gameSt=games[0]?.st;
+  next=next.filter(x=>x.m.k!=="m");
+  next.sort((a,b)=>a.ratio-b.ratio);done.sort((a,b)=>b.mm.date-a.mm.date||b.mm.id-a.mm.id||b.st-a.st);
+  $("#msNext").innerHTML=(next.length?next.slice(0,8).map(x=>`<a class="ms-row ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}
+      <span class="ms-txt"><b>${esc(x.p.full_name||x.p.name)}</b> needs <em>${x.gap.toLocaleString()}</em> more for <strong>${x.st.toLocaleString()} ${x.m.name}</strong>
+      <span class="ms-bar" role="progressbar" aria-valuemin="${x.prev}" aria-valuemax="${x.st}" aria-valuenow="${x.cur}" aria-label="${x.cur} of ${x.st} ${x.m.name}"><i style="width:${Math.round((x.cur-x.prev)/(x.st-x.prev)*100)}%"></i></span>
+      <small>${x.cur.toLocaleString()} / ${x.st.toLocaleString()}</small></span></a>`).join(""):`<p class="dnb">Nobody is close to a milestone right now.</p>`)
+    +(games.length?`<p class="dnb ms-games"><b>Next match:</b> ${games.filter(x=>x.st===gameSt).map(x=>plink(x.p.id)).join(", ")} ${games.filter(x=>x.st===gameSt).length>1?"each play":"plays"} their ${gameSt}th match.</p>`:"");
+  $("#msDone").innerHTML=done.slice(0,12).map(x=>`<li class="${x.p.tm.key}"><span class="ms-st">${x.st.toLocaleString()}</span><span><b>${plink(x.p.id)}</b> reached ${x.st.toLocaleString()} ${x.m.name}<small><a href="#match-${x.mm.id}">Match #${x.mm.id} · ${fmtD(x.mm.date,{day:"numeric",month:"short"})}</a></small></span></li>`).join("");
 }
 
 /* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
