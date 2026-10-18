@@ -50,11 +50,14 @@ img{max-width:100%;display:block}
 /* cover */
 .cover{padding-block:28px 56px;border-bottom:3px solid var(--ink)}
 .cover-grid{display:grid;gap:28px}
-@media(min-width:900px){.cover-grid{grid-template-columns:6fr 6fr;gap:48px;align-items:start}.cover-art{position:sticky;top:96px}}
+@media(min-width:900px){.cover-grid{grid-template-columns:6fr 6fr;gap:48px;align-items:center}}
 .cover-art{position:relative}
 .cover-photo{position:relative;aspect-ratio:4/4.4;overflow:hidden;background:var(--team)}
 .cover-photo img.portrait{width:100%;height:100%;object-fit:cover;transform:scale(1.16);transform-origin:50% 40%}
-.cover-photo .mono{width:100%;height:100%;display:grid;place-items:center;font:900 30vw/1 var(--f-display);color:rgba(255,255,255,.25)}
+.cover-art{text-decoration:none}
+.cover-photo .mono{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.cover-photo .mono-crest{width:42%;filter:drop-shadow(0 14px 24px rgba(0,0,0,.3))}
+.cover-photo .mono span{font:900 clamp(56px,8vw,110px)/1 var(--f-display);color:rgba(255,255,255,.85);letter-spacing:.04em}
 .cover-ball{position:absolute;width:30%;right:-4%;bottom:-6%;filter:drop-shadow(0 18px 24px rgba(0,0,0,.35));animation:float 6s ease-in-out infinite}
 @keyframes float{50%{transform:translateY(-8px) rotate(8deg)}}
 .cover-tag{position:absolute;left:0;top:0;background:var(--red);color:#fff;font:600 12px var(--f-data);letter-spacing:.12em;text-transform:uppercase;padding:8px 12px}
@@ -300,6 +303,52 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .dnb{font:400 15px/1.6 var(--f-body);padding:12px 0;border-bottom:1px solid var(--rule)}
 .dnb b{font:600 11px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:6px}
 
+/* MVP slider */
+.mvp-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:22px}
+.mvp-nav{margin-left:auto;display:flex;gap:6px}
+.mvp-btn{font:600 12px var(--f-data);letter-spacing:.08em;text-transform:uppercase;background:none;border:1px solid var(--ink);color:var(--ink);padding:9px 14px;cursor:pointer}
+.mvp-btn:hover:not(:disabled){background:var(--ink);color:var(--paper)}
+.mvp-btn:disabled{opacity:.3;cursor:default}
+.mvp-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.mvp-track::-webkit-scrollbar{display:none}
+.mvp-track:focus-visible{outline:2px solid var(--red);outline-offset:6px}
+.mvp-slide{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding-right:2px}
+.mvp-copy{min-width:0}
+.mvp-week{margin-top:18px;font:400 15px/1.6 var(--f-data);color:var(--ink-2)}
+.mvp-week .label{margin-right:8px}
+.mvp-dots{display:flex;gap:6px;margin-top:26px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.mvp-dots button{flex:none;display:flex;align-items:center;gap:8px;background:none;border:1px solid var(--rule);padding:6px 12px 6px 6px;cursor:pointer;color:var(--muted)}
+.mvp-dots button span{font:900 18px/1 var(--f-display);background:var(--paper-2);color:var(--ink);padding:4px 7px}
+.mvp-dots i{font:500 11px var(--f-data);font-style:normal;letter-spacing:.06em;text-transform:uppercase}
+.mvp-dots button[aria-selected="true"]{border-color:var(--ink);color:var(--ink)}
+.mvp-dots button[aria-selected="true"] span{background:var(--red);color:#fff}
+.cl-row{margin-top:34px}
+@media(min-width:900px){.cl-row{grid-template-columns:repeat(4,1fr);border-top:3px solid var(--ink)}.cl-row .coverline{padding-right:18px;border-right:1px solid var(--rule);border-bottom:0}.cl-row .coverline+.coverline{padding-left:18px}.cl-row .coverline:last-child{border-right:0}}
+
+/* record book */
+.rec-top{display:flex;border-bottom:3px solid var(--ink)}
+.rec-top button{background:none;border:0;border-bottom:6px solid transparent;margin-bottom:-3px;padding:6px 26px 10px 0;font:900 clamp(34px,4.5vw,52px)/1 var(--f-display);text-transform:uppercase;color:var(--muted);cursor:pointer}
+.rec-top button+button{padding-left:26px}
+.rec-top button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red)}
+.rec-cats{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 22px}
+.rec-cats button{font:500 12px var(--f-data);letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--rule);color:var(--ink);padding:9px 14px;cursor:pointer}
+.rec-cats button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rec-lead{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;background:var(--paper-2);border-left:6px solid var(--team);padding:20px;margin-bottom:18px}
+.rec-lead .rec-ph{width:clamp(96px,16vw,150px);aspect-ratio:4/5}
+.rec-lead .rec-ph img{filter:none}
+.rec-lead-copy{min-width:0}
+.rec-big{font:900 clamp(72px,10vw,128px)/.85 var(--f-display);color:var(--red);margin-top:8px}
+.rec-unit{font:600 14px var(--f-data);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.rec-lead p{font-size:18px;margin-top:10px}
+.rec-lead a{color:var(--ink)}
+.rec-det{color:var(--muted);font:400 14px var(--f-data)!important}
+.rec-tbl td.rec-fig{font:900 24px var(--f-display);color:var(--ink)}
+.rec-tbl tr:first-child td.rec-fig{color:var(--red)}
+.rec-who{display:flex;align-items:center;gap:10px;text-decoration:none}
+.rec-who .thumb{width:34px;height:34px;flex:none}
+.chip-t{font:600 11px var(--f-data);text-transform:uppercase;letter-spacing:.06em;color:var(--team)}
+@media(max-width:560px){.rec-lead{grid-template-columns:1fr}.rec-lead .rec-ph{width:110px}}
+
 /* team picker */
 .pick-grid{display:grid;gap:36px}
 @media(min-width:1000px){.pick-grid{grid-template-columns:5fr 7fr;gap:48px;align-items:start}}
@@ -411,6 +460,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <a class="hide" href="#squads">Squads</a>
       <a class="hide" href="#picker">Pick sides</a>
       <a class="hide" href="#tables">Tables</a>
+      <a class="hide" href="#records">Records</a>
       <a class="hide" href="#matches">Matches</a>
       <a class="hide" href="#kit">The Ball</a>
       <a class="hide" href="#play">Play us</a>
@@ -495,6 +545,21 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <div><h3 class="tbl-title">Batting</h3><div class="tbl-wrap"><table class="data" id="batTable"></table></div></div>
         <div><h3 class="tbl-title">Bowling</h3><div class="tbl-wrap"><table class="data" id="bowlTable"></table></div></div>
       </div>
+    </div>
+  </section>
+
+  <section class="dept" id="records">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Record book</p><h2 class="hd">The best of the box</h2></div>
+        <p>The top 10 in every category, worked out ball by ball. Tap a record to open that innings' scorecard.</p>
+      </div>
+      <div class="rec-top" role="tablist" aria-label="Record type">
+        <button role="tab" type="button" data-rt="bat" aria-selected="true">Batting</button>
+        <button role="tab" type="button" data-rt="bowl" aria-selected="false">Bowling</button>
+      </div>
+      <div class="rec-cats" id="recCats" role="tablist" aria-label="Category"></div>
+      <div id="recBody" aria-live="polite"></div>
     </div>
   </section>
 
@@ -616,8 +681,28 @@ function team(name){
 }
 const crest=(name,cls="")=>{const t=team(name);return t.crest?`<img class="${cls}" src="${t.crest}" alt="${esc(name)} crest">`:""};
 
+let WEEKS=[];
+function weekStats(WM,issue){
+  const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
+  const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,w:0,rc:0,c:0});return pw.get(id)};
+  WM.forEach(mm=>{
+    const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
+      if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
+      sc.batting.forEach(x=>{sixes+=x.sixes;const e=ent(x.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;
+        if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
+      sc.bowling.forEach(x=>{const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;
+        if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
+      (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count});});
+    const names=Object.keys(tot);names.forEach(n=>{tw[n]=tw[n]||{w:0,l:0,for:0,against:0};tw[n].for+=tot[n];names.filter(o=>o!==n).forEach(o=>tw[n].against+=tot[o]);
+      if(mm.win)mm.win.name===n?tw[n].w++:tw[n].l++;});
+  });
+  const pow=[...pw.values()].sort((a,b)=>(b.r+20*b.w+10*b.c)-(a.r+20*a.w+10*a.c))[0];
+  return{WM,ws,we,pow,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
+}
+const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -702,23 +787,10 @@ function model(){
     const dm=t[3].match(/DROPPED BY (.+?),/);if(dm){const fid=up.get(dm[1]);if(fid)fx(bt,fid,"d")}
   })));
 
-  // latest week (Tue-Mon)
-  const wk=M[0].week,WM=M.filter(m=>m.week===wk),ws=M[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
-  const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  WM.forEach(mm=>{
-    const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
-      if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
-      sc.batting.forEach(x=>{sixes+=x.sixes;const e=pw.get(x.id)||{id:x.id,r:0,b:0,s:0,w:0,c:0};e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;pw.set(x.id,e);
-        if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
-      sc.bowling.forEach(x=>{const e=pw.get(x.id)||{id:x.id,r:0,b:0,s:0,w:0,c:0};e.w+=x.wickets;pw.set(x.id,e);
-        if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
-      (sc.fielding?.catches||[]).forEach(x=>{const e=pw.get(x.id)||{id:x.id,r:0,b:0,s:0,w:0,c:0};e.c+=x.count;pw.set(x.id,e)});});
-    const names=Object.keys(tot);names.forEach(n=>{tw[n]=tw[n]||{w:0,l:0,for:0,against:0};tw[n].for+=tot[n];names.filter(o=>o!==n).forEach(o=>tw[n].against+=tot[o]);
-      if(mm.win)mm.win.name===n?tw[n].w++:tw[n].l++;});
-  });
-  const pow=[...pw.values()].sort((a,b)=>(b.r+20*b.w+10*b.c)-(a.r+20*a.w+10*a.c))[0];
-  const weeks=[...new Set(M.map(m=>m.week))];
-  WEEK={WM,ws,we,pow,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue:weeks.length};
+  // every week (Tue-Mon), latest first; WEEK is the current issue
+  const weekKeys=[...new Set(M.map(m=>m.week))];               // M is newest first
+  WEEKS=weekKeys.map((k,i)=>weekStats(M.filter(m=>m.week===k),weekKeys.length-i));
+  WEEK=WEEKS[0];
 }
 
 const pname=id=>{const p=P.get(id);return p?(p.full_name||p.name):"?"};
@@ -763,36 +835,49 @@ function render(){
   SEASON_RR=M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.runs,0),0)/M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.b,0),0)*6;assignTitles();rateAll();
   const W=WEEK,pow=P.get(W.pow.id),wr=W.pow;
   const tWins=M.filter(m=>m.win?.key==="t").length,fWins=M.filter(m=>m.win?.key==="f").length;
-  const range=`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
+  const range=weekRange(W);
   $("#issueNo").textContent=`Issue ${W.issue} · Box cricket · SportsX, G-12 Islamabad`;
   $("#issueDate").textContent=`Week of ${range}`;
   $("#synced").textContent=`Scores updated ${new Date(D.synced_at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}`;
 
-  // cover
-  const head=wr.s>=10?`<em>${wr.s}</em> sixes.`:`<em>${wr.r}</em> runs.`;
+  // cover: MVP slider, one week per slide, newest first, moved only by the reader
   const hs=[...P.values()].filter(p=>p.bat.hs).sort((a,b)=>b.bat.hs.r-a.bat.hs.r||a.bat.hs.b-b.bat.hs.b)[0];
   const totalBalls=M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.b,0),0),totalRuns=M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.runs,0),0);
   const lead=tWins>=fWins?["Tigers",tWins,"Falcons",fWins]:["Falcons",fWins,"Tigers",tWins];
-  $("#cover").innerHTML=`<div class="cover-grid">
-    <a class="cover-art" href="${purl(pow.id)}" aria-label="${esc(pname(pow.id))} profile">
-      <div class="cover-photo ${pow.tm.key}">${pow.photo?`<img class="portrait" src="${pow.photo}" alt="${esc(pname(pow.id))}">`:`<div class="mono">${esc(pow.name[0])}</div>`}<span class="cover-tag">Player of the week</span></div>
-      <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt="">
-    </a>
-    <div>
-      <p class="kicker">Cover story · ${esc(pow.title)}</p>
-      <h1 class="hd cover-head">${head}</h1>
-      <p class="cover-dek"><b>${esc(pname(pow.id))}</b> made ${wr.r} runs off ${wr.b} balls this week${wr.w?`, took ${wr.w} wicket${wr.w>1?"s":""}`:""}${wr.c?` and held ${wr.c} catch${wr.c>1?"es":""}`:""}. ${W.knock.id===pow.id?`The best of it was ${W.knock.r}${W.knock.no?"*":""} off ${W.knock.b}.`:""}</p>
-      <div class="cover-stats">
-        <div><span class="label">Runs</span><b>${wr.r}</b></div><div><span class="label">SR</span><b>${r1(wr.b?wr.r/wr.b*100:0)}</b></div>
-        <div><span class="label">Sixes</span><b>${wr.s}</b></div><div><span class="label">Wkts</span><b>${wr.w}</b></div>
+  const slide=(Wk,i)=>{const p=P.get(Wk.pow.id),wr=Wk.pow;
+    const head=wr.w>=4&&wr.w*20>wr.r?`<em>${wr.w}</em> wickets.`:wr.s>=10?`<em>${wr.s}</em> sixes.`:`<em>${wr.r}</em> runs.`;
+    const teams=Object.entries(Wk.tw),res=teams.length===2?`${team(teams[0][0]).short} ${teams[0][1].w}–${teams[1][1].w} ${team(teams[1][0]).short}`:"";
+    return `<article class="mvp-slide" id="mvp-${Wk.issue}" aria-roledescription="slide" aria-label="Issue ${Wk.issue}, week of ${weekRange(Wk)}" ${i?'aria-hidden="true"':""}>
+      <div class="cover-grid">
+        <a class="cover-art" href="${purl(p.id)}" aria-label="${esc(pname(p.id))} profile" ${i?'tabindex="-1"':""}>
+          <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">${i?"MVP":"Player of the week"} · Issue ${Wk.issue}</span></div>
+          <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt="">
+        </a>
+        <div class="mvp-copy">
+          <p class="kicker">${i?"Back issue":"Cover story"} · Week of ${weekRange(Wk)}</p>
+          <h1 class="hd cover-head">${head}</h1>
+          <p class="cover-dek"><b>${esc(pname(p.id))}</b>, ${esc(p.title)}, made ${wr.r} runs off ${wr.b} balls${wr.w?`, took ${wr.w} wicket${wr.w>1?"s":""}`:""}${wr.c?` and held ${wr.c} catch${wr.c>1?"es":""}`:""}. ${Wk.knock.id===p.id?`The best of it was ${Wk.knock.r}${Wk.knock.no?"*":""} off ${Wk.knock.b}.`:""}</p>
+          <div class="cover-stats">
+            <div><span class="label">Runs</span><b>${wr.r}</b></div><div><span class="label">SR</span><b>${r1(wr.b?wr.r/wr.b*100:0)}</b></div>
+            <div><span class="label">Sixes</span><b>${wr.s}</b></div><div><span class="label">Wkts</span><b>${wr.w}</b></div>
+          </div>
+          <p class="mvp-week"><span class="label">That week</span> ${Wk.WM.length} match${Wk.WM.length>1?"es":""}${res?` · ${res}`:""} · ${Wk.sixes} sixes · ${Wk.runs} runs${Wk.WM.length?` · <a href="#match-${Wk.WM[0].id}">Scorecards</a>`:""}</p>
+        </div>
       </div>
-      <div class="coverlines" style="margin-top:28px">
-        <a class="coverline" href="#rivalry"><div><span class="kicker">The rivalry</span><div class="cl-h">${lead[0]} lead ${lead[1]}–${lead[3]}</div></div><span class="cl-n">${M.length}</span><span class="cl-p">matches played since ${fmtD(M[M.length-1].date,{day:"numeric",month:"short"})}</span></a>
-        <a class="coverline" href="${purl(hs.id)}"><div><span class="kicker">Record</span><div class="cl-h">${esc(hs.name)}'s ${hs.bat.hs.r} off ${hs.bat.hs.b}</div></div><span class="cl-n">${Math.round(hs.bat.hs.r/hs.bat.hs.b*100)}</span><span class="cl-p">strike rate in the season's top score</span></a>
-        <a class="coverline" href="#matches"><div><span class="kicker">Inside</span><div class="cl-h">Every scorecard, ball by ball</div></div><span class="cl-n">${r1(totalRuns/totalBalls*6)}</span><span class="cl-p">runs an over across the season</span></a>
-        <a class="coverline" href="#kit"><div><span class="kicker">Kit room</span><div class="cl-h">The 70 g ball that swings</div></div><span class="cl-n">↗</span></a>
-      </div>
-    </div></div>`;
+    </article>`};
+  $("#cover").innerHTML=`<div class="mvp" aria-roledescription="carousel" aria-label="Players of the week">
+      <div class="mvp-bar"><span class="kicker">MVP of the week</span><span class="label" id="mvpPos"></span>
+        <div class="mvp-nav"><button type="button" class="mvp-btn" id="mvpPrev" aria-label="Newer week">← Newer</button><button type="button" class="mvp-btn" id="mvpNext" aria-label="Older week">Older →</button></div></div>
+      <div class="mvp-track" id="mvpTrack" tabindex="0">${WEEKS.map(slide).join("")}</div>
+      <div class="mvp-dots" role="tablist" aria-label="Choose a week">${WEEKS.map((Wk,i)=>`<button type="button" role="tab" data-i="${i}" aria-selected="${!i}" aria-label="Issue ${Wk.issue}: ${esc(pname(Wk.pow.id))}"><span>${Wk.issue}</span><i>${esc(short(Wk.pow.id))}</i></button>`).join("")}</div>
+    </div>
+    <div class="coverlines cl-row">
+      <a class="coverline" href="#rivalry"><div><span class="kicker">The rivalry</span><div class="cl-h">${lead[0]} lead ${lead[1]}–${lead[3]}</div></div><span class="cl-n">${M.length}</span><span class="cl-p">matches played since ${fmtD(M[M.length-1].date,{day:"numeric",month:"short"})}</span></a>
+      <a class="coverline" href="${purl(hs.id)}"><div><span class="kicker">Record</span><div class="cl-h">${esc(hs.name)}'s ${hs.bat.hs.r} off ${hs.bat.hs.b}</div></div><span class="cl-n">${Math.round(hs.bat.hs.r/hs.bat.hs.b*100)}</span><span class="cl-p">strike rate in the season's top score</span></a>
+      <a class="coverline" href="#matches"><div><span class="kicker">Inside</span><div class="cl-h">Every scorecard, ball by ball</div></div><span class="cl-n">${r1(totalRuns/totalBalls*6)}</span><span class="cl-p">runs an over across the season</span></a>
+      <a class="coverline" href="#records"><div><span class="kicker">Record book</span><div class="cl-h">Fastest fifties, best spells</div></div><span class="cl-n">↗</span><span class="cl-p">top 10 in 12 categories</span></a>
+    </div>`;
+  initMvp();
 
   // ticker
   const tk=M.slice(0,10).map(m=>`<span>${fmtD(m.date,{day:"numeric",month:"short"})} · <b>${m.win?m.win.short:"—"}</b> won by ${esc(m.margin)}</span>`).join("");
@@ -861,6 +946,7 @@ function render(){
     +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl}`);
 
   renderPicker();
+  RECS=buildRecords();renderRecords();
   renderMatches("all");
   document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#filters button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderMatches(b.dataset.f)});
 }
@@ -909,6 +995,89 @@ function matchPage(id,tab){
     </section>`});
   return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Scorecard, match #${m.id} ↗</a></p>`;
 }
+
+/* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
+function initMvp(){
+  const track=$("#mvpTrack"),slides=[...track.children],dots=[...document.querySelectorAll(".mvp-dots button")],n=slides.length;
+  let cur=0;
+  const mark=i=>{cur=i;slides.forEach((sl,j)=>{sl.setAttribute("aria-hidden",j!==i);sl.querySelectorAll("a").forEach(a=>j===i?a.removeAttribute("tabindex"):a.setAttribute("tabindex","-1"))});
+    dots.forEach((d,j)=>d.setAttribute("aria-selected",j===i));
+    const W=WEEKS[i];$("#mvpPos").textContent=`Issue ${W.issue} · ${i+1} of ${n}`;
+    $("#mvpPrev").disabled=i===0;$("#mvpNext").disabled=i===n-1;
+    dots[i]?.scrollIntoView({block:"nearest",inline:"nearest"});};
+  const go=i=>{i=Math.max(0,Math.min(n-1,i));track.scrollTo({left:slides[i].offsetLeft-track.offsetLeft,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});mark(i)};
+  $("#mvpPrev").onclick=()=>go(cur-1);$("#mvpNext").onclick=()=>go(cur+1);
+  dots.forEach((d,i)=>d.onclick=()=>go(i));
+  track.addEventListener("keydown",e=>{if(e.key==="ArrowRight"){e.preventDefault();go(cur+1)}if(e.key==="ArrowLeft"){e.preventDefault();go(cur-1)}});
+  let t;track.addEventListener("scroll",()=>{clearTimeout(t);t=setTimeout(()=>{const i=Math.round(track.scrollLeft/track.clientWidth);if(i!==cur)mark(Math.max(0,Math.min(n-1,i)))},80)},{passive:true});
+  mark(0);
+}
+
+/* ---------- record book ---------- */
+let RECS=null;const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi"}};
+try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv)}catch(e){}
+const runVal=t=>t.kind==="six"?6:t.kind==="four"?4:/^\d+$/.test(String(t.mark))?+t.mark:0;
+function buildRecords(){
+  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map();
+  M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
+    const ino=sc.innings_no;
+    sc.batting.forEach(x=>{let c=0,f50=null,f100=null;
+      (x.timeline||[]).forEach((t,i)=>{const p=c;c+=runVal(t);if(p<50&&c>=50)f50=i+1;if(p<100&&c>=100)f100=i+1});
+      inn.push({id:x.id,mm,ino,opp:sc.bowling_team,r:x.runs,b:x.balls,no:!x.out,s:x.sixes,f:x.fours,f50,f100});
+      const k=mm.id+"|"+x.id,e=mBat.get(k)||{id:x.id,mm,ino,opp:sc.bowling_team,r:0,b:0,parts:[]};
+      e.r+=x.runs;e.b+=x.balls;e.parts.push(`${x.runs}${x.out?"":"*"} (${x.balls})`);mBat.set(k,e)});
+    sc.bowling.forEach(x=>{const b=balls(x.overs);
+      spells.push({id:x.id,mm,ino,opp:sc.batting_team,w:x.wickets,r:x.runs,b,ov:x.overs,dots:x.dots,s:x.sixes});
+      const k=mm.id+"|"+x.id,e=mBowl.get(k)||{id:x.id,mm,ino,opp:sc.batting_team,w:0,r:0,b:0,parts:[]};
+      e.w+=x.wickets;e.r+=x.runs;e.b+=b;e.parts.push(`${x.wickets}/${x.runs}`);mBowl.set(k,e)});
+    (sc.commentary||[]).filter(c=>c.type==="over").forEach(c=>{
+      const nm=String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/,""),id=byName.get(nm);if(!id)return;
+      overs.push({id,mm,ino,opp:sc.batting_team,r:parseInt(c.text)||0,w:+((String(c.text).match(/(\d+) wicket/)||[])[1]||0),o:c.over_no,lbl:sc.label})});
+  }));
+  const top=(a,ok,by)=>a.filter(ok).sort(by).slice(0,10),all=()=>true;
+  const bt=x=>`${x.r}${x.no?"*":""}`;
+  return{
+    bat:[
+      {k:"hs",t:"Highest scores",rows:top(inn,all,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
+      {k:"f50",t:"Fastest fifties",rows:top(inn,x=>x.f50,(a,b)=>a.f50-b.f50||b.r-a.r),big:x=>x.f50,unit:()=>"balls to reach 50",det:x=>`Went on to ${bt(x)} off ${x.b}`},
+      {k:"f100",t:"Fastest hundreds",rows:top(inn,x=>x.f100,(a,b)=>a.f100-b.f100||b.r-a.r),big:x=>x.f100,unit:()=>"balls to reach 100",det:x=>`Went on to ${bt(x)} off ${x.b}`},
+      {k:"six",t:"Most sixes in an innings",rows:top(inn,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:()=>"sixes",det:x=>`${bt(x)} off ${x.b} · SR ${r1(x.r/x.b*100)}`},
+      {k:"sr",t:"Highest strike rates",note:"Innings of 15 balls or more.",rows:top(inn,x=>x.b>=15,(a,b)=>b.r/b.b-a.r/a.b||b.r-a.r),big:x=>Math.round(x.r/x.b*100),unit:()=>"strike rate",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
+      {k:"mr",t:"Most runs in a match",note:"Both innings of a Test added together.",rows:top([...mBat.values()],all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs off ${x.b} balls`,det:x=>x.parts.join(" & ")},
+    ],
+    bowl:[
+      {k:"bbi",t:"Best bowling",rows:top(spells,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r||a.b-b.b),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${x.ov} overs`,det:x=>`Econ ${r1(x.r/x.b*6)} · ${x.dots} dots`},
+      {k:"bbm",t:"Best match figures",note:"Both innings of a Test added together.",rows:top([...mBowl.values()],x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${ovs(x.b)} overs`,det:x=>x.parts.join(" & ")},
+      {k:"eco",t:"Most economical spells",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>a.r/a.b-b.r/b.b||b.w-a.w),big:x=>r1(x.r/x.b*6),unit:()=>"runs an over",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
+      {k:"dots",t:"Most dot balls in a spell",rows:top(spells,x=>x.dots>0,(a,b)=>b.dots-a.dots||a.r-b.r),big:x=>x.dots,unit:x=>`dot balls in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · ${Math.round(x.dots/x.b*100)}% dots`},
+      {k:"wkm",t:"Most wickets in an over",rows:top(overs,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>x.w,unit:()=>"wickets in one over",det:x=>`Over ${x.o} · ${x.r} runs`},
+      {k:"exp",t:"Most runs conceded in an over",rows:top(overs,all,(a,b)=>b.r-a.r||a.w-b.w),big:x=>x.r,unit:()=>"runs in one over",det:x=>`Over ${x.o} of the ${x.lbl} innings${x.w?` · ${x.w} wkt`:""}`},
+    ]};
+}
+function renderRecords(){
+  document.querySelectorAll(".rec-top [role=tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.rt===REC.tab));
+  const list=RECS[REC.tab],cat=list.find(c=>c.k===REC.cat[REC.tab])||list[0];
+  $("#recCats").innerHTML=list.map(c=>`<button type="button" role="tab" data-rc="${c.k}" aria-selected="${c===cat}">${c.t}</button>`).join("");
+  const rows=cat.rows;
+  if(!rows.length){$("#recBody").innerHTML=`<p class="dnb">No ${cat.t.toLowerCase()} yet. The first one will appear here.</p>`;return}
+  const mlink=x=>`#match-${x.mm.id}-i${x.ino||1}`,when=x=>fmtD(x.mm.date,{day:"numeric",month:"short"});
+  const L=rows[0],lp=P.get(L.id);
+  $("#recBody").innerHTML=`<div class="rec-lead ${lp?.tm.key||"x"}">
+      ${lp?photo(lp,"rec-ph"):""}
+      <div class="rec-lead-copy"><span class="kicker">Record · ${cat.t}</span>
+        <div class="rec-big">${cat.big(L)}</div><div class="rec-unit">${cat.unit(L)}</div>
+        <p><a href="${purl(L.id)}"><b>${esc(pname(L.id))}</b></a> v ${esc(team(L.opp).short)} · <a href="${mlink(L)}">Match #${L.mm.id}, ${when(L)}</a></p>
+        <p class="rec-det">${cat.det(L)}</p></div>
+    </div>
+    <div class="tbl-wrap"><table class="data rec-tbl"><thead><tr><th></th><th>Player</th><th>Record</th><th style="text-align:left">Details</th><th>Against</th><th>Match</th></tr></thead><tbody>
+    ${rows.map((x,i)=>{const p=P.get(x.id);return `<tr><td class="rk">${i+1}</td><td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(p)}<span>${esc(p?(p.full_name||p.name):"?")}</span></a></td>
+      <td class="hi rec-fig">${cat.big(x)}</td><td class="how">${cat.det(x)}</td><td><span class="chip-t ${team(x.opp).key}">${esc(team(x.opp).short)}</span></td><td><a href="${mlink(x)}">#${x.mm.id} · ${when(x)}</a></td></tr>`}).join("")}
+    </tbody></table></div>
+    <p class="rank-note" style="margin-top:12px">${cat.note?cat.note+" ":""}${rows.length<10?`Only ${rows.length} so far. `:""}Built from the ball-by-ball scorecards.</p>`;
+}
+const saveRec=()=>{try{localStorage.setItem("bdc-rec",JSON.stringify(REC))}catch(e){}};
+document.querySelector(".rec-top").addEventListener("click",e=>{const b=e.target.closest("[data-rt]");if(!b||!RECS)return;REC.tab=b.dataset.rt;saveRec();renderRecords()});
+$("#recCats").addEventListener("click",e=>{const b=e.target.closest("[data-rc]");if(!b)return;REC.cat[REC.tab]=b.dataset.rc;saveRec();renderRecords()});
 
 /* ---------- team picker ---------- */
 const PICK={sel:new Set(),guests:[],opts:[],cur:0};
