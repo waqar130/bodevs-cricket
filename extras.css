@@ -11,7 +11,7 @@
 @media(max-width:560px){.navmenu .nm-panel{position:fixed;left:12px;right:12px;top:72px;min-width:0}}
 
 /* live bar */
-.livebar{background:var(--red);color:#fff;position:sticky;top:calc(64px + env(safe-area-inset-top,0px));z-index:29}
+.livebar{background:var(--red);color:#fff;position:sticky;top:calc(112px + env(safe-area-inset-top,0px));z-index:28}
 .livebar .wrap{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:center;padding-block:10px}
 .live-m{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;text-decoration:none;color:#fff;font:500 13px var(--f-data)}
 .live-m b{font:800 22px var(--f-display);text-transform:uppercase}
@@ -102,3 +102,30 @@
 .gal-grid img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
 .gal-grid a:hover img{transform:scale(1.04)}
 .gal-grid span{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.7));color:#fff;font:400 12px var(--f-data);padding:16px 10px 8px}
+
+/* page tabs: This week / Players / Stats / Season / Club */
+.pagetabs{position:sticky;top:calc(64px + env(safe-area-inset-top,0px));z-index:29;background:var(--paper);border-bottom:3px solid var(--ink)}
+.pagetabs .wrap{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.pagetabs .wrap::-webkit-scrollbar{display:none}
+.pagetabs a{flex:none;font:900 clamp(18px,2.2vw,24px)/1 var(--f-display);text-transform:uppercase;text-decoration:none;color:var(--muted);padding:12px 20px 10px 0;border-bottom:4px solid transparent;margin-bottom:-3px}
+.pagetabs a+a{padding-left:20px}
+.pagetabs a:hover{color:var(--ink)}
+.pagetabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--red)}
+html section[id],html #top,html #since{scroll-margin-top:118px}
+
+/* since last Monday */
+.since{border-bottom:1px solid var(--rule);background:var(--paper-2)}
+.since .wrap{display:flex;align-items:center;gap:14px;padding-block:10px;min-width:0}
+.sc-lab{flex:none}
+.sc-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;min-width:0;padding:2px 0}
+.sc-row::-webkit-scrollbar{display:none}
+.sc-item{flex:none;display:inline-flex;align-items:center;gap:8px;text-decoration:none;font:500 14px var(--f-body);background:var(--paper);border:1px solid var(--rule);padding:6px 12px 6px 6px;white-space:nowrap}
+.sc-item:hover{border-color:var(--ink)}
+.sc-k{font:700 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--paper);padding:3px 6px}
+.sc-k.up{background:#1f8a4c}
+@media(max-width:640px){.since .wrap{flex-direction:column;align-items:stretch;gap:6px}}
+.sc-row{max-width:100%}
+
+/* rank movement in the rankings lists */
+.mv{display:inline-block;font:700 10px var(--f-data);padding:2px 5px;margin-right:6px;vertical-align:2px}
+.mv.up{color:#1f8a4c}.mv.down{color:var(--red)}.mv.new{color:var(--falcon)}

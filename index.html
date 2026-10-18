@@ -613,11 +613,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <a href="#top" aria-label="BoDevs Cricket home"><img class="logo" src="assets/logo.png" alt="BoDevs"></a>
     <span class="title">Cricket</span>
     <nav aria-label="Sections">
-      <a class="hide" href="#digest">This week</a>
-      <a class="hide" href="#squads">Squads</a>
-      <a class="hide" href="#picker">Pick sides</a>
-      <a class="hide" href="#records">Records</a>
-      <a class="hide" href="#matches">Matches</a>
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
         <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
@@ -629,6 +624,9 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </nav>
   </div>
 </header>
+<nav class="pagetabs" aria-label="Pages"><div class="wrap">
+  <a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
+</div></nav>
 <div class="livebar" id="liveBar" hidden aria-live="polite"></div>
 
 <div class="issue" id="top">
@@ -637,6 +635,8 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <span class="label" id="issueDate"></span>
   </div>
 </div>
+
+<div class="since" id="since"><div class="wrap" id="sinceBody"></div></div>
 
 <main id="main">
   <section class="cover"><div class="wrap" id="cover"><p class="label">Loading this week's issue…</p></div></section>
@@ -993,7 +993,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -1847,6 +1847,7 @@ function route(){
     $("#closeDetail").focus({preventScroll:true});
   }else{
     det.hidden=true;document.body.style.overflow="";document.title="BoDevs Cricket";
+    window.pageRoute?.(location.hash);
   }
 }
 addEventListener("hashchange",e=>{const was=!!parseDetail(new URL(e.oldURL).hash);if(!was)fromPage=true;route()});

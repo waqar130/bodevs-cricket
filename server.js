@@ -3,6 +3,7 @@
 // Production: Railway (cricket.waqarahmed.net) runs this server; it syncs scores every Monday at 2:00 AM Pakistan time.
 // index.html is written as a page body (it also publishes as a Claude artifact), so build.js wraps it in a full document.
 const http = require("http");
+const zlib = require("zlib");
 const fs = require("fs");
 const path = require("path");
 const { page } = require("./build");
@@ -146,10 +147,16 @@ function savePrediction(body) {
   return { ok: true, week: ow.week };
 }
 
-function send(res, code, type, body, cache = "no-store") {
-  res.writeHead(code, { "Content-Type": type, "Cache-Control": cache, "X-Content-Type-Options": "nosniff" });
+// gzip text responses for browsers that accept it (the page, data and scripts shrink to a fraction)
+const acceptsGzip = res => /\bgzip\b/.test(res.req?.headers["accept-encoding"] || "");
+const COMPRESSIBLE = /^(text\/|application\/json|image\/svg)/;
+function send(res, code, type, body, cache = "no-store", extra = {}) {
+  const headers = { "Content-Type": type, "Cache-Control": cache, "X-Content-Type-Options": "nosniff", "Vary": "Accept-Encoding", ...extra };
+  if (COMPRESSIBLE.test(type) && acceptsGzip(res) && Buffer.byteLength(body) > 1024) { body = zlib.gzipSync(body); headers["Content-Encoding"] = "gzip"; }
+  res.writeHead(code, headers);
   res.end(body);
 }
+const gzCache = new Map(); // file -> { mtime, raw, gz }
 const json = (res, code, obj) => send(res, code, "application/json; charset=utf-8", JSON.stringify(obj));
 
 http.createServer((req, res) => {
@@ -190,13 +197,20 @@ http.createServer((req, res) => {
   const file = path.join(ROOT, url);
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, "text/plain", "Not found");
+    const type = TYPES[path.extname(file)] || "application/octet-stream";
     const isData = /\.(json|js|css)$/.test(url); // revalidate so updates show straight away
-    res.writeHead(200, {
-      "Content-Type": TYPES[path.extname(file)] || "application/octet-stream",
-      "Cache-Control": isData ? "no-cache" : "public, max-age=86400",
-      "Last-Modified": st.mtime.toUTCString(),
-      "X-Content-Type-Options": "nosniff",
-    });
+    const lastMod = st.mtime.toUTCString();
+    const headers = { "Content-Type": type, "Cache-Control": isData ? "no-cache" : "public, max-age=86400", "Last-Modified": lastMod, "X-Content-Type-Options": "nosniff", "Vary": "Accept-Encoding" };
+    // unchanged since the browser's copy: answer 304 with no body
+    const ims = Date.parse(req.headers["if-modified-since"] || "");
+    if (ims && Math.floor(st.mtimeMs / 1000) * 1000 <= ims) { res.writeHead(304, headers); return res.end(); }
+    if (COMPRESSIBLE.test(type)) {
+      let c = gzCache.get(file);
+      if (!c || c.mtime !== st.mtimeMs) { const raw = fs.readFileSync(file); c = { mtime: st.mtimeMs, raw, gz: zlib.gzipSync(raw, { level: 9 }) }; gzCache.set(file, c); }
+      if (acceptsGzip(res)) { headers["Content-Encoding"] = "gzip"; res.writeHead(200, headers); return res.end(c.gz); }
+      res.writeHead(200, headers); return res.end(c.raw);
+    }
+    res.writeHead(200, headers);
     fs.createReadStream(file).pipe(res);
   });
 }).listen(PORT, "0.0.0.0", () => {

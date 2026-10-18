@@ -11,6 +11,13 @@ Live at **https://cricket.waqarahmed.net**
 - `index.html` is the whole site: cover story, rivalry, rankings, team sheets, team picker, match centre with scorecards, and player pages with rivalries. All stats are computed in the browser from `data/cricket.json`.
 - `build.js` wraps `index.html` into a full HTML document (used by the server) and can also build a static copy into `dist/`.
 
+## Pages and data files
+
+- The site has five pages, switched by the tabs under the masthead: **This week** (`#home`), **Players**, **Stats**, **Season** and **Club**. Old section links such as `#records` open the right page. Player and match pages are `#<player-slug>` and `#match-<id>`; `/p/<slug>` and `/m/<id>` give WhatsApp link previews.
+- `data/fixtures.json` lists matches against outside teams and `assets/gallery/gallery.json` lists match-night photos (`{week: "YYYY-MM-DD" of the Tuesday, src, caption}`). Both sections stay hidden while empty.
+- Predictions are saved in `STORAGE_DIR` (default `storage/`; on Railway a volume is mounted at `/app/storage`).
+- The server gzips text and answers 304 for unchanged files, so the 870 KB data file costs about 60 KB on a first visit and nothing on a repeat one.
+
 ## Run locally
 
 ```bash

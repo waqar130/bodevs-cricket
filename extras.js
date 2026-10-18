@@ -114,6 +114,8 @@ async function renderDigest() {
       <p class="label" id="dgMsg"></p></div>
     <img class="card-img dg-img" id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(WEEK))}"></div>`;
   $("#dgText").textContent = txt;
+  // draw the image card only once the digest is actually on screen
+  await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#dgImg")); });
   const c = await drawDigest(WEEK); $("#dgImg").src = c.toDataURL("image/png");
   // reuse shareUI with this section's ids
   const msg = $("#dgMsg");
@@ -330,7 +332,8 @@ async function renderPredict() {
 async function renderFixtures() {
   const el = $("#fixturesBody"); if (!el) return; let fx = [];
   try { fx = await (await fetch("data/fixtures.json", { cache: "no-cache" })).json(); } catch {}
-  if (!Array.isArray(fx) || !fx.length) { el.innerHTML = `<div class="fx-empty"><p class="pv-fav">No matches against outside teams yet. The first challenger takes the top line here.</p><a class="btn solid" href="#play">Challenge BoDevs Cricket</a></div>`; return; }
+  if (!Array.isArray(fx) || !fx.length) { markEmpty("fixtures", true); return; }
+  markEmpty("fixtures", false);
   const up = fx.filter(f => f.status !== "played").sort((a, b) => a.date.localeCompare(b.date)), done = fx.filter(f => f.status === "played").sort((a, b) => b.date.localeCompare(a.date));
   const w = done.filter(f => f.result === "won").length, l = done.filter(f => f.result === "lost").length;
   const row = f => `<div class="fx-row"><span class="fx-d">${new Date(f.date + "T00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span><b>BoDevs v ${esc(f.opponent)}</b><span>${esc(f.venue || "SportsX, G-12")}${f.format ? " · " + esc(f.format) : ""}</span>${f.status === "played" ? `<span class="fx-r ${f.result}">${esc(f.result || "")} ${esc(f.score || "")}</span>` : `<span class="fx-r up">Upcoming</span>`}</div>`;
@@ -343,7 +346,8 @@ let GALLERY = [];
 async function renderGallery() {
   const el = $("#galleryBody"); if (!el) return;
   try { GALLERY = await (await fetch("assets/gallery/gallery.json", { cache: "no-cache" })).json(); } catch { GALLERY = []; }
-  if (!Array.isArray(GALLERY) || !GALLERY.length) { el.innerHTML = `<p class="dnb">Match-night photos from SportsX will appear here, grouped by week.</p>`; return; }
+  if (!Array.isArray(GALLERY) || !GALLERY.length) { markEmpty("gallery", true); return; }
+  markEmpty("gallery", false);
   const byWeek = new Map(); GALLERY.forEach(g => { if (!byWeek.has(g.week)) byWeek.set(g.week, []); byWeek.get(g.week).push(g); });
   el.innerHTML = [...byWeek.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([wk, list]) => { const W = WEEKS.find(w => isoDay(w.ws) === wk);
     return `<div class="gal-week" id="gal-${wk}"><h3 class="tbl-title">${W ? `Issue ${W.issue} · week of ${weekRange(W)}` : wk}</h3><div class="gal-grid">${list.map(g => `<a href="${esc(g.src)}" target="_blank" rel="noopener"><img src="${esc(g.src)}" alt="${esc(g.caption || "Match night at SportsX")}" loading="lazy">${g.caption ? `<span>${esc(g.caption)}</span>` : ""}</a>`).join("")}</div></div>`; }).join("");
@@ -372,9 +376,94 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 /* ---------------- section menu ---------------- */
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
+/* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
+const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGE_OF = { top: "home", since: "home", digest: "home", picker: "home", predict: "home", matches: "home",
+  squads: "players", form: "players", milestones: "players", tables: "players", compare: "players",
+  records: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
+  rivalry: "season", story: "season", numbers: "season",
+  fixtures: "club", gallery: "club", kit: "club", play: "club" };
+let CUR_PAGE = null;
+function tagPages() {
+  Object.entries(PAGE_OF).forEach(([id, p]) => { const el = document.getElementById(id); if (el) el.dataset.page = p; });
+  document.querySelector("section.cover")?.setAttribute("data-page", "home");
+  document.querySelector(".ticker")?.setAttribute("data-page", "home");
+}
+function applyPage(p, target) {
+  const changed = CUR_PAGE !== p; CUR_PAGE = p;
+  document.querySelectorAll("[data-page]").forEach(el => { el.hidden = el.dataset.page !== p || el.dataset.empty === "1"; });
+  document.querySelectorAll(".pagetabs a").forEach(a => a.setAttribute("aria-current", a.dataset.p === p ? "page" : "false"));
+  if (target) target.scrollIntoView({ block: "start", behavior: changed ? "instant" : "smooth" });
+  else if (changed) window.scrollTo({ top: 0, behavior: "instant" });
+}
+// Called by the main router for every hash that isn't a player or match page.
+window.pageRoute = function (hash) {
+  const h = String(hash || "").replace(/^#/, "");
+  if (!h) return applyPage(CUR_PAGE || "home");
+  if (PAGES.some(([k]) => k === h)) return applyPage(h);
+  const el = document.getElementById(h), sec = el && (el.dataset.page ? el : el.closest("[data-page]"));
+  if (sec) applyPage(sec.dataset.page, el); else if (!CUR_PAGE) applyPage("home");
+};
+// Empty sections (no fixtures or photos yet) stay hidden, along with their menu links.
+function markEmpty(id, empty) {
+  const s = document.getElementById(id); if (!s) return;
+  if (empty) s.dataset.empty = "1"; else delete s.dataset.empty;
+  document.querySelectorAll(`.nm-panel a[href="#${id}"]`).forEach(a => a.hidden = empty);
+  if (CUR_PAGE) applyPage(CUR_PAGE);
+}
+
+/* ---------------- since last Monday: what changed with this week's sync ---------------- */
+// Ratings as they stood before the latest week (same formula as rateAll in index.html; keep the two in step).
+function ranksBefore(skip) {
+  const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0 }); return g.get(id); };
+  let tr = 0, tb = 0;
+  M.filter(m => !skip.has(m.id)).forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
+    mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id); a.inns++; a.r += x.runs; a.b += x.balls; if (!x.out) a.no++; });
+      sc.bowling.forEach(x => { const a = e(x.id); a.wb += balls(x.overs); a.wr += x.runs; a.w += x.wickets; }); }); });
+  const RR = tb ? tr / tb * 6 : 0, out = new Map();
+  g.forEach(a => { const avg = a.inns ? ((a.inns - a.no ? a.r / (a.inns - a.no) : a.r) + a.r / a.inns) / 2 : 0, sr = a.b ? a.r / a.b * 100 : 0;
+    const rBat = a.inns >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.inns / 15))) : 0;
+    const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.wb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.wb / 180))) : 0;
+    out.set(a.id, { rBat, rBowl, rAll: Math.round(rBat * rBowl / 1000) }); });
+  const rk = {}; ["rBat", "rBowl", "rAll"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
+  return rk;
+}
+let MOVES = new Map(); // "id|kBat" -> places moved (+ up, - down, "new")
+function computeMoves() {
+  MOVES = new Map(); if (!WEEK) return [];
+  const prev = ranksBefore(new Set(WEEK.WM.map(m => m.id))), list = [];
+  [["kBat", "rBat", "batting"], ["kBowl", "rBowl", "bowling"], ["kAll", "rAll", "all-rounder"]].forEach(([k, r, label]) => P.forEach(p => {
+    if (!p[k]) return; const before = prev[r].get(p.id);
+    const d = before ? before - p[k] : "new"; MOVES.set(p.id + "|" + k, d);
+    if (d === "new" || d > 0) list.push({ p, k, label, d, now: p[k] }); }));
+  return list.sort((a, b) => (b.d === "new" ? 0 : b.d) - (a.d === "new" ? 0 : a.d));
+}
+function renderSince() {
+  const el = $("#sinceBody"); if (!el || !WEEK) return;
+  const moves = computeMoves(), items = [];
+  const pw = P.get(WEEK.pow.id), tw = Object.entries(WEEK.tw);
+  items.push(`<a class="sc-item" href="${purl(pw.id)}"><span class="sc-k">MVP</span>${esc(pname(pw.id))} is player of the week</a>`);
+  if (tw.length === 2) items.push(`<a class="sc-item" href="#digest"><span class="sc-k">Results</span>${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short} this week</a>`);
+  milestonesIn(WEEK).slice(0, 3).forEach(m => { const name = m.split(":")[0], id = [...P.values()].find(p => (p.full_name || p.name) === name)?.id;
+    items.push(`<a class="sc-item" href="${id ? purl(id) : "#milestones"}"><span class="sc-k">Milestone</span>${esc(m)}</a>`); });
+  moves.filter(m => m.d !== "new").slice(0, 3).forEach(m => items.push(`<a class="sc-item" href="#tables"><span class="sc-k up">▲ ${m.d}</span>${esc(pname(m.p.id))} to #${m.now} in ${m.label}</a>`));
+  const firstIds = new Set(WEEK.WM.map(m => m.id));
+  P.forEach(p => { if (p.matches && [...p.mids].every(id => firstIds.has(id))) items.push(`<a class="sc-item" href="${purl(p.id)}"><span class="sc-k">Debut</span>${esc(pname(p.id))}</a>`); });
+  el.innerHTML = `<span class="label sc-lab">Since last Monday</span><div class="sc-row">${items.join("")}</div>`;
+  // rank-change arrows in the rankings lists
+  const keys = ["kBat", "kBowl", "kAll"];
+  document.querySelectorAll("#rankings .rank-col").forEach((col, ci) => col.querySelectorAll(".rank-list a").forEach(a => {
+    const id = BySlug.get(a.getAttribute("href").slice(1)) ?? +(a.getAttribute("href").match(/player-(\d+)/) || [])[1], d = MOVES.get(id + "|" + keys[ci]);
+    if (d === undefined || d === 0 || a.querySelector(".mv")) return;
+    a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`); }));
+}
+
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderStory(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderStory(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderPredict(); renderFixtures(); renderGallery(); checkLive();
 };
+// show the right page straight away, before the data has loaded
+tagPages();
+if (!/^#(match-\d|player-\d)/.test(location.hash)) window.pageRoute(location.hash);
 if (typeof D !== "undefined" && D && M) window.renderExtras();
