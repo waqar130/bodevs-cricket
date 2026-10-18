@@ -10,9 +10,9 @@ const { sync } = require("./sync");
 
 const PORT = Number(process.env.PORT) || 8765;
 const ROOT = __dirname;
-const TYPES = { ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".json": "application/json; charset=utf-8" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".json": "application/json; charset=utf-8" };
 // Only these are public; source files stay private.
-const PUBLIC = [/^\/(tigers|falcons)\.svg$/, /^\/data\/cricket\.json$/, /^\/assets\/[\w./-]+\.(png|jpg|svg)$/];
+const PUBLIC = [/^\/(tigers|falcons)\.svg$/, /^\/data\/cricket\.json$/, /^\/assets\/[\w./-]+\.(png|jpg|webp|svg)$/];
 
 // ---- score sync: once a week, Monday 2:00 AM Pakistan time (after Sunday night's matches)
 const SYNC = process.env.SYNC !== "off";

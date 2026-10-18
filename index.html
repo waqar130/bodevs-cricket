@@ -420,6 +420,67 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .cl-row{margin-top:34px}
 @media(min-width:900px){.cl-row{grid-template-columns:repeat(4,1fr);border-top:3px solid var(--ink)}.cl-row .coverline{padding-right:18px;border-right:1px solid var(--rule);border-bottom:0}.cl-row .coverline+.coverline{padding-left:18px}.cl-row .coverline:last-child{border-right:0}}
 
+/* compare */
+.cmp-pick{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:22px}
+.cmp-sel{display:grid;gap:6px;flex:1 1 220px;min-width:0}
+.cmp-sel select{font:600 17px var(--f-body);padding:10px 12px;border:1px solid var(--ink);background:var(--paper);color:var(--ink)}
+.cmp-top{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;border-bottom:3px solid var(--ink);padding-bottom:16px}
+.cmp-head{display:flex;align-items:center;gap:14px;text-decoration:none;min-width:0}
+.cmp-top .cmp-head:last-child{flex-direction:row-reverse;text-align:right}
+.cmp-head .cmp-ph{width:clamp(70px,10vw,120px);flex:none}
+.cmp-head .cmp-ph img{filter:none}
+.cmp-head b{display:block;font:900 clamp(22px,3vw,38px)/.95 var(--f-display);text-transform:uppercase}
+.cmp-head small{display:block;font:500 11px var(--f-data);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:6px}
+.cmp-score{text-align:center;font:900 52px/1 var(--f-display)}
+.cmp-score span{color:var(--muted);margin:0 6px}
+.cmp-score small{display:block;font:500 11px var(--f-data);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.cmp-row{display:grid;grid-template-columns:1fr minmax(110px,180px) 1fr;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--rule)}
+.cmp-l{text-align:center;font:500 12px var(--f-data);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.cmp-v{position:relative;font:600 18px var(--f-data);font-variant-numeric:tabular-nums;padding:4px 0}
+.cmp-v i{position:absolute;bottom:0;height:4px;background:var(--rule)}
+.cmp-v.ca{text-align:right}.cmp-v.ca i{right:0}.cmp-v.cb i{left:0}
+.cmp-v.win{color:var(--red)}.cmp-v.win i{background:var(--red)}
+.duels{display:grid;gap:16px;margin-top:10px}
+@media(min-width:900px){.duels{grid-template-columns:1fr 1fr}}
+.duel{background:var(--paper-2);padding:16px}
+.duel-n{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.duel-n b{display:block;font:900 32px/1 var(--f-display)}
+.duel-n span{font:400 11px var(--f-data);color:var(--muted)}
+.duel-v{margin-top:10px;font:500 16px var(--f-body)}
+@media(max-width:640px){.cmp-top{grid-template-columns:1fr 1fr}.cmp-score{grid-column:1/-1;order:-1}.cmp-row{grid-template-columns:1fr 90px 1fr}.duel-n{grid-template-columns:repeat(3,1fr)}}
+
+/* hall of shame */
+.shame-grid{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:640px){.shame-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1000px){.shame-grid{grid-template-columns:repeat(4,1fr)}}
+.shame{border:1px solid var(--ink);padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0;background:repeating-linear-gradient(-45deg,transparent 0 12px,rgba(0,0,0,.025) 12px 24px)}
+.shame-line{font:italic 400 15px var(--f-body);color:var(--muted)}
+.shame-who{display:flex;gap:12px;align-items:center;text-decoration:none;margin-top:4px}
+.shame-who .shame-ph{width:64px;flex:none}
+.shame-who .shame-ph img{filter:grayscale(1)}
+.shame-who b{display:block;font:600 17px/1.2 var(--f-body)}
+.shame-who b a{text-decoration:none}
+.shame-big{display:block;font:900 44px/1 var(--f-display);color:var(--red)}
+.shame-who small{display:block;font:400 12px var(--f-data);color:var(--muted)}
+.shame-who small a{color:inherit}
+.shame-rest{list-style:none;border-top:1px solid var(--rule);margin-top:auto}
+.shame-rest li{display:grid;grid-template-columns:20px 1fr auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);font:400 15px var(--f-body)}
+.shame-rest span{color:var(--muted);font:500 12px var(--f-data)}
+.shame-rest b{font:600 14px var(--f-data)}
+
+/* next Sunday preview (inside the team picker) */
+.preview{margin-top:26px;border-top:3px solid var(--ink);padding-top:14px}
+.pv-odds{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin-top:10px;font:900 24px var(--f-display);text-transform:uppercase}
+.pv-odds .t{color:var(--tiger)}.pv-odds .f{color:var(--falcon)}
+.pv-odds .bal-bar{grid-column:auto}
+.pv-fav{font:500 16px var(--f-body);margin-top:6px}
+.battle{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
+.battle span:last-of-type{text-align:right}
+.battle b{display:block;font:800 22px/1 var(--f-display);text-transform:uppercase}
+.battle small{font:400 11px var(--f-data);color:var(--muted)}
+.battle em{font:900 20px var(--f-display);color:var(--red);font-style:normal}
+.battle p{grid-column:1/-1;font:400 14px var(--f-data);color:var(--ink-2)}
+
 /* record book */
 .rec-top{display:flex;border-bottom:3px solid var(--ink)}
 .rec-top button{background:none;border:0;border-bottom:6px solid transparent;margin-bottom:-3px;padding:6px 26px 10px 0;font:900 clamp(34px,4.5vw,52px)/1 var(--f-display);text-transform:uppercase;color:var(--muted);cursor:pointer}
@@ -557,6 +618,8 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <a class="hide" href="#picker">Pick sides</a>
       <a class="hide" href="#tables">Tables</a>
       <a class="hide" href="#records">Records</a>
+      <a class="hide" href="#compare">Compare</a>
+      <a class="hide" href="#shame">Shame</a>
       <a class="hide" href="#matches">Matches</a>
       <a class="hide" href="#kit">The Ball</a>
       <a class="hide" href="#play">Play us</a>
@@ -680,6 +743,31 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       </div>
       <div class="rec-cats" id="recCats" role="tablist" aria-label="Category"></div>
       <div id="recBody" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="compare">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Head to head</p><h2 class="hd">Compare players</h2></div>
+        <p>Pick any two players. The better number on each line is highlighted, and the bottom shows what happens when they bat and bowl against each other.</p>
+      </div>
+      <div class="cmp-pick">
+        <label class="cmp-sel"><span class="label">Player A</span><select id="cmpA"></select></label>
+        <button type="button" class="btn small" id="cmpSwap" aria-label="Swap players">⇄ Swap</button>
+        <label class="cmp-sel"><span class="label">Player B</span><select id="cmpB"></select></label>
+      </div>
+      <div id="cmpBody" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="shame">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Hall of shame</p><h2 class="hd">Nobody's perfect</h2></div>
+        <p>Every club has these lists. All in good fun, all straight from the scorecards, and all one good Sunday away from changing.</p>
+      </div>
+      <div class="shame-grid" id="shameGrid"></div>
     </div>
   </section>
 
@@ -822,7 +910,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -1076,6 +1164,7 @@ function render(){
   AWARDS=buildAwards();renderForm();renderMilestones();
   renderPicker();
   RECS=buildRecords();renderRecords();
+  initCompare();renderShame();
   renderMatches("all");
   document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#filters button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderMatches(b.dataset.f)});
 }
@@ -1241,6 +1330,75 @@ function initMvp(){
   mark(0);
 }
 
+/* ---------- compare two players ---------- */
+const CMP={a:null,b:null};
+try{const sv=JSON.parse(localStorage.getItem("bdc-cmp")||"null");if(sv)Object.assign(CMP,sv)}catch(e){}
+function initCompare(){
+  const ps=[...P.values()].filter(p=>p.matches).sort((a,b)=>(a.full_name||a.name).localeCompare(b.full_name||b.name));
+  const byAll=[...ps].sort((a,b)=>(a.kAll||99)-(b.kAll||99));
+  if(!P.get(CMP.a)?.matches)CMP.a=byAll[0]?.id;
+  if(!P.get(CMP.b)?.matches||CMP.b===CMP.a){const ta=P.get(CMP.a)?.tm.key;CMP.b=(byAll.find(p=>p.tm.key!==ta)||byAll.find(p=>p.id!==CMP.a))?.id} // default: best all-rounder from the other team
+  const opts=ps.map(p=>`<option value="${p.id}">${esc(p.full_name||p.name)}</option>`).join("");
+  $("#cmpA").innerHTML=opts;$("#cmpB").innerHTML=opts;$("#cmpA").value=CMP.a;$("#cmpB").value=CMP.b;
+  const save=()=>{try{localStorage.setItem("bdc-cmp",JSON.stringify(CMP))}catch(e){}};
+  $("#cmpA").onchange=e=>{CMP.a=+e.target.value;save();drawCompare()};
+  $("#cmpB").onchange=e=>{CMP.b=+e.target.value;save();drawCompare()};
+  $("#cmpSwap").onclick=()=>{[CMP.a,CMP.b]=[CMP.b,CMP.a];$("#cmpA").value=CMP.a;$("#cmpB").value=CMP.b;save();drawCompare()};
+  drawCompare();
+}
+function drawCompare(){
+  const A=P.get(CMP.a),B=P.get(CMP.b);if(!A||!B)return;
+  const form=new Map(formData().map(x=>[x.p.id,x.form]));
+  const econ=p=>p.bowl.b>=36?p.bowl.econ:NaN;
+  // [label, value fn, display fn, higher is better]
+  const rows=[
+    ["Matches",p=>p.matches,v=>v,1],["Runs",p=>p.bat.r,v=>v.toLocaleString(),1],["Batting average",p=>p.bat.avg,r1,1],["Strike rate",p=>p.bat.sr,r1,1],
+    ["Highest score",p=>p.bat.hs?p.bat.hs.r:0,v=>v,1],["50s + 100s",p=>p.bat.fifty+p.bat.hundred,v=>v,1],["Sixes",p=>p.bat.s,v=>v,1],
+    ["Wickets",p=>p.bowl.w,v=>v,1],["Economy",econ,v=>isNaN(v)?"–":r1(v),0],["Best bowling",p=>p.bowl.best?p.bowl.best.w*1000-p.bowl.best.r:-1e9,(v,p)=>p.bowl.best?`${p.bowl.best.w}/${p.bowl.best.r}`:"–",1],
+    ["Catches",p=>p.fld.c,v=>v,1],["MVP awards",p=>p.mvpN,v=>v,1],["Man of the Match",p=>p.pomN,v=>v,1],
+    ["Batting rating",p=>p.rBat||0,v=>v,1],["Bowling rating",p=>p.rBowl||0,v=>v,1],["Current form",p=>form.get(p.id)||0,v=>Math.round(v),1],
+  ];
+  let wa=0,wb=0;
+  const body=rows.map(([label,fn,show,hi])=>{const va=fn(A),vb=fn(B),ok=!isNaN(va)&&!isNaN(vb);
+    const aw=ok&&va!==vb&&((va>vb)===!!hi),bw=ok&&va!==vb&&!aw;if(aw)wa++;if(bw)wb++;
+    const mx=Math.max(Math.abs(va)||0,Math.abs(vb)||0)||1,pa=label==="Best bowling"?(aw?100:60):isNaN(va)?0:Math.abs(va)/mx*100,pb=label==="Best bowling"?(bw?100:60):isNaN(vb)?0:Math.abs(vb)/mx*100;
+    return `<div class="cmp-row"><span class="cmp-v ca ${aw?"win":""}">${show(va,A)}<i style="width:${hi||isNaN(va)?pa:100-pa+10}%"></i></span><span class="cmp-l">${label}</span><span class="cmp-v cb ${bw?"win":""}">${show(vb,B)}<i style="width:${hi||isNaN(vb)?pb:100-pb+10}%"></i></span></div>`}).join("");
+  const duel=(bat,bowl)=>{const x=H.get(bat.id+"|"+bowl.id);
+    if(!x||!x.b)return `<p class="dnb">${esc(bat.full_name||bat.name)} hasn't faced ${esc(bowl.full_name||bowl.name)} yet.</p>`;
+    return `<div class="duel"><p class="kicker">${esc(short(bat.id))} batting v ${esc(short(bowl.id))} bowling</p>
+      <div class="duel-n"><div><b>${x.r}</b><span>runs</span></div><div><b>${x.b}</b><span>balls</span></div><div><b>${Math.round(x.r/x.b*100)}</b><span>strike rate</span></div><div><b>${x.outs}</b><span>times out</span></div><div><b>${x.s}</b><span>sixes</span></div></div>
+      <p class="duel-v">${x.outs?`${esc(short(bowl.id))} has the edge: out every ${r1(x.b/x.outs)} balls.`:`${esc(short(bat.id))} has never been out to ${esc(short(bowl.id))}.`}</p></div>`};
+  const head=p=>`<a class="cmp-head ${p.tm.key}" href="${purl(p.id)}">${photo(p,"cmp-ph")}<span><b>${esc(p.full_name||p.name)}</b><small>${esc(p.title||"")} · ${esc(p.tm.short)}</small></span></a>`;
+  $("#cmpBody").innerHTML=`<div class="cmp-top">${head(A)}<div class="cmp-score"><b>${wa}</b><span>–</span><b>${wb}</b><small>categories won</small></div>${head(B)}</div>
+    <div class="cmp-rows">${body}</div>
+    ${A.id===B.id?"":`<h3 class="tbl-title" style="margin-top:34px">When they meet</h3><div class="duels">${duel(A,B)}${duel(B,A)}</div>`}`;
+}
+
+/* ---------- hall of shame ---------- */
+function renderShame(){
+  const ps=[...P.values()].filter(p=>p.matches);
+  const golden=new Map(),spells=[],slow=[];
+  M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
+    sc.batting.forEach(x=>{if(x.out&&x.runs===0&&x.balls<=1)golden.set(x.id,(golden.get(x.id)||0)+1);
+      if(x.balls>=10)slow.push({id:x.id,mm,r:x.runs,b:x.balls,no:!x.out})});
+    sc.bowling.forEach(x=>spells.push({id:x.id,mm,w:x.wickets,r:x.runs,ov:x.overs}))}));
+  const top=(list,val,ok=()=>true)=>list.filter(ok).sort((a,b)=>val(b)-val(a)).slice(0,3);
+  const C=[
+    {k:"The Duck Club",line:"Out without scoring.",rows:top(ps,p=>p.bat.ducks,p=>p.bat.ducks>0).map(p=>({p,v:p.bat.ducks,u:"ducks"}))},
+    {k:"Golden Ducks",line:"Out first ball. The walk back is long.",rows:top([...golden].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"golden ducks"}))},
+    {k:"Butterfingers",line:"Most catches put down.",rows:top(ps,p=>p.fld.drop,p=>p.fld.drop>0).map(p=>({p,v:p.fld.drop,u:"drops"}))},
+    {k:"The Wide King",line:"Wides and no-balls bowled.",rows:top(ps,p=>p.bowl.wd+p.bowl.nb,p=>p.bowl.wd+p.bowl.nb>0).map(p=>({p,v:p.bowl.wd+p.bowl.nb,u:`extras · ${p.bowl.wd} wd, ${p.bowl.nb} nb`}))},
+    {k:"Most expensive spell",line:"Runs conceded in one spell.",rows:top(spells,x=>x.r*100-x.w).map(x=>({p:P.get(x.id),v:x.r,u:`runs · ${x.w}/${x.r} in ${x.ov} ov`,mm:x.mm}))},
+    {k:"Slowest innings",line:"Lowest strike rate, 10 balls or more.",rows:top(slow,x=>-x.r/x.b).map(x=>({p:P.get(x.id),v:Math.round(x.r/x.b*100),u:`SR · ${x.r}${x.no?"*":""} off ${x.b}`,mm:x.mm}))},
+    {k:"Dot-ball magnet",line:"Highest share of dot balls faced, 60 balls or more.",rows:top(ps,p=>p.bat.dots/p.bat.b,p=>p.bat.b>=60).map(p=>({p,v:Math.round(p.bat.dots/p.bat.b*100)+"%",u:`of ${p.bat.b} balls`}))},
+    {k:"Leakiest bowler",line:"Highest economy, 10 overs or more.",rows:top(ps,p=>p.bowl.econ,p=>p.bowl.b>=60).map(p=>({p,v:r1(p.bowl.econ),u:"runs an over"}))},
+  ].filter(c=>c.rows.length&&c.rows[0].p);
+  $("#shameGrid").innerHTML=C.map(c=>{const w=c.rows[0];return `<article class="shame ${w.p.tm.key}">
+    <p class="kicker">${c.k}</p><p class="shame-line">${c.line}</p>
+    <div class="shame-who"><a href="${purl(w.p.id)}" aria-hidden="true" tabindex="-1">${photo(w.p,"shame-ph")}</a><span><b>${plink(w.p.id)}</b><span class="shame-big">${w.v}</span><small>${w.u}${w.mm?` · <a href="#match-${w.mm.id}">#${w.mm.id}</a>`:""}</small></span></div>
+    <ol class="shame-rest">${c.rows.slice(1).map((x,i)=>`<li><span>${i+2}</span>${plink(x.p.id)}<b>${x.v}</b></li>`).join("")}</ol></article>`}).join("");
+}
+
 /* ---------- record book ---------- */
 let RECS=null;const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi"}};
 try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv)}catch(e){}
@@ -1337,6 +1495,21 @@ function splitTeams(){
   rec(0,[]);
   opts.sort((a,b)=>a.cost-b.cost);PICK.opts=opts.slice(0,8);PICK.pool=pool;showSplit();
 }
+// Next Sunday preview: a win chance from total strength, plus the key batter-v-bowler battles
+function matchPreview(A,B,ta,tb){
+  const pa=1/(1+Math.exp(-(ta-tb)/600)),pct=Math.round(pa*100);
+  const real=L=>L.filter(x=>x.p);
+  const bestBat=L=>real(L).sort((a,b)=>(b.p.rBat||0)-(a.p.rBat||0))[0],bestBowl=L=>real(L).sort((a,b)=>(b.p.rBowl||0)-(a.p.rBowl||0))[0];
+  const battle=(bat,bowl)=>{if(!bat||!bowl)return"";const x=H.get(bat.p.id+"|"+bowl.p.id);
+    return `<div class="battle"><span><b>${esc(bat.short)}</b><small>bat ${bat.p.rBat||"–"}</small></span><em>v</em><span><b>${esc(bowl.short)}</b><small>bowl ${bowl.p.rBowl||"–"}</small></span>
+      <p>${x&&x.b?`${x.r} off ${x.b} balls, out ${x.outs} time${x.outs===1?"":"s"}${x.outs?` (once every ${r1(x.b/x.outs)} balls)`:""}.`:"First time they meet."}</p></div>`};
+  const fav=pct===50?"Too close to call":pct>50?`Tigers favoured`:`Falcons favoured`;
+  return `<div class="preview"><p class="kicker">Next Sunday preview</p>
+    <div class="pv-odds"><span class="t">Tigers ${pct}%</span><div class="bal-bar"><i class="t" style="width:${pct}%"></i><i class="f"></i></div><span class="f">Falcons ${100-pct}%</span></div>
+    <p class="pv-fav">${fav}, based on these line-ups' ratings.</p>
+    <p class="label" style="margin-top:14px">Key battles</p>
+    ${battle(bestBat(A),bestBowl(B))}${battle(bestBat(B),bestBowl(A))}</div>`;
+}
 function showSplit(){
   const pool=PICK.pool,o=PICK.opts[PICK.cur];if(!o){$("#pickOut").innerHTML=`<p class="dnb">No split possible with these settings.</p>`;return}
   let A=pool.filter((x,i)=>o.A.includes(i)),B=pool.filter((x,i)=>!o.A.includes(i));
@@ -1348,7 +1521,7 @@ function showSplit(){
   $("#pickOut").innerHTML=`<div class="balance"><span class="label">Balance</span><b>${bal}%</b><div class="bal-bar"><i class="t" style="width:${ta/(ta+tb)*100}%"></i><i class="f"></i></div><span class="label">Option ${PICK.cur+1} of ${PICK.opts.length}</span></div>
     <div class="sides-out">${col(A,"t","Tigers","tigers.svg")}${col(B,"f","Falcons","falcons.svg")}</div>
     <div class="pick-actions"><button type="button" class="btn" id="reshuffle">Show another split</button><button type="button" class="btn solid" id="copySides">Copy for WhatsApp</button><a class="btn" id="waSides" target="_blank" rel="noopener">Send on WhatsApp ↗</a></div>
-    <p class="label" id="pickMsg"></p>`;
+    <p class="label" id="pickMsg"></p>${matchPreview(A,B,ta,tb)}`;
   const txt=`BoDevs Cricket · Sunday sides\n\nTIGERS (${ta})\n${A.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nFALCONS (${tb})\n${B.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nBalance ${bal}% · SportsX, G-12`;
   PICK.text=txt;$("#waSides").href="https://wa.me/?text="+encodeURIComponent(txt);
 }
