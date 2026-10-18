@@ -3,6 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="extras.css">
 <style>
 /* Layout: a printed sports-magazine issue. Black masthead, cover story, then departments on a 12-column grid with rules, not cards. */
 :root{
@@ -612,21 +613,23 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <a href="#top" aria-label="BoDevs Cricket home"><img class="logo" src="assets/logo.png" alt="BoDevs"></a>
     <span class="title">Cricket</span>
     <nav aria-label="Sections">
-      <a class="hide" href="#rivalry">Rivalry</a>
+      <a class="hide" href="#digest">This week</a>
       <a class="hide" href="#squads">Squads</a>
-      <a class="hide" href="#form">Form</a>
       <a class="hide" href="#picker">Pick sides</a>
-      <a class="hide" href="#tables">Tables</a>
       <a class="hide" href="#records">Records</a>
-      <a class="hide" href="#compare">Compare</a>
-      <a class="hide" href="#shame">Shame</a>
       <a class="hide" href="#matches">Matches</a>
-      <a class="hide" href="#kit">The Ball</a>
-      <a class="hide" href="#play">Play us</a>
+      <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
+        <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
+        <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
+        <a href="#predict">Predictions</a><a href="#tables">Rankings &amp; records</a><a href="#records">Record book</a><a href="#compare">Compare players</a>
+        <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
+        <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
+      </div></details>
       <a class="live" href="https://tassadduq.com/cricket/" target="_blank" rel="noopener"><span class="dot"></span>Live</a>
     </nav>
   </div>
 </header>
+<div class="livebar" id="liveBar" hidden aria-live="polite"></div>
 
 <div class="issue" id="top">
   <div class="wrap">
@@ -639,6 +642,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
   <section class="cover"><div class="wrap" id="cover"><p class="label">Loading this week's issue…</p></div></section>
   <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
 
+  <section class="dept" id="digest">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">The Monday digest</p><h2 class="hd">This week</h2></div>
+        <p>Everything from Sunday night in one message, ready for the team group. It's rebuilt after every Monday sync.</p>
+      </div>
+      <div id="digestBody"></div>
+    </div>
+  </section>
+
   <section class="dept" id="rivalry">
     <div class="wrap">
       <div class="dept-head">
@@ -646,6 +659,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p id="rivalryDek">Two office sides, one floodlit box and a season-long argument about who's better.</p>
       </div>
       <div class="rival" id="rival"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="story">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Season story</p><h2 class="hd">How we got here</h2></div>
+        <p>The whole season so far: the wins race match by match, then runs, sixes and each week's MVP.</p>
+      </div>
+      <div id="storyBody"></div>
     </div>
   </section>
 
@@ -716,6 +739,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="predict">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Prediction game</p><h2 class="hd">Call it</h2></div>
+        <p>Before Sunday, pick who wins more matches and who'll be MVP. One point for the winner, two for the MVP. Picks stay hidden until 10 PM Sunday.</p>
+      </div>
+      <div id="predictBody"></div>
+    </div>
+  </section>
+
   <section class="dept" id="tables">
     <div class="wrap">
       <div class="dept-head">
@@ -761,6 +794,36 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="partners">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Partnerships</p><h2 class="hd">Built together</h2></div>
+        <p>The biggest stands and the pairs who score most when they bat together.</p>
+      </div>
+      <div id="partnersBody"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="tactics">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Toss &amp; tactics</p><h2 class="hd">Bat or bowl?</h2></div>
+        <p>What the toss, batting first and chasing have really meant this season, and how each side tends to lose its wickets.</p>
+      </div>
+      <div id="tacticsBody"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="phases">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Phases of play</p><h2 class="hd">Start, middle, finish</h2></div>
+        <p>How fast each team scores at the start, middle and end of an innings, and who's best in each phase.</p>
+      </div>
+      <div id="phasesBody"></div>
+    </div>
+  </section>
+
   <section class="dept" id="shame">
     <div class="wrap">
       <div class="dept-head">
@@ -785,6 +848,26 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <button aria-pressed="false" data-f="One-day">One-days</button>
       </div>
       <div class="mlist" id="mlist"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="fixtures">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Fixtures &amp; challengers</p><h2 class="hd">Outside teams</h2></div>
+        <p>Matches against teams from outside BoDevs, and our record against them.</p>
+      </div>
+      <div id="fixturesBody"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="gallery">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Gallery</p><h2 class="hd">Match nights</h2></div>
+        <p>Photos from SportsX, week by week.</p>
+      </div>
+      <div id="galleryBody"></div>
     </div>
   </section>
 
@@ -910,7 +993,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -1165,6 +1248,7 @@ function render(){
   renderPicker();
   RECS=buildRecords();renderRecords();
   initCompare();renderShame();
+  window.renderExtras?.();
   renderMatches("all");
   document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#filters button").forEach(x=>x.setAttribute("aria-pressed",x===b));renderMatches(b.dataset.f)});
 }
@@ -1555,7 +1639,7 @@ function shareBlock(mm){
   </section>`;
 }
 function resultText(mm){const m=mm.m,agg=n=>mm.inns.filter(i=>i.team===n).map(i=>`${i.runs}/${i.wk}`).join(" & ");
-  return `${m.result||m.status_label}\n${m.team_a.name}: ${agg(m.team_a.name)}\n${m.team_b.name}: ${agg(m.team_b.name)}${mm.pom?`\nPlayer of the match: ${pname(mm.pom.id)} (${mm.pom.line})`:""}\n\nBoDevs Cricket · SportsX, G-12 Islamabad`}
+  return `${m.result||m.status_label}\n${m.team_a.name}: ${agg(m.team_a.name)}\n${m.team_b.name}: ${agg(m.team_b.name)}${mm.pom?`\nPlayer of the match: ${pname(mm.pom.id)} (${mm.pom.line})`:""}\n\nBoDevs Cricket · SportsX, G-12 Islamabad${typeof SITE_BASE!=="undefined"?`\n${SITE_BASE}/m/${mm.id}`:""}`}
 const loadImg=src=>new Promise(r=>{if(!src)return r(null);const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src});
 async function drawCard(mm){
   const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
@@ -1724,6 +1808,7 @@ function playerPage(id){
     <div><span class="label">Catches</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
   </div>
   ${rivalries(p)}
+  ${typeof shareBlockPlayer==="function"?shareBlockPlayer(p):""}
   <h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>
   ${log.map(l=>{const won=l.mm.win&&l.mm.win.name===l.team;
     const bat=l.bat.map(x=>`${x.r}${x.no?"*":""} (${x.b})`).join(" & ")||"–";
@@ -1756,7 +1841,7 @@ function route(){
   if(r&&r.type==="player"&&location.hash!==purl(r.id)){history.replaceState(history.state,"",purl(r.id))}
   if(r){
     $("#detailBody").innerHTML=r.type==="match"?matchPage(r.id,r.tab):playerPage(r.id);
-    if(r.type==="match")fillCard();
+    if(r.type==="match")fillCard();else window.fillPlayerCard?.(r.id);
     det.hidden=false;det.scrollTop=0;document.body.style.overflow="hidden";
     document.title=(r.type==="match"?`Match #${r.id}`:pname(r.id))+" · BoDevs Cricket";
     $("#closeDetail").focus({preventScroll:true});
@@ -1782,3 +1867,4 @@ function closeDetail(){if(fromPage){fromPage=false;history.back()}else{history.r
 $("#closeDetail").onclick=closeDetail;
 addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#detail").hidden)closeDetail()});
 </script>
+<script src="extras.js"></script>

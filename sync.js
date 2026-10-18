@@ -88,6 +88,29 @@ async function sync(opts = {}) {
       p.photo = "assets/" + file;
     }
   }
+  // New players with no profile above: try to match them to the bodevs.com team list by first name
+  // (or by the photo's file name, e.g. "Qari sb" -> qari-min.png). Only a single, unused match is taken.
+  const unmatched = players.filter(p => !PROFILES[p.name]);
+  if (unmatched.length) {
+    try {
+      const html = await get(BODEVS);
+      const team = [...html.matchAll(/<img alt="([^"]+)"[^>]*?data-nimg="fill"[^>]*?srcSet="\/_next\/image\?url=%2F([\w.-]+?)&/g)]
+        .map(m => ({ name: decode(m[1]), photo: m[2] })).filter(t => /\.(png|jpe?g|webp)$/.test(t.photo) && !/logo/i.test(t.photo));
+      team.forEach(t => { const i = html.indexOf(">" + t.name + "</"), j = i > 0 && html.slice(i, i + 600).match(/<\/(?:h\d|p|span|div)>\s*<(?:p|span|div)[^>]*>([^<]{3,80})</); t.job = j ? decode(j[1]) : ""; });
+      const used = new Set(Object.values(PROFILES).map(p => p.photo).filter(Boolean));
+      const first = s => String(s).toLowerCase().split(/[\s.]+/).filter(Boolean)[0] || "";
+      for (const p of unmatched) {
+        const key = first(p.name);
+        const hits = team.filter(t => !used.has(t.photo) && (first(t.name) === key || t.photo.toLowerCase().startsWith(key + "-")));
+        if (hits.length !== 1) { console.log(`new player "${p.name}": no single bodevs.com match, add a profile in sync.js`); continue; }
+        const t = hits[0], file = `players/${p.id}${path.extname(t.photo)}`;
+        await saveImg(path.join(ASSET_DIR, file), BODEVS + t.photo);
+        Object.assign(p, { full_name: t.name, job: t.job || undefined, photo: "assets/" + file, auto_profile: true });
+        used.add(t.photo);
+        console.log(`new player "${p.name}": matched to ${t.name} on bodevs.com (check, then add to PROFILES)`);
+      }
+    } catch (e) { console.warn("bodevs.com team lookup failed:", e.message); }
+  }
   log(`${players.filter(p => p.photo).length} player photos`);
 
   fs.mkdirSync(path.join(ASSET_DIR, "tilde"), { recursive: true });
@@ -121,5 +144,5 @@ async function sync(opts = {}) {
   return { changed: true, matches: matches.length };
 }
 
-module.exports = { sync };
+module.exports = { sync, SOURCE };
 if (require.main === module) sync().catch(err => { console.error(err.message); process.exit(1); });
