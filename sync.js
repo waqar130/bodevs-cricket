@@ -26,6 +26,7 @@ const PROFILES = {
   "Saad Zubairi": { full: "Saad Zubairi",      job: "Support Specialist",                         photo: "saad-min.png" },
   "Ahsan":        { full: "Ahsan Sajjad",      job: "Technical Partner & Lead Engineer",          photo: "ahsan-min.png" },
   "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png" },
+  "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png" },
   "Butt Sb":      { full: "Fahad Naveed Butt" },
 };
 const BODEVS = "https://bodevs.com/";
