@@ -349,6 +349,26 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .cap-row small{display:block;font:400 12px var(--f-data);color:var(--muted)}
 .cap-wl{text-align:right;font:900 30px/1 var(--f-display);color:var(--team)}
 
+/* per-player trophy cabinet */
+.pa-sum{font-size:18px;color:var(--ink-2);margin:8px 0 14px}
+.pa-grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+@media(min-width:760px){.pa-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1100px){.pa-grid{grid-template-columns:repeat(4,1fr)}}
+.pa-card{background:var(--paper-2);border-top:4px solid var(--rule);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pa-status{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font:600 11px var(--f-data);letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;background:var(--paper);border:1px solid var(--rule);color:var(--muted)}
+.pa-status svg{width:14px;height:14px}
+.pa-big{font:900 48px/.9 var(--f-display);margin-top:4px}
+.pa-line{font:400 14px/1.45 var(--f-body);color:var(--ink-2);margin-top:auto;padding-top:6px}
+.pa-line a{color:var(--ink)}
+.pa-card.gold{border-top-color:#d4a017;background:var(--ink);color:var(--paper)}
+.pa-card.gold .pa-status{background:#ffd23f;border-color:#ffd23f;color:var(--ink)}
+.pa-card.gold .pa-big{color:#ffd23f}
+.pa-card.gold .pa-line,.pa-card.gold .pa-line a{color:#d8d8d2}
+.pa-card.silver{border-top-color:#9a9a9a}.pa-card.silver .pa-status{color:var(--ink);border-color:#9a9a9a}
+.pa-card.bronze{border-top-color:#b0703a}.pa-card.bronze .pa-status{color:#8a5428;border-color:#b0703a}
+.pa-card.na{opacity:.7}.pa-card.na .pa-line{margin-top:6px}
+.pa-card.cap{border-top-color:var(--team)}.pa-card.cap .pa-big{color:var(--team)}
+
 /* form guide */
 .form-tbl td{vertical-align:middle}
 .spark{display:block}
@@ -532,7 +552,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <span class="title">Cricket</span>
     <nav aria-label="Sections">
       <a class="hide" href="#rivalry">Rivalry</a>
-      <a class="hide" href="#awards">Awards</a>
       <a class="hide" href="#squads">Squads</a>
       <a class="hide" href="#form">Form</a>
       <a class="hide" href="#picker">Pick sides</a>
@@ -574,16 +593,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p>Short boundaries, small sides and a ball that swings. Here's what that does to a scorebook.</p>
       </div>
       <div class="numbers" id="highlights"></div>
-    </div>
-  </section>
-
-  <section class="dept" id="awards">
-    <div class="wrap">
-      <div class="dept-head">
-        <div><p class="kicker">Trophy cabinet</p><h2 class="hd">Season awards</h2></div>
-        <p>Who's holding the silverware right now. The awards are re-counted every Monday, so any of them can change hands after Sunday night.</p>
-      </div>
-      <div class="awards" id="awardGrid"></div>
     </div>
   </section>
 
@@ -1064,7 +1073,7 @@ function render(){
     +rankCol("Bowling","rBowl","kBowl",p=>`${p.bowl.w} wkts · econ ${r1(p.bowl.econ)}`)
     +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl}`);
 
-  renderAwards();renderForm();renderMilestones();
+  AWARDS=buildAwards();renderForm();renderMilestones();
   renderPicker();
   RECS=buildRecords();renderRecords();
   renderMatches("all");
@@ -1116,36 +1125,49 @@ function matchPage(id,tab){
   return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Scorecard, match #${m.id} ↗</a></p>`;
 }
 
-/* ---------- season awards ---------- */
-function renderAwards(){
+/* ---------- season awards: each player's page shows where they stand in every race ---------- */
+let AWARDS=[];
+function buildAwards(){
   const ps=[...P.values()].filter(p=>p.matches);
   const rank=(score,ok=()=>true)=>ps.filter(ok).sort((a,b)=>score(b)-score(a));
-  const mvpCount=new Map();WEEKS.forEach(w=>mvpCount.set(w.pow.id,(mvpCount.get(w.pow.id)||0)+1));
-  const pomCount=new Map();M.forEach(m=>m.pom&&pomCount.set(m.pom.id,(pomCount.get(m.pom.id)||0)+1));
-  const capWins=key=>{const c=ps.find(p=>p.captain&&p.tm.key===key);return c?{p:c,w:teamWins(key),l:M.filter(m=>m.win&&m.win.key!==key).length}:null};
-  const caps=["t","f"].map(capWins).filter(Boolean).sort((a,b)=>b.w/(b.w+b.l||1)-a.w/(a.w+a.l||1));
-  const A=[
-    {k:"MVP of the season",feat:1,list:rank(p=>(mvpCount.get(p.id)||0)*1000+(pomCount.get(p.id)||0)),v:p=>mvpCount.get(p.id)||0,u:"player-of-the-week awards",d:p=>`${pomCount.get(p.id)||0} player-of-the-match awards · ${p.bat.r} runs · ${p.bowl.w} wkts`},
-    {k:"Golden Bat",list:rank(p=>p.bat.r),v:p=>p.bat.r.toLocaleString(),u:"runs",d:p=>`Avg ${r1(p.bat.avg)} · SR ${r1(p.bat.sr)}`},
-    {k:"Golden Ball",list:rank(p=>p.bowl.w*1000-p.bowl.econ),v:p=>p.bowl.w,u:"wickets",d:p=>`Econ ${r1(p.bowl.econ)} · best ${p.bowl.best?p.bowl.best.w+"/"+p.bowl.best.r:"–"}`},
-    {k:"Six King",list:rank(p=>p.bat.s),v:p=>p.bat.s,u:"sixes",d:p=>`One every ${r1(p.bat.b/p.bat.s)} balls`},
-    {k:"Safest Hands",list:rank(p=>p.fld.c*10-p.fld.drop),v:p=>p.fld.c,u:"catches",d:p=>`${p.fld.drop} dropped`},
-    {k:"Mr Economy",note:"20+ overs",list:rank(p=>-p.bowl.econ,p=>p.bowl.b>=120),v:p=>r1(p.bowl.econ),u:"runs an over",d:p=>`${p.bowl.w} wkts in ${ovs(p.bowl.b)} overs`},
-    {k:"Strike Rate King",note:"150+ balls",list:rank(p=>p.bat.sr,p=>p.bat.b>=150),v:p=>Math.round(p.bat.sr),u:"strike rate",d:p=>`${p.bat.r} runs off ${p.bat.b}`},
-    {k:"Match Winner",list:rank(p=>(pomCount.get(p.id)||0)*1000+p.bat.r),v:p=>pomCount.get(p.id)||0,u:"player-of-the-match awards",d:p=>`in ${p.matches} matches`},
+  // n: the number the race is decided on (gaps are measured on it); low: lower is better
+  return [
+    {k:"MVP of the season",list:rank(p=>p.mvpN*1000+p.pomN),n:p=>p.mvpN,v:p=>p.mvpN,u:"MVP awards",u1:"MVP award",unit:"MVP"},
+    {k:"Golden Bat",list:rank(p=>p.bat.r),n:p=>p.bat.r,v:p=>p.bat.r.toLocaleString(),u:"runs",u1:"run",unit:"runs"},
+    {k:"Golden Ball",list:rank(p=>p.bowl.w*1000-p.bowl.econ),n:p=>p.bowl.w,v:p=>p.bowl.w,u:"wickets",u1:"wicket",unit:"wickets"},
+    {k:"Six King",list:rank(p=>p.bat.s),n:p=>p.bat.s,v:p=>p.bat.s,u:"sixes",u1:"six",unit:"sixes"},
+    {k:"Safest Hands",list:rank(p=>p.fld.c*10-p.fld.drop),n:p=>p.fld.c,v:p=>p.fld.c,u:"catches",u1:"catch",unit:"catches"},
+    {k:"Mr Economy",note:"20+ overs",need:p=>`${ovs(p.bowl.b)} of 20 overs bowled`,ok:p=>p.bowl.b>=120,list:rank(p=>-p.bowl.econ,p=>p.bowl.b>=120),n:p=>p.bowl.econ,low:1,dec:1,v:p=>r1(p.bowl.econ),u:"runs an over",unit:"runs an over"},
+    {k:"Strike Rate King",note:"150+ balls",need:p=>`${p.bat.b} of 150 balls faced`,ok:p=>p.bat.b>=150,list:rank(p=>p.bat.sr,p=>p.bat.b>=150),n:p=>p.bat.sr,dec:1,v:p=>Math.round(p.bat.sr),u:"strike rate",unit:"points"},
+    {k:"Man of the Match",list:rank(p=>p.pomN*1000+p.bat.r),n:p=>p.pomN,v:p=>p.pomN,u:"MOM awards",u1:"MOM award",unit:"MOM"},
   ];
-  const card=(a)=>{const w=a.list[0],r=a.list[1];if(!w)return"";
-    return `<article class="award ${a.feat?"feat":""} ${w.tm.key}">
+}
+function awardsFor(p){
+  if(!p.matches||!AWARDS.length)return "";
+  const nm=x=>esc(x.full_name||x.name),fmt=(a,v)=>a.dec?r1(v):Math.round(v).toLocaleString();
+  const cards=AWARDS.map(a=>{
+    const i=a.list.findIndex(x=>x.id===p.id);
+    if(i<0)return{rank:99,html:`<article class="pa-card na">
+      <p class="kicker">${a.k}</p><span class="pa-status">Not eligible yet</span>
+      <p class="pa-line">Qualifies at ${a.note}. ${a.need?a.need(p):""}.</p></article>`};
+    const lead=a.list[0],run=a.list[1],gapTo=o=>Math.abs(a.n(p)-a.n(o));
+    const status=i===0?["gold","Holder"]:i===1?["silver","Runner-up"]:i===2?["bronze","Third"]:["",`#${i+1} of ${a.list.length}`];
+    const line=i===0?(run?(gapTo(run)?`Leads <a href="${purl(run.id)}">${nm(run)}</a> by ${fmt(a,gapTo(run))} ${a.unit}.`:`Level with <a href="${purl(run.id)}">${nm(run)}</a>.`):"Only qualifier so far.")
+      :(gapTo(lead)?`${fmt(a,gapTo(lead))} ${a.unit} ${a.low?"more than":"behind"} <a href="${purl(lead.id)}">${nm(lead)}</a> (${a.v(lead)}).`:`Level with <a href="${purl(lead.id)}">${nm(lead)}</a> on ${a.v(lead)}.`);
+    return{rank:i,html:`<article class="pa-card ${status[0]}">
       <p class="kicker">${a.k}${a.note?` <span class="label">(${a.note})</span>`:""}</p>
-      <a class="aw-who" href="${purl(w.id)}">${photo(w,"aw-ph")}<span><b>${esc(w.full_name||w.name)}</b><small>${esc(w.title||"")}</small></span></a>
-      <div class="aw-big">${a.v(w)}</div><div class="aw-unit">${a.u}</div>
-      <p class="aw-det">${a.d(w)}</p>
-      ${r?`<p class="aw-run">Runner-up: <a href="${purl(r.id)}">${esc(r.full_name||r.name)}</a> · ${a.v(r)}</p>`:""}
-    </article>`};
-  $("#awardGrid").innerHTML=A.map(card).join("")+(caps.length?`<article class="award cap-card">
-      <p class="kicker">Captain's table</p>
-      ${caps.map((c,i)=>`<a class="cap-row ${c.p.tm.key}" href="${purl(c.p.id)}">${crest(c.p.team)}<span><b>${esc(c.p.full_name||c.p.name)}</b><small>${esc(c.p.team)}</small></span><span class="cap-wl">${c.w}–${c.l}<small>${Math.round(c.w/(c.w+c.l||1)*100)}% wins</small></span></a>`).join("")}
-    </article>`:"");
+      <span class="pa-status">${i===0?ICON_MOM:""}${status[1]}</span>
+      <div class="pa-big">${a.v(p)}</div><div class="aw-unit">${a.u1&&a.n(p)===1?a.u1:a.u}</div>
+      <p class="pa-line">${line}</p></article>`};
+  }).sort((x,y)=>x.rank-y.rank);
+  const held=cards.filter(c=>c.rank===0).length,ru=cards.filter(c=>c.rank===1).length;
+  let cap="";
+  if(p.captain){const k=p.tm.key,w=teamWins(k),l=M.filter(m=>m.win&&m.win.key!==k).length;
+    cap=`<article class="pa-card cap ${k}"><p class="kicker">Captain's record</p><span class="pa-status">${esc(p.team)}</span>
+      <div class="pa-big">${w}–${l}</div><div class="aw-unit">won–lost</div><p class="pa-line">${Math.round(w/(w+l||1)*100)}% of matches won as captain.</p></article>`}
+  return `<h2 class="sec-t">Trophy cabinet</h2>
+    <p class="pa-sum">${held?`Holds <b>${held}</b> of ${AWARDS.length} season awards`:"No season awards held yet"}${ru?`, runner-up in <b>${ru}</b>`:""}. Awards are re-counted every Monday.</p>
+    <div class="pa-grid">${cap}${cards.map(c=>c.html).join("")}</div>`;
 }
 
 /* ---------- form guide ---------- */
@@ -1507,6 +1529,7 @@ function playerPage(id){
     <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;
   if(!p.matches)return h+`<p class="dek">No matches yet. The first scorecard will fill this page in.</p>`;
+  h+=awardsFor(p);
   h+=`<h2 class="sec-t">Batting</h2><div class="statgrid">
     <div><span class="label">Runs</span><b>${B.r}</b><small>${B.b} balls</small></div>
     <div><span class="label">Average</span><b>${r1(B.avg)}</b><small>${B.inns} inns · ${B.no} not out</small></div>
