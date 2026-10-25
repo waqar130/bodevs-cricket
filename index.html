@@ -702,6 +702,21 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="compare">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Head to head</p><h2 class="hd">Compare players</h2></div>
+        <p>Pick any two players. The better number on each line is highlighted, and the bottom shows what happens when they bat and bowl against each other.</p>
+      </div>
+      <div class="cmp-pick">
+        <label class="cmp-sel"><span class="label">Player A</span><select id="cmpA"></select></label>
+        <button type="button" class="btn small" id="cmpSwap" aria-label="Swap players">⇄ Swap</button>
+        <label class="cmp-sel"><span class="label">Player B</span><select id="cmpB"></select></label>
+      </div>
+      <div id="cmpBody" aria-live="polite"></div>
+    </div>
+  </section>
+
   <section class="dept" id="underrated">
     <div class="wrap">
       <div class="dept-head">
@@ -809,20 +824,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
-  <section class="dept" id="compare">
-    <div class="wrap">
-      <div class="dept-head">
-        <div><p class="kicker">Head to head</p><h2 class="hd">Compare players</h2></div>
-        <p>Pick any two players. The better number on each line is highlighted, and the bottom shows what happens when they bat and bowl against each other.</p>
-      </div>
-      <div class="cmp-pick">
-        <label class="cmp-sel"><span class="label">Player A</span><select id="cmpA"></select></label>
-        <button type="button" class="btn small" id="cmpSwap" aria-label="Swap players">⇄ Swap</button>
-        <label class="cmp-sel"><span class="label">Player B</span><select id="cmpB"></select></label>
-      </div>
-      <div id="cmpBody" aria-live="polite"></div>
-    </div>
-  </section>
 
   <section class="dept" id="streaks">
     <div class="wrap">
@@ -1501,6 +1502,8 @@ function initMvp(){
 /* ---------- compare two players ---------- */
 const CMP={a:null,b:null};
 try{const sv=JSON.parse(localStorage.getItem("bdc-cmp")||"null");if(sv)Object.assign(CMP,sv)}catch(e){}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-cmp]");if(!a)return;
+  CMP.a=+a.dataset.cmp;if(CMP.b===CMP.a)CMP.b=null;try{localStorage.setItem("bdc-cmp",JSON.stringify(CMP))}catch(err){}initCompare()});
 function initCompare(){
   const ps=[...P.values()].filter(p=>p.matches).sort((a,b)=>(a.full_name||a.name).localeCompare(b.full_name||b.name));
   const byAll=[...ps].sort((a,b)=>(a.kAll||99)-(b.kAll||99));
@@ -2052,6 +2055,7 @@ function playerPage(id){
   ${splitsBlock(p)}
   ${dropsBlock(p)}
   ${rivalries(p)}
+  <p class="pl-cmp"><a class="btn" href="#compare" data-cmp="${p.id}">Compare with another player →</a></p>
   ${typeof shareBlockPlayer==="function"?shareBlockPlayer(p):""}
   <h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>
   ${log.map(l=>{const won=l.mm.win&&l.mm.win.name===l.team;
