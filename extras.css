@@ -139,7 +139,7 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .race-rule b{font-weight:600;color:var(--ink)}
 .race-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font:600 11px var(--f-data);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .race-key i{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:6px}
-.rk-r{background:var(--ink)}.rk-w{background:var(--red)}.rk-c{background:#b9b4a6}
+.rk-r{background:var(--ink)}.rk-w{background:var(--red)}.rk-c{background:#b9b4a6}.rk-x{background:#1f8a4c}
 .race-list{list-style:none;margin-top:8px}
 .race-list li{display:grid;grid-template-columns:44px minmax(0,1.1fr) minmax(0,2fr) max-content;gap:6px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
 .race-list li.win{background:var(--paper-2);box-shadow:-12px 0 0 var(--paper-2),12px 0 0 var(--paper-2)}
