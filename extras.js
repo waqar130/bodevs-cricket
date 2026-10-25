@@ -508,7 +508,7 @@ function renderWeekAwards() {
     ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
       return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
       : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
-    <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch + 20 for each win he played a part in. The podium on the cover uses the same points.</p>`;
+    <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch or run out + 20 for each win he played a part in. The podium on the cover uses the same points.</p>`;
   el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
 }
 
