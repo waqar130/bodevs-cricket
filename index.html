@@ -1107,8 +1107,10 @@ function model(){
       sc.bowling.forEach(x=>{const e=g(x.id,x.name,sc.bowling_team);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.bowl.push(`${x.wickets}/${x.runs}`)});
       (sc.fielding?.catches||[]).forEach(x=>{g(x.id,x.name,sc.bowling_team).c+=x.count})});
     const sc=e=>e.r+Math.max(0,e.r-e.b)*0.5+25*e.w+10*e.c+(mm.win&&mm.win.name===e.tm?15:0);
-    const best=[...t.values()].sort((a,b)=>sc(b)-sc(a))[0];
-    if(best)mm.pom={...best,line:[best.bat.join(" & "),best.w||best.bowl.length?best.bowl.join(" & "):"",best.c?`${best.c} ct`:""].filter(Boolean).join(" · ")};
+    // anyone within 10 points of the best shares the award
+    const ranked=[...t.values()].sort((a,b)=>sc(b)-sc(a)),best=ranked[0];
+    const line=e=>[e.bat.join(" & "),e.w||e.bowl.length?e.bowl.join(" & "):"",e.c?`${e.c} ct`:""].filter(Boolean).join(" · ");
+    mm.poms=best?ranked.filter(e=>sc(best)-sc(e)<10).map(e=>({...e,line:line(e)})):[];mm.pom=mm.poms[0]||null;
     mm.perf=[...t.values()];});
 
   // slugs
@@ -1156,7 +1158,7 @@ function model(){
   // honours: MVP = player of the week, MOM = man of the match
   P.forEach(p=>{p.mvpN=0;p.pomN=0;p.impN=0;p.gcN=0});
   WEEKS.forEach(w=>w.podium.forEach(x=>{const p=P.get(x.id);if(!p)return;if(x.n===1)p.mvpN++;else if(x.role==="Impact Player")p.impN++;else p.gcN++}));
-  M.forEach(m=>{const p=m.pom&&P.get(m.pom.id);if(p)p.pomN++});
+  M.forEach(m=>(m.poms||[]).forEach(x=>{const p=P.get(x.id);if(p)p.pomN++}));
 }
 
 const pname=id=>{const p=P.get(id);return p?(p.full_name||p.name):"?"};
@@ -1343,7 +1345,7 @@ function renderMatches(f){
   $("#mlist").innerHTML=list.map(m=>`<a class="mrow" href="#match-${m.id}">
     <div class="when"><b>${fmtD(m.date)}</b>${esc(m.fmt)} · ${m.m.overs} ov · ${esc(m.side)}</div>
     <div class="inns">${m.inns.map(i=>`<span class="${team(i.team).key}"><i>${team(i.team).short}</i> ${i.runs}/${i.wk} <span style="color:var(--muted)">(${i.ov})</span></span>`).join("")}</div>
-    <div class="res ${m.win?.key||""}">${m.win?`${m.win.short} won`:esc(m.m.status_label)}<small>by ${esc(m.margin)} · Match #${m.id}${m.pom?` · PoM ${esc(short(m.pom.id))}`:""}</small></div>
+    <div class="res ${m.win?.key||""}">${m.win?`${m.win.short} won`:esc(m.m.status_label)}<small>by ${esc(m.margin)} · Match #${m.id}${m.pom?` · ${m.poms.length>1?"Joint PoM":"PoM"} ${m.poms.map(x=>esc(short(x.id))).join(" & ")}`:""}</small></div>
     <span class="arrow">→</span></a>`).join("");
 }
 
@@ -1746,7 +1748,7 @@ function shareBlock(mm){
   const pom=mm.pom?P.get(mm.pom.id):null;
   return `<section class="share-wrap">
     <div class="share-copy"><p class="kicker">Share the result</p><h3 class="hd">Result card</h3>
-      ${pom?`<p class="pom"><span class="label">Player of the match</span> <a href="${purl(pom.id)}">${esc(pname(pom.id))}</a> · ${esc(mm.pom.line)}</p>`:""}
+      ${pom?`<p class="pom"><span class="label">${mm.poms.length>1?"Joint players of the match":"Player of the match"}</span> ${mm.poms.map(x=>`<a href="${purl(x.id)}">${esc(pname(x.id))}</a> · ${esc(x.line)}`).join(" <span class=\"label\">and</span> ")}</p>`:""}
       <p>A ready-made image for the team group or Instagram. Copy it, or right-click / long-press the image to save it.</p>
       <div class="pick-actions"><button type="button" class="btn solid" id="copyCard">Copy image</button><button type="button" class="btn" id="dlCard" hidden>Download PNG</button><a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(resultText(mm))}">Send score on WhatsApp ↗</a></div>
       <p class="label" id="shareMsg"></p></div>
@@ -1754,7 +1756,7 @@ function shareBlock(mm){
   </section>`;
 }
 function resultText(mm){const m=mm.m,agg=n=>mm.inns.filter(i=>i.team===n).map(i=>`${i.runs}/${i.wk}`).join(" & ");
-  return `${m.result||m.status_label}\n${m.team_a.name}: ${agg(m.team_a.name)}\n${m.team_b.name}: ${agg(m.team_b.name)}${mm.pom?`\nPlayer of the match: ${pname(mm.pom.id)} (${mm.pom.line})`:""}\n\nBoDevs Cricket · SportsX, G-12 Islamabad${typeof SITE_BASE!=="undefined"?`\n${SITE_BASE}/m/${mm.id}`:""}`}
+  return `${m.result||m.status_label}\n${m.team_a.name}: ${agg(m.team_a.name)}\n${m.team_b.name}: ${agg(m.team_b.name)}${mm.pom?`\n${mm.poms.length>1?"Joint players of the match":"Player of the match"}: ${mm.poms.map(x=>`${pname(x.id)} (${x.line})`).join(", ")}`:""}\n\nBoDevs Cricket · SportsX, G-12 Islamabad${typeof SITE_BASE!=="undefined"?`\n${SITE_BASE}/m/${mm.id}`:""}`}
 const loadImg=src=>new Promise(r=>{if(!src)return r(null);const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src});
 async function drawCard(mm){
   const W=1080,H=1350,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
@@ -1788,8 +1790,8 @@ async function drawCard(mm){
     if(ph){const cw=ph.width*0.8;x.drawImage(ph,ph.width*0.1,ph.height*0.06,cw,cw,60,y,S,S)}
     else{x.fillStyle=p?.tm.key==="f"?C.f:C.t;x.font=`900 120px ${DISP}`;x.textAlign="center";x.fillText((p?.full_name||mm.pom.name).split(" ").map(w=>w[0]).join("").slice(0,2),60+S/2,y+S/2+42);x.textAlign="left"}
     x.fillStyle=p?.tm.key==="f"?C.f:C.t;x.fillRect(60,y+S-8,S,8);
-    const tx=60+S+40,tw=W-60-tx;x.fillStyle=C.red;x.font=`600 26px ${MONO}`;x.fillText("PLAYER OF THE MATCH",tx,y+30);
-    x.fillStyle=C.ink;const nm=(p?.full_name||mm.pom.name).toUpperCase();fit(nm,tw,88,900,DISP);x.fillText(nm,tx,y+118);
+    const tx=60+S+40,tw=W-60-tx;x.fillStyle=C.red;x.font=`600 26px ${MONO}`;x.fillText(mm.poms.length>1?"JOINT PLAYER OF THE MATCH":"PLAYER OF THE MATCH",tx,y+30);
+    x.fillStyle=C.ink;const nm=((p?.full_name||mm.pom.name)+(mm.poms.length>1?" & "+mm.poms.slice(1).map(x=>short(x.id)).join(" & "):"")).toUpperCase();fit(nm,tw,88,900,DISP);x.fillText(nm,tx,y+118);
     if(p?.title){x.fillStyle=C.red;fit(p.title.toUpperCase(),tw,26,600,MONO);x.fillText(p.title.toUpperCase(),tx,y+160)}
     x.fillStyle=C.ink;fit(mm.pom.line,tw,34,500,MONO);x.fillText(mm.pom.line,tx,y+214);y+=S}
   // footer

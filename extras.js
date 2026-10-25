@@ -736,7 +736,7 @@ function renderTape() {
     ["Catch success", ...K.map(k => pct0(fld[k].c / ((fld[k].c + fld[k].d) || 1))), K.map(k => fld[k].c / ((fld[k].c + fld[k].d) || 1)), 1],
     ["Run outs", fld.t.ro, fld.f.ro, [fld.t.ro, fld.f.ro], 1],
     ["Weekly MVPs", mvps.t, mvps.f, [mvps.t, mvps.f], 1],
-    ["Men of the Match", ...K.map(k => done.filter(m => m.pom && team(m.pom.tm).key === k).length), K.map(k => done.filter(m => m.pom && team(m.pom.tm).key === k).length), 1],
+    ["Men of the Match", ...K.map(k => done.reduce((a, m) => a + (m.poms || []).filter(x => team(x.tm).key === k).length, 0)), K.map(k => done.reduce((a, m) => a + (m.poms || []).filter(x => team(x.tm).key === k).length, 0)), 1],
     ["Top run scorer", ...K.map(k => { const p = lead(k, p => p.bat.r); return pl(p, p?.bat.r); }), null],
     ["Top wicket taker", ...K.map(k => { const p = lead(k, p => p.bowl.w); return pl(p, p?.bowl.w); }), null],
     ["Six king", ...K.map(k => { const p = lead(k, p => p.bat.s); return pl(p, p?.bat.s); }), null],
