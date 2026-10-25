@@ -6,6 +6,7 @@ const http = require("http");
 const zlib = require("zlib");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { page } = require("./build");
 const { sync, SOURCE } = require("./sync");
 
@@ -200,18 +201,19 @@ http.createServer((req, res) => {
     const type = TYPES[path.extname(file)] || "application/octet-stream";
     const isData = /\.(json|js|css)$/.test(url); // revalidate so updates show straight away
     const lastMod = st.mtime.toUTCString();
-    const headers = { "Content-Type": type, "Cache-Control": isData ? "no-cache" : "public, max-age=86400", "Last-Modified": lastMod, "X-Content-Type-Options": "nosniff", "Vary": "Accept-Encoding" };
+    // ETag from the file contents: deploys give every file the same mtime, so dates can't tell versions apart
+    let c = gzCache.get(file);
+    if (!c || c.mtime !== st.mtimeMs || c.size !== st.size) { const raw = fs.readFileSync(file);
+      c = { mtime: st.mtimeMs, size: st.size, raw, etag: `"${crypto.createHash("sha1").update(raw).digest("base64url").slice(0, 16)}"`, gz: COMPRESSIBLE.test(type) ? zlib.gzipSync(raw, { level: 9 }) : null }; gzCache.set(file, c); }
+    const headers = { "Content-Type": type, "Cache-Control": isData ? "no-cache" : "public, max-age=86400", "ETag": c.etag, "Last-Modified": lastMod, "X-Content-Type-Options": "nosniff", "Vary": "Accept-Encoding" };
     // unchanged since the browser's copy: answer 304 with no body
-    const ims = Date.parse(req.headers["if-modified-since"] || "");
-    if (ims && Math.floor(st.mtimeMs / 1000) * 1000 <= ims) { res.writeHead(304, headers); return res.end(); }
-    if (COMPRESSIBLE.test(type)) {
-      let c = gzCache.get(file);
-      if (!c || c.mtime !== st.mtimeMs) { const raw = fs.readFileSync(file); c = { mtime: st.mtimeMs, raw, gz: zlib.gzipSync(raw, { level: 9 }) }; gzCache.set(file, c); }
+    if (req.headers["if-none-match"] === c.etag) { res.writeHead(304, headers); return res.end(); }
+    if (c.gz) {
       if (acceptsGzip(res)) { headers["Content-Encoding"] = "gzip"; res.writeHead(200, headers); return res.end(c.gz); }
       res.writeHead(200, headers); return res.end(c.raw);
     }
     res.writeHead(200, headers);
-    fs.createReadStream(file).pipe(res);
+    res.end(c.raw);
   });
 }).listen(PORT, "0.0.0.0", () => {
   console.log(`BoDevs Cricket running on port ${PORT}${SYNC ? " (score sync on)" : ""} · storage ${STORAGE}`);
