@@ -130,17 +130,39 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .mv{display:inline-block;font:700 10px var(--f-data);padding:2px 5px;margin-right:6px;vertical-align:2px}
 .mv.up{color:#1f8a4c}.mv.down{color:var(--red)}.mv.new{color:var(--falcon)}
 
-/* MVP podium on the cover slides: #2 Impact Player, #3 Game Changer */
-.podium{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:18px}
-.pod-card{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;background:var(--paper-2);border:1px solid var(--rule);border-left:4px solid var(--team,var(--ink));padding:8px 10px;color:var(--ink)}
-.pod-card.t{--team:var(--tiger)}.pod-card.f{--team:var(--falcon)}
-.pod-card:hover{border-color:var(--ink);border-left-color:var(--team,var(--ink))}
-.pod-n{font:900 30px/1 var(--f-display);color:var(--team,var(--ink));flex:none}
-.pod-card .thumb{width:40px;height:40px;flex:none}
-.pod-txt{display:flex;flex-direction:column;min-width:0}
-.pod-txt small{font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
-.pod-txt b{font:800 18px/1.1 var(--f-display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pod-txt i{font:400 12px var(--f-data);font-style:normal;color:var(--muted)}
+/* MVP race under each cover: points breakdown for the top 5 */
+.race{margin-top:34px;border-top:3px solid var(--ink);padding-top:14px}
+.race-head{display:grid;gap:8px 40px}
+@media(min-width:900px){.race-head{grid-template-columns:auto 1fr;align-items:end}}
+.race-t{font:900 clamp(28px,3.4vw,40px)/1 var(--f-display);text-transform:uppercase;margin-top:6px}
+.race-rule{font:400 15px/1.5 var(--f-body);color:var(--ink-2);max-width:62ch}
+.race-rule b{font-weight:600;color:var(--ink)}
+.race-key{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font:600 11px var(--f-data);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.race-key i{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:6px}
+.rk-r{background:var(--ink)}.rk-w{background:var(--red)}.rk-c{background:#b9b4a6}
+.race-list{list-style:none;margin-top:8px}
+.race-list li{display:grid;grid-template-columns:44px minmax(0,1.1fr) minmax(0,2fr) 92px;gap:6px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
+.race-list li.win{background:var(--paper-2);box-shadow:-12px 0 0 var(--paper-2),12px 0 0 var(--paper-2)}
+.race-n{font:900 34px/1 var(--f-display);color:var(--muted)}
+.race-list li.win .race-n{color:var(--red)}
+.race-who{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
+.race-who .thumb{width:42px;height:42px;flex:none;border-bottom:3px solid var(--team,var(--ink))}
+.race-list li.t{--team:var(--tiger)}.race-list li.f{--team:var(--falcon)}
+.race-who span{display:flex;flex-direction:column;min-width:0}
+.race-who small{font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
+.race-who b{font:800 20px/1.1 var(--f-display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.race-fill{display:flex;height:14px;background:transparent}
+.race-fill i{display:block;height:100%}
+.race-fill i+i{box-shadow:inset 2px 0 0 var(--paper)}
+.race-sum{font:400 12px var(--f-data);color:var(--muted);margin-top:5px}
+.race-pts{text-align:right;font:500 12px var(--f-data);color:var(--muted)}
+.race-pts b{display:block;font:900 32px/1 var(--f-display);color:var(--ink)}
+@media(max-width:640px){
+  .race-list li{grid-template-columns:34px minmax(0,1fr) auto}
+  .race-bar{grid-column:2/-1}
+  .race-pts{grid-row:1;grid-column:3}
+  .race-n{font-size:26px}
+}
 
 /* weekly awards */
 .wa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
@@ -170,5 +192,3 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .ns-list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);font:400 15px/1.35 var(--f-body)}
 .ns-list .thumb{width:36px;height:36px;flex:none}
 .ns-list small{color:var(--muted);font:400 12px var(--f-data)}
-.pod-card.first{background:var(--paper);border-color:var(--ink);border-left-color:var(--red)}
-.pod-card.first .pod-n{color:var(--red)}
