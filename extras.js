@@ -384,7 +384,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
 const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
-const PAGE_OF = { top: "home", since: "home", weekawards: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
+const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "players",
   records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", story: "season", numbers: "season",
@@ -527,20 +527,12 @@ function nextDeadline() {
 let nsTimer = null;
 function renderNextSunday() {
   const el = $("#nextSundayBody"); if (!el || !WEEK) return;
-  const dl = nextDeadline(), left = () => { const ms = dl - Date.now(); if (ms <= 0) return "Closed for this week"; const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4); return `${d ? d + "d " : ""}${h}h ${m}m`; };
-  const entries = PRED ? Object.keys(PRED.weeks[PRED.open.week] || {}).length : null;
-  // last week's prediction winner
-  let lastWin = "";
-  if (PRED) { const wk = isoDay(WEEK.ws), e = PRED.weeks[wk];
-    if (e && Object.values(e).some(v => v.winner)) { const tw = Object.entries(WEEK.tw).map(([n, v]) => ({ k: team(n).key, w: v.w })), tt = tw.find(x => x.k === "t")?.w || 0, ff = tw.find(x => x.k === "f")?.w || 0, actual = tt > ff ? "t" : ff > tt ? "f" : "draw";
-      const sc = Object.entries(e).filter(([, v]) => v.winner).map(([pid, v]) => ({ pid: +pid, pts: (v.winner === actual ? 1 : 0) + (WEEK.isMvp(+v.mvp) ? 2 : 0) })).sort((a, b) => b.pts - a.pts);
-      lastWin = sc[0] && sc[0].pts ? `${sc.filter(x => x.pts === sc[0].pts).map(x => esc(pname(x.pid))).join(", ")} scored ${sc[0].pts} point${sc[0].pts > 1 ? "s" : ""}` : "Nobody scored a point"; }
-    else lastWin = "Nobody predicted last week"; }
+  const dl = nextDeadline(), left = () => { const ms = dl - Date.now(); if (ms <= 0) return "Tonight"; const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4); return `${d ? d + "d " : ""}${h}h ${m}m`; };
   const ms = nextMilestones().slice(0, 4), hot = formData().filter(x => x.trend === "hot").slice(0, 3);
   el.innerHTML = `<div class="ns-grid">
-    <div class="ns-card ns-pred"><p class="kicker">Prediction game</p><div class="ns-big" id="nsLeft">${left()}</div><p class="ns-line">until picks close, Sunday 10 PM</p>
-      <p class="ns-line">${entries === null ? "" : `<b>${entries}</b> prediction${entries === 1 ? "" : "s"} so far.`} ${lastWin ? `Last week: ${lastWin}.` : ""}</p>
-      <a class="btn solid" href="#predict">Make your prediction</a></div>
+    <div class="ns-card ns-pred"><p class="kicker">Next match night</p><div class="ns-big" id="nsLeft">${left()}</div><p class="ns-line">until Sunday night at SportsX, G-12</p>
+      <p class="ns-line">Season so far: <b>Tigers ${M.filter(m => m.win?.key === "t").length}–${M.filter(m => m.win?.key === "f").length} Falcons</b>.</p>
+      <a class="btn solid" href="#picker">Pick the sides</a></div>
     <div class="ns-card"><p class="kicker">Milestone watch</p>${ms.length ? `<ul class="ns-list">${ms.map(x => `<li>${miniThumb(x.p)}<span>${plink(x.p.id)} needs <b>${x.gap.toLocaleString()}</b> more for ${x.st.toLocaleString()} ${x.m.name}</span></li>`).join("")}</ul>` : `<p class="dnb">Nobody is close to a milestone this week.</p>`}</div>
     <div class="ns-card"><p class="kicker">In form, watch out for</p>${hot.length ? `<ul class="ns-list">${hot.map(x => `<li>${miniThumb(x.p)}<span>${plink(x.p.id)} <b>form ${Math.round(x.form)}</b> <small>(season avg ${Math.round(x.avg)})</small></span></li>`).join("")}</ul>` : `<p class="dnb">Nobody is on a hot streak.</p>`}<a class="btn small" href="#picker" style="margin-top:12px">Pick the sides</a></div>
   </div>`;
@@ -575,13 +567,14 @@ function buildXR() {
     ["s30", "wk", "noduck"].forEach(k => { if (best[k].n) st[k].push({ id: p.id, ...best[k], live: cur[k] === best[k].n }); });
   });
   // consecutive sixes, over records, from the commentary (oldest ball first)
-  const six = new Map(), overBat = [], overBowl = [];
+  const six = new Map(), sixM = new Map(), overBat = [], overBowl = [];
   M.forEach(mm => mm.s.scorecards.forEach(sc => {
     const balls = (sc.commentary || []).filter(c => c.type === "ball").reverse(), run = new Map(), byOver = new Map();
     balls.forEach(c => { const t = String(c.text).match(/^(.+?) TO (.+?), (.*)$/); if (!t) return; const bt = up.get(t[2]), k = c.badge.kind;
       if (!bt || k === "wide" || /^WIDE/.test(t[3])) return;
       const n = k === "six" ? (run.get(bt) || 0) + 1 : 0; run.set(bt, n);
       if (n > (six.get(bt)?.n || 0)) six.set(bt, { id: bt, n, mm });
+      if (n >= 2 && n > (sixM.get(mm.id + "|" + bt)?.n || 0)) sixM.set(mm.id + "|" + bt, { id: bt, n, mm });
       const ov = Math.floor(parseFloat(c.over)), key = ov + "|" + bt, e = byOver.get(key) || { id: bt, ov, r: 0, s: 0, b: 0, mm, lbl: sc.label, bw: up.get(t[1]) };
       const mk = String(c.badge.mark); e.r += k === "six" ? 6 : k === "four" ? 4 : /^\d+$/.test(mk) ? +mk : 0; if (k === "six") e.s++; e.b++; byOver.set(key, e); });
     overBat.push(...byOver.values());
@@ -597,6 +590,7 @@ function buildXR() {
   const mg = mm => { const r = String(mm.m.result || ""); return { r: +((r.match(/by (\d+) run/) || [])[1] || 0), w: +((r.match(/by (\d+) wicket/) || [])[1] || 0) }; };
   const won = M.filter(m => m.win);
   XR.built = {
+    raw: { overBat, overBowl, sixM: [...sixM.values()] },
     clutch: top([...P.values()].filter(p => p.matches).map(p => ({ p, ...clutchOf(p) })).filter(x => x.n >= 2), (a, b) => b.per - a.per),
     closeN: M.filter(isClose).length,
     streaks: [
@@ -756,15 +750,66 @@ function renderTape() {
     <div class="cmp-rows">${body}</div>`;
 }
 
+/* ---------------- the week in numbers: team of the week, above his usual, overs, drops, stands, rivalry swing ---------------- */
+function renderWeekNumbers() {
+  const el = $("#weekNumbersBody"); if (!el || !WEEK) return;
+  const W = selW(), now = W === WEEK, ids = new Set(W.WM.map(m => m.id)), inW = mm => ids.has(mm.id), X = buildXR().raw;
+  const who = id => { const p = P.get(id); return p ? `<a class="xr-who" href="${purl(id)}">${miniThumb(p)}<b>${esc(pname(id))}</b></a>` : ""; };
+  const card = (t, body) => `<article class="xr-card"><h3 class="tbl-title">${t}</h3>${body}</article>`;
+  const li = (i, left, big, small) => `<li><span class="xr-n">${i + 1}</span>${left}<b class="xr-big">${big}</b><small class="xr-d">${small}</small></li>`;
+  const list = rows => rows.length ? `<ol class="xr-list">${rows.join("")}</ol>` : `<p class="dnb">Nothing ${now ? "this" : "that"} week.</p>`;
+  const at = mm => `<a href="#match-${mm.id}">#${mm.id}</a>`;
+  // team of the week: the top five on weekly points, with the role they played
+  const role = e => e.w * 20 > e.r * 1.5 ? "Bowler" : e.r > e.w * 20 * 1.5 ? "Batter" : "All-rounder";
+  const xi = W.ranked.slice(0, 5).map(e => ({ e, p: P.get(e.id) })).filter(x => x.p);
+  // above his usual: this week's points a match against his season rate (runs + 20 per wicket + 10 per catch)
+  const usual = p => { const l = [...p.log.values()]; return l.length ? l.reduce((a, x) => a + x.bat.reduce((s, b) => s + b.r, 0) + 20 * x.bowl.reduce((s, b) => s + b.w, 0) + 10 * x.c, 0) / l.length : 0; };
+  const above = W.ranked.map(e => { const p = P.get(e.id), u = p ? usual(p) : 0, wk = (e.r + 20 * e.w + 10 * e.c) / Math.max(1, e.m.size); return { e, p, u, wk, x: u ? wk / u : 0 }; })
+    .filter(x => x.p && x.u > 0 && x.x >= 1.2 && x.wk >= 40).sort((a, b) => b.x - a.x).slice(0, 4);
+  // overs
+  const ob = X.overBowl.filter(x => inW(x.mm)), obat = X.overBat.filter(x => inW(x.mm)), six = X.sixM.filter(x => inW(x.mm));
+  const dear = [...ob].sort((a, b) => b.r - a.r)[0], best = [...ob].filter(x => x.w > 0).sort((a, b) => b.w - a.w || a.r - b.r)[0];
+  const bigBat = [...obat].sort((a, b) => b.r - a.r)[0], sixer = [...six].sort((a, b) => b.n - a.n)[0];
+  const ovRow = (k, x, big, line) => x ? `<li><span class="wn-k">${k}</span>${who(x.id)}<b class="xr-big">${big}</b><small class="xr-d">${line}</small></li>` : "";
+  // drops
+  const dr = DROPS.filter(d => inW(d.mm)), cost = dr.reduce((a, d) => a + d.r, 0), dear2 = [...dr].sort((a, b) => b.r - a.r)[0];
+  const lives = new Map(); dr.forEach(d => lives.set(d.bt, (lives.get(d.bt) || 0) + 1)); const lucky = [...lives].sort((a, b) => b[1] - a[1])[0];
+  // stands
+  const stands = buildPartnerships().filter(s => inW(s.mm) && s.ids.length > 1).sort((a, b) => b.runs - a.runs || a.balls - b.balls).slice(0, 3);
+  // rivalry swing
+  const before = M.filter(m => m.date < W.ws && m.win), upTo = M.filter(m => m.date <= W.we && m.win);
+  const sc = list => ({ t: list.filter(m => m.win.key === "t").length, f: list.filter(m => m.win.key === "f").length });
+  const b0 = sc(before), b1 = sc(upTo), wk = sc(W.WM.filter(m => m.win));
+  const rd = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, d: v.for - v.against }));
+  el.innerHTML = `
+    <h3 class="xr-h">Team of the week</h3>
+    <div class="wn-xi">${xi.map((x, i) => `<a class="wn-pl ${x.p.tm.key}" href="${purl(x.p.id)}"><span class="wn-n">${i + 1}</span>${miniThumb(x.p)}<b>${esc(pname(x.p.id))}</b><span class="wn-role">${role(x.e)}</span><small>${x.e.r} runs · ${x.e.w} wkt${x.e.w === 1 ? "" : "s"} · ${x.e.c} ct</small><span class="wn-pts">${x.e.pts} pts</span></a>`).join("")}</div>
+    <div class="xr-grid" style="margin-top:30px">
+      ${card("Above his usual", list(above.map((x, i) => li(i, who(x.p.id), r1(x.x) + "×", `${Math.round(x.wk)} pts a match against a usual ${Math.round(x.u)}`))))}
+      ${card("Overs of the week", ob.length || obat.length ? `<ol class="xr-list wn-ov">
+        ${ovRow("Biggest over", bigBat, bigBat ? bigBat.r : "", bigBat ? `runs off ${bigBat.b} balls${bigBat.bw ? ` from ${esc(short(bigBat.bw))}` : ""} · ${at(bigBat.mm)}` : "")}
+        ${ovRow("Best over", best, best ? `${best.w}/${best.r}` : "", best ? `over ${best.ov} · ${at(best.mm)}` : "")}
+        ${ovRow("Costliest over", dear, dear ? dear.r : "", dear ? `runs in over ${dear.ov} · ${at(dear.mm)}` : "")}
+        ${ovRow("Sixes in a row", sixer, sixer ? sixer.n : "", sixer ? `back to back · ${at(sixer.mm)}` : "")}</ol>` : `<p class="dnb">No ball-by-ball data for this week.</p>`)}
+      ${card("Drops", dr.length ? `<p class="wn-big">${dr.length}<small>catches put down, costing ${cost} runs</small></p>
+        ${dear2 ? `<p class="wn-line">Costliest: ${plink(dear2.fl)} dropped ${plink(dear2.bt)}${dear2.bw ? (dear2.bw === dear2.fl ? " off his own bowling" : ` off ${plink(dear2.bw)}`) : ""}, who added ${dear2.r} more. ${at(dear2.mm)}</p>` : ""}
+        ${lucky && lucky[1] > 1 ? `<p class="wn-line">Lucky charm of the week: ${plink(lucky[0])}, dropped ${lucky[1]} times.</p>` : ""}` : `<p class="dnb">Every chance taken ${now ? "this" : "that"} week.</p>`)}
+      ${card("Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
+      ${card("Rivalry swing", `<p class="wn-big">${b0.t}–${b0.f} <span class="wn-arrow">→</span> ${b1.t}–${b1.f}<small>Tigers–Falcons, before and after the week</small></p>
+        <p class="wn-line">${wk.t + wk.f ? `The week went ${wk.t > wk.f ? `Tigers ${wk.t}–${wk.f}` : wk.f > wk.t ? `Falcons ${wk.f}–${wk.t}` : `${wk.t}–${wk.f}, honours even`}` : "No results that week"}${rd.length ? `, with a run difference of ${rd.map(x => `${x.d > 0 ? "+" : ""}${x.d} for the ${x.k === "t" ? "Tigers" : "Falcons"}`).find((_, i) => rd[i].d > 0) || "level"}` : ""}.</p>`)}
+    </div>`;
+  $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
-window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderDigest(); };
+window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); };
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderPartnerships(); renderTactics(); renderPhases();
-  renderDigest(); renderPredict(); renderFixtures(); renderGallery(); checkLive();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderPartnerships(); renderTactics(); renderPhases();
+  renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded
 tagPages();
