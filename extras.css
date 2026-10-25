@@ -291,3 +291,22 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .pp-tabs a:hover{color:var(--ink)}
 .pp-tabs a[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red)}
 .pp-pane>.sec-t:first-child{margin-top:18px}
+
+/* season awards */
+.sa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:18px}
+.sa-card{background:#111;color:#f3efe6;padding:16px 16px 14px;border-top:4px solid #e6b422;min-width:0}
+.sa-card .kicker{color:#ff5a4a}
+.sa-note{color:#9a968c;font-weight:400}
+.sa-holder{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;text-decoration:none;color:inherit;margin-top:10px}
+.sa-holder .thumb{width:46px;height:46px}
+.sa-holder small{display:block;font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:#e6b422}
+.sa-holder b{font:800 20px/1.1 var(--f-display);text-transform:uppercase;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sa-v{font:900 40px/1 var(--f-display);color:#ffd23f;text-align:right}
+.sa-v small{display:block;font:600 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:#cfc9bb}
+.sa-lead{font:400 14px/1.45 var(--f-body);margin-top:10px;color:#e8e3d8}
+.sa-card a{color:inherit}
+.sa-race{list-style:none;margin-top:10px;border-top:1px solid #333}
+.sa-race li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #2a2a2a;font:400 14px var(--f-body)}
+.sa-race .xr-n{color:#8a867c;font-size:16px}
+.sa-race b{font:800 18px var(--f-display)}
+.sa-chase{font:400 12px/1.45 var(--f-data);color:#a9a49a;margin-top:8px}

@@ -387,7 +387,7 @@ const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"]
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "players",
   records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
-  rivalry: "season", story: "season", numbers: "season",
+  rivalry: "season", seasonawards: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
 function tagPages() {
@@ -801,6 +801,27 @@ function renderWeekNumbers() {
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
 }
 
+/* ---------------- season awards: every award with its holder and the race behind ---------------- */
+function renderSeasonAwards() {
+  const el = $("#seasonAwardsBody"); if (!el || typeof AWARDS === "undefined" || !AWARDS.length) return;
+  const fmt = (a, x) => a.dec ? r1(x) : Math.round(x).toLocaleString();
+  el.innerHTML = `<div class="sa-grid">${AWARDS.map(a => {
+    const list = a.list.slice(0, 5), h = list[0]; if (!h) return "";
+    const n = a.n(h), second = list[1], gap = second ? Math.abs(n - a.n(second)) : 0, tied = second && gap === 0;
+    const lead = !second ? "Only qualifier so far." : tied ? `Level with ${plink(second.id)}.` : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
+    const chasing = a.ok ? [...P.values()].filter(p => p.matches && !a.ok(p) && (a.k === "Mr Economy" ? p.bowl.b >= 60 : p.bat.b >= 75))
+      .sort((x, y) => a.k === "Mr Economy" ? x.bowl.econ - y.bowl.econ : y.bat.sr - x.bat.sr).slice(0, 2) : [];
+    return `<article class="sa-card" id="award-${slugify(a.k)}">
+      <p class="kicker">${esc(a.k)}${a.note ? ` <span class="sa-note">(${esc(a.note)})</span>` : ""}</p>
+      <a class="sa-holder ${h.tm.key}" href="${purl(h.id)}">${miniThumb(h)}<span><small>${tied ? "Joint holder" : "Holder"}</small><b>${esc(pname(h.id))}</b></span><span class="sa-v">${a.v(h)}<small>${esc(n === 1 && a.u1 ? a.u1 : a.u)}</small></span></a>
+      <p class="sa-lead">${lead}</p>
+      <ol class="sa-race">${list.slice(1).map((p, i) => `<li><span class="xr-n">${i + 2}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
+      ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.k === "Mr Economy" ? r1(p.bowl.econ) + " an over" : Math.round(p.bat.sr) + " SR"})`).join("; ")}.</p>` : ""}
+    </article>`;
+  }).join("")}</div>
+  <p class="rank-note" style="margin-top:12px">Re-counted after every Monday sync. Each player's page shows the awards he holds in his trophy cabinet.</p>`;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
@@ -808,7 +829,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded
