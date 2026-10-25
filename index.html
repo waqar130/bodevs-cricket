@@ -1837,6 +1837,82 @@ function dropsBlock(p){
     <div><span class="label">Lives as a batter</span><b>${d.lives}</b><small>${d.lives?`${d.livesR} runs after being dropped${by?` · lucky charm: ${plink(by[0])} (${by[1]} drop${by[1]>1?"s":""})`:""}`:"Never given a second chance"}</small></div>
   </div>`;
 }
+// ball-by-ball patterns: when and how he gets out, scoring by stage, and the same for his bowling
+const PHASES=[["Overs 1–2",o=>o<=2],["Overs 3–5",o=>o>=3&&o<=5],["Overs 6+",o=>o>=6]],STARTS=[["Balls 1–6",n=>n<=6],["Balls 7–15",n=>n>=7&&n<=15],["Ball 16 on",n=>n>=16]];
+function scoutData(p){
+  if(p._sd)return p._sd;
+  const up=new Map([...P.values()].map(q=>[q.name.toUpperCase(),q.id]));
+  const z=()=>({r:0,b:0,o:0,w:0}),bat={ph:PHASES.map(z),st:STARTS.map(z),outs:[],after4:0},bowl={ph:PHASES.map(z),wk:[],after4:0};
+  M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
+    const balls=(sc.commentary||[]).filter(c=>c.type==="ball").reverse();let faced=0,lastBoundary=false,bowlLastHit=false;   // oldest first
+    balls.forEach(c=>{const t=String(c.text).match(/^(.+?) TO (.+?), (.*)$/);if(!t)return;
+      const bw=up.get(t[1]),bt=up.get(t[2]),k=c.badge.kind,mk=String(c.badge.mark),wide=k==="wide"||/^WIDE/.test(t[3]);
+      const r=k==="six"?6:k==="four"?4:/^\d+$/.test(mk)?+mk:0,ov=Math.floor(parseFloat(c.over));   // "4.5" is the 5th ball of over 4
+      const out=k==="wicket"&&!/RUN OUT/.test(t[3]),how=/CAUGHT/.test(t[3])?"caught":/BOWLED/.test(t[3])?"bowled":/HIT WICKET/.test(t[3])?"hit wicket":/LBW/.test(t[3])?"lbw":/STUMPED/.test(t[3])?"stumped":"other";
+      const pi=PHASES.findIndex(x=>x[1](ov));
+      if(bt===p.id&&!wide){faced++;const e=bat.ph[pi],g=bat.st[STARTS.findIndex(x=>x[1](faced))];e.r+=r;e.b++;g.r+=r;g.b++;
+        if(out){e.o++;g.o++;bat.outs.push({n:faced,ov,how,bw});if(lastBoundary)bat.after4++}
+        lastBoundary=k==="six"||k==="four"}
+      if(bw===p.id){const e=bowl.ph[pi];e.r+=r;if(!wide)e.b++;
+        if(out){e.w++;bowl.wk.push({how,bt,ov});if(bowlLastHit)bowl.after4++}
+        if(!wide)bowlLastHit=k==="six"||k==="four"}
+    });
+  }));
+  return p._sd={bat,bowl};
+}
+function patternsBlock(p,ctx){
+  const {bat,bowl}=scoutData(p),{asBat,asBowl,sr,ec,nm}=ctx,S=[],Wk=[];
+  const srr=e=>e.b?e.r/e.b*100:0,eco=e=>e.b?e.r/e.b*6:0,outs=bat.outs.length,pc=(a,b)=>b?Math.round(a/b*100):0;
+  const cnt=(list,k)=>list.filter(x=>x.how===k).length;
+  // batting
+  if(p.bat.b>=30){
+    const ph=bat.ph.map((e,i)=>({e,l:PHASES[i][0]})).filter(x=>x.e.b>=12),best=[...ph].sort((a,b)=>srr(b.e)-srr(a.e))[0],worst=[...ph].sort((a,b)=>srr(a.e)-srr(b.e))[0];
+    if(best&&ph.length>1&&srr(best.e)>p.bat.sr*1.1)S.push(`Shifts gear in ${best.l.toLowerCase()}: strike rate ${r1(srr(best.e))} against a career ${r1(p.bat.sr)}.`);
+    if(worst&&ph.length>1&&srr(worst.e)<p.bat.sr*0.85)Wk.push(`Slow in ${worst.l.toLowerCase()}: strike rate ${r1(srr(worst.e))}.`);
+    if(p.bat.s>=5&&p.bat.b/p.bat.s<=7)S.push(`Clears the rope every ${r1(p.bat.b/p.bat.s)} balls (${p.bat.s} sixes).`);
+    const early=bat.st[0].o;
+    if(outs>=4&&early/outs>=0.4)Wk.push(`Vulnerable early: ${early} of ${outs} dismissals inside his first 6 balls.`);
+    else if(outs>=4&&early/outs<=0.2)S.push(`Hard to remove early: only ${early} of ${outs} dismissals inside his first 6 balls.`);
+    const set=bat.st[2];if(set.b>=20&&srr(set)>p.bat.sr*1.1)S.push(`Dangerous once set: strike rate ${r1(srr(set))} from his 16th ball on.`);
+    if(outs>=4&&bat.after4/outs>=0.3)Wk.push(`Goes again after a boundary: ${bat.after4} of ${outs} dismissals came the ball after a four or six.`);
+    const cgt=cnt(bat.outs,"caught"),bwd=cnt(bat.outs,"bowled");
+    if(outs>=3&&cgt/outs>=0.6)Wk.push(`Holes out: ${pc(cgt,outs)}% of dismissals are catches, so a fielder in the deep is worth having.`);
+    if(outs>=3&&bwd/outs>=0.3)Wk.push(`Beaten through the gate: bowled in ${pc(bwd,outs)}% of dismissals. Bowl full and straight.`);
+    if(outs>=4&&bwd===0)S.push(`Never bowled in ${outs} dismissals. Hard to get past the bat.`);
+    const fav=asBat.filter(x=>x.b>=MINB).sort((a,b)=>sr(b)-sr(a))[0];if(fav&&sr(fav)>p.bat.sr*1.15)S.push(`Loves facing ${esc(nm(fav.bowl))}: ${fav.r} off ${fav.b} (SR ${r1(sr(fav))}).`);
+    const nem=asBat.filter(x=>x.outs>=2).sort((a,b)=>b.outs-a.outs||a.r-b.r)[0];if(nem)Wk.push(`${esc(nm(nem.bowl))} has his number: out ${nem.outs} times for ${nem.r} runs.`);
+    if(p.bat.b>=60&&p.bat.dots/p.bat.b>0.4)Wk.push(`Dots ${pc(p.bat.dots,p.bat.b)}% of balls faced, so tight lines build pressure.`);
+  }
+  // bowling
+  if(p.bowl.b>=36){
+    const wk=bowl.wk.length,ph=bowl.ph.map((e,i)=>({e,l:PHASES[i][0]})).filter(x=>x.e.b>=12),best=[...ph].sort((a,b)=>eco(a.e)-eco(b.e))[0],worst=[...ph].sort((a,b)=>eco(b.e)-eco(a.e))[0];
+    if(best&&ph.length>1&&eco(best.e)<p.bowl.econ*0.9&&eco(best.e)<SEASON_RR)S.push(`Tightest in ${best.l.toLowerCase()}: ${r1(eco(best.e))} an over.`);
+    if(worst&&ph.length>1&&eco(worst.e)>p.bowl.econ*1.15)Wk.push(`Expensive in ${worst.l.toLowerCase()}: ${r1(eco(worst.e))} an over.`);
+    const bwd=cnt(bowl.wk,"bowled");if(wk>=4&&bwd/wk>=0.3)S.push(`Attacks the stumps: ${pc(bwd,wk)}% of his wickets are bowled.`);
+    if(p.bowl.w>=5&&p.bowl.sr<=15)S.push(`Strikes every ${r1(p.bowl.sr)} balls.`);
+    if(p.bowl.dots/p.bowl.b>=0.45)S.push(`Builds pressure: ${pc(p.bowl.dots,p.bowl.b)}% dot balls.`);
+    if(wk>=4&&bowl.after4/wk>=0.3)S.push(`Hits back: ${bowl.after4} of ${wk} wickets came the ball after being hit for four or six.`);
+    const bunny=asBowl.filter(x=>x.outs>=2).sort((a,b)=>b.outs-a.outs||a.r-b.r)[0];if(bunny)S.push(`Has ${esc(nm(bunny.bat))}’s number: ${bunny.outs} wickets for ${bunny.r} runs.`);
+    const leak=asBowl.filter(x=>x.b>=MINB).sort((a,b)=>ec(b)-ec(a))[0];if(leak&&ec(leak)>p.bowl.econ*1.25)Wk.push(`${esc(nm(leak.bat))} goes after him at ${r1(ec(leak))} an over.`);
+    if((p.bowl.wd+p.bowl.nb)/(p.bowl.b/6)>1.2)Wk.push(`Extras are a leak: ${p.bowl.wd} wides and ${p.bowl.nb} no-balls in ${ovs(p.bowl.b)} overs.`);
+  }
+  if(!S.length)S.push("Still building a record. Strengths show up after a few more matches.");
+  if(!Wk.length)Wk.push("No clear weakness yet. Bowlers and batters are still working this one out.");
+  // when he gets out
+  const bars=(list,lab,tot,line)=>`<div class="pt-bars">${list.map((e,i)=>`<div class="pt-row"><span>${lab[i][0]}</span><div class="pt-bar"><i style="width:${tot?e.o/tot*100:0}%"></i></div><b>${e.o}</b><small>${line(e)}</small></div>`).join("")}</div>`;
+  const other=x=>Object.entries(x.how||{}).filter(([k])=>!["caught","bowled","run out"].includes(k)).reduce((a,[,v])=>a+v,0);
+  const byBw=asBat.filter(x=>x.outs>0).sort((a,b)=>b.outs-a.outs||a.r-b.r).map(x=>`<tr><td class="nm ${P.get(x.bowl).tm.key}"><span class="chip"></span>${plink(x.bowl,nm(x.bowl))}</td><td class="hi">${x.outs}</td><td>${x.how.caught||0}</td><td>${x.how.bowled||0}</td><td>${other(x)}</td><td>${x.r}/${x.b}</td><td>${r1(x.r/x.outs)}</td></tr>`);
+  const byBt=asBowl.filter(x=>x.outs>0).sort((a,b)=>b.outs-a.outs||a.r-b.r).map(x=>`<tr><td class="nm ${P.get(x.bat).tm.key}"><span class="chip"></span>${plink(x.bat,nm(x.bat))}</td><td class="hi">${x.outs}</td><td>${x.how.caught||0}</td><td>${x.how.bowled||0}</td><td>${other(x)}</td><td>${x.r}/${x.b}</td></tr>`);
+  const tb=(rows,cols)=>`<div class="tbl-wrap"><table class="data"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+  return `<h2 class="sec-t">Strengths &amp; weaknesses</h2>
+  <div class="sw-grid"><div class="sw-col good"><h3 class="tbl-title">Strengths</h3><ul>${S.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    <div class="sw-col bad"><h3 class="tbl-title">Weaknesses</h3><ul>${Wk.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>
+  ${outs?`<h2 class="sec-t">Dismissal patterns</h2><p class="label">From ${outs} dismissals in the ball-by-ball data (run outs left out)</p>
+  <div class="pt-grid"><div><h3 class="tbl-title">By balls faced</h3>${bars(bat.st,STARTS,outs,e=>`SR ${r1(srr(e))}`)}</div>
+    <div><h3 class="tbl-title">By stage of the innings</h3>${bars(bat.ph,PHASES,outs,e=>`SR ${r1(srr(e))}`)}</div></div>
+  ${byBw.length?`<h3 class="tbl-title" style="margin-top:26px">Who gets him out, and how</h3>${tb(byBw,["Bowler","Out","Caught","Bowled","Other","Runs/balls","Avg"])}`:""}`:""}
+  ${byBt.length?`<h3 class="tbl-title" style="margin-top:26px">How his wickets come</h3>${tb(byBt,["Batter","Wkts","Caught","Bowled","Other","Runs/balls"])}`:""}`;
+}
 function rivalries(p){
   const id=p.id,asBat=[...H.values()].filter(x=>x.bat===id&&P.has(x.bowl)),asBowl=[...H.values()].filter(x=>x.bowl===id&&P.has(x.bat));
   const fl=[...FX.values()].filter(x=>x.bat===id);
@@ -1862,23 +1938,12 @@ function rivalries(p){
   const outN=Object.values(outs).reduce((a,b)=>a+b,0),outTop=Object.entries(outs).sort((a,b)=>b[1]-a[1])[0];
   const outLabel={caught:"caught",bowled:"bowled",run_out:"run out",hit_wicket:"hit wicket",lbw:"lbw",stumped:"stumped"};
 
-  // scouting report
-  const rep=[];
-  if(outTop&&outN>=3)rep.push(`Out ${outLabel[outTop[0]]||outTop[0]} in ${Math.round(outTop[1]/outN*100)}% of dismissals.`);
-  if(nem&&nem.outs>=2)rep.push(`${esc(nm(nem.bowl))} has the wood: ${nem.outs} dismissals for ${nem.r} runs.`);
-  if(hate&&sr(hate)<p.bat.sr*0.8)rep.push(`Scoring slows to a strike rate of ${r1(sr(hate))} against ${esc(nm(hate.bowl))}, against a career ${r1(p.bat.sr)}.`);
-  if(p.bat.b>=60&&p.bat.dots/p.bat.b>0.4)rep.push(`Dots ${Math.round(p.bat.dots/p.bat.b*100)}% of balls faced, so tight lines build pressure.`);
-  if(leak&&ec(leak)>p.bowl.econ*1.25)rep.push(`With the ball, ${esc(nm(leak.bat))} goes after them at ${r1(ec(leak))} an over.`);
-  if(p.bowl.b>=60&&(p.bowl.wd+p.bowl.nb)/(p.bowl.b/6)>1.2)rep.push(`Extras are a leak: ${p.bowl.wd} wides and ${p.bowl.nb} no-balls in ${ovs(p.bowl.b)} overs.`);
-  if(!rep.length&&(asBat.length||asBowl.length))rep.push("No clear weakness yet. Bowlers and batters are still working this one out.");
-
   if(!asBat.length&&!asBowl.length)return "";
   const tbl=(rows,cols)=>rows.length?`<div class="tbl-wrap"><table class="data"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`:`<p class="dnb">No balls in this matchup yet.</p>`;
   const batRows=asBat.sort((a,b)=>b.b-a.b).map(x=>`<tr><td class="nm ${P.get(x.bowl).tm.key}"><span class="chip"></span>${plink(x.bowl,nm(x.bowl))}</td><td>${x.b}</td><td class="hi">${x.r}</td><td>${r1(sr(x))}</td><td>${x.f}</td><td>${x.s}</td><td>${Math.round(dp(x))}%</td><td>${x.outs}</td><td>${x.outs?r1(x.r/x.outs):"–"}</td></tr>`);
   const bowlRows=asBowl.sort((a,b)=>b.b-a.b).map(x=>`<tr><td class="nm ${P.get(x.bat).tm.key}"><span class="chip"></span>${plink(x.bat,nm(x.bat))}</td><td>${x.b}</td><td>${x.r}</td><td>${r1(ec(x))}</td><td class="hi">${x.outs}</td><td>${x.s}</td><td>${Math.round(dp(x))}%</td><td>${x.wd}/${x.nb}</td></tr>`);
-  return `<h2 class="sec-t">Scouting report</h2>
-  <div class="scout"><p class="label">Weaknesses, from ${asBat.reduce((a,x)=>a+x.b,0)+asBowl.reduce((a,x)=>a+x.b,0)} balls of ball-by-ball data</p><ul>${rep.map(r=>`<li>${r}</li>`).join("")}</ul>
-  ${outN?`<div class="outbar">${Object.entries(outs).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span style="flex:${v}" class="ob-${k}"><b>${outLabel[k]||k}</b> ${v}</span>`).join("")}</div>`:""}</div>
+  return `${patternsBlock(p,{asBat,asBowl,sr,ec,nm})}
+  <div class="scout">${outN?`<div class="outbar">${Object.entries(outs).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span style="flex:${v}" class="ob-${k}"><b>${outLabel[k]||k}</b> ${v}</span>`).join("")}</div>`:""}</div>
   <h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
