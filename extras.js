@@ -386,7 +386,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", form: "players", milestones: "players", tables: "players", compare: "players",
-  records: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
+  records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
@@ -547,6 +547,100 @@ function renderNextSunday() {
   clearInterval(nsTimer); nsTimer = setInterval(() => { const n = $("#nsLeft"); if (n) n.textContent = left(); else clearInterval(nsTimer); }, 60e3);
 }
 
+/* ---------------- streaks, clutch, over records and the team record book ---------------- */
+const CLOSE_RUNS = 15, CLOSE_WKTS = 3;
+// a close match: won by fewer than 15 runs or by 3 wickets or fewer
+function isClose(mm) {
+  const r = String(mm.m.result || ""), byR = r.match(/by (\d+) run/), byW = r.match(/by (\d+) wicket/);
+  return byR ? +byR[1] < CLOSE_RUNS : byW ? +byW[1] <= CLOSE_WKTS : false;
+}
+function clutchOf(p) {
+  let n = 0, won = 0, pts = 0, r = 0, w = 0;
+  p.log.forEach(l => { if (!isClose(l.mm)) return; n++; if (l.mm.win && l.mm.win.name === l.team) won++;
+    const lr = l.bat.reduce((a, x) => a + x.r, 0), lw = l.bowl.reduce((a, x) => a + x.w, 0); r += lr; w += lw; pts += lr + 20 * lw + 10 * l.c; });
+  return { n, won, pts, r, w, per: n ? pts / n : 0 };
+}
+const XR = { built: null };
+function buildXR() {
+  if (XR.built) return XR.built;
+  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id]));
+  const top = (a, by, n = 5) => [...a].sort(by).slice(0, n);
+  // streaks, in match order (each player's log is oldest first)
+  const st = { s30: [], wk: [], noduck: [], sixes: [] };
+  P.forEach(p => { if (!p.matches) return;
+    const best = { s30: { n: 0 }, wk: { n: 0 }, noduck: { n: 0 } }, cur = { s30: 0, wk: 0, noduck: 0 }, from = {};
+    const bump = (k, on, mm) => { if (on) { if (!cur[k]) from[k] = mm; cur[k]++; if (cur[k] > best[k].n) best[k] = { n: cur[k], from: from[k], to: mm }; } else cur[k] = 0; };
+    p.log.forEach(l => { l.bat.forEach(x => { bump("s30", x.r >= 30, l.mm); bump("noduck", !(x.r === 0 && !x.no), l.mm); });
+      if (l.bowl.length) bump("wk", l.bowl.some(x => x.w > 0), l.mm); });
+    ["s30", "wk", "noduck"].forEach(k => { if (best[k].n) st[k].push({ id: p.id, ...best[k], live: cur[k] === best[k].n }); });
+  });
+  // consecutive sixes, over records, from the commentary (oldest ball first)
+  const six = new Map(), overBat = [], overBowl = [];
+  M.forEach(mm => mm.s.scorecards.forEach(sc => {
+    const balls = (sc.commentary || []).filter(c => c.type === "ball").reverse(), run = new Map(), byOver = new Map();
+    balls.forEach(c => { const t = String(c.text).match(/^(.+?) TO (.+?), (.*)$/); if (!t) return; const bt = up.get(t[2]), k = c.badge.kind;
+      if (!bt || k === "wide" || /^WIDE/.test(t[3])) return;
+      const n = k === "six" ? (run.get(bt) || 0) + 1 : 0; run.set(bt, n);
+      if (n > (six.get(bt)?.n || 0)) six.set(bt, { id: bt, n, mm });
+      const ov = Math.floor(parseFloat(c.over)), key = ov + "|" + bt, e = byOver.get(key) || { id: bt, ov, r: 0, s: 0, b: 0, mm, lbl: sc.label, bw: up.get(t[1]) };
+      const mk = String(c.badge.mark); e.r += k === "six" ? 6 : k === "four" ? 4 : /^\d+$/.test(mk) ? +mk : 0; if (k === "six") e.s++; e.b++; byOver.set(key, e); });
+    overBat.push(...byOver.values());
+    (sc.commentary || []).filter(c => c.type === "over").forEach(c => { const nm = String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/, ""), id = byName.get(nm); if (!id) return;
+      overBowl.push({ id, r: parseInt(c.text) || 0, w: +((String(c.text).match(/(\d+) wicket/) || [])[1] || 0), ov: c.over_no, mm }); });
+  }));
+  st.sixes = [...six.values()].filter(x => x.n >= 2);
+  // team records
+  const inns = [];
+  M.forEach(mm => mm.s.scorecards.forEach((sc, i) => { const last = i === mm.s.scorecards.length - 1, pps = mm.m.players_per_side || 0;
+    inns.push({ mm, team: sc.batting_team, r: sc.runs, w: sc.wickets, ov: sc.overs, b: balls(sc.overs), last,
+      done: sc.wickets >= pps || balls(sc.overs) >= (mm.m.overs || 0) * 6, chase: last && mm.win && mm.win.name === sc.batting_team }); }));
+  const mg = mm => { const r = String(mm.m.result || ""); return { r: +((r.match(/by (\d+) run/) || [])[1] || 0), w: +((r.match(/by (\d+) wicket/) || [])[1] || 0) }; };
+  const won = M.filter(m => m.win);
+  XR.built = {
+    clutch: top([...P.values()].filter(p => p.matches).map(p => ({ p, ...clutchOf(p) })).filter(x => x.n >= 2), (a, b) => b.per - a.per),
+    closeN: M.filter(isClose).length,
+    streaks: [
+      { t: "30+ scores in a row", rows: top(st.s30.filter(x => x.n >= 2), (a, b) => b.n - a.n), u: "innings" },
+      { t: "Matches in a row with a wicket", note: "Matches he bowled in.", rows: top(st.wk.filter(x => x.n >= 2), (a, b) => b.n - a.n), u: "matches" },
+      { t: "Innings without a duck", rows: top(st.noduck, (a, b) => b.n - a.n), u: "innings" },
+      { t: "Sixes in a row", note: "Balls faced back to back, wides skipped.", rows: top(st.sixes, (a, b) => b.n - a.n), u: "sixes" },
+    ],
+    overs: [
+      { t: "Most runs by a batter in an over", rows: top(overBat.filter(x => x.r > 0), (a, b) => b.r - a.r || a.b - b.b), big: x => x.r, u: x => `runs off ${x.b} ball${x.b > 1 ? "s" : ""}${x.bw ? ` from ${esc(short(x.bw))}` : ""}` },
+      { t: "Most sixes in an over", rows: top(overBat.filter(x => x.s > 1), (a, b) => b.s - a.s || b.r - a.r), big: x => x.s, u: x => `sixes · ${x.r} runs${x.bw ? ` off ${esc(short(x.bw))}` : ""}` },
+      { t: "Wicket maidens", note: "Overs with no runs and at least one wicket.", rows: top(overBowl.filter(x => x.r === 0 && x.w > 0), (a, b) => b.w - a.w), big: x => `${x.w}/0`, u: x => `in over ${x.ov}` },
+      { t: "Cheapest overs with 2+ wickets", rows: top(overBowl.filter(x => x.w >= 2), (a, b) => b.w - a.w || a.r - b.r), big: x => `${x.w}/${x.r}`, u: x => `in over ${x.ov}` },
+    ],
+    teams: [
+      { t: "Highest totals", rows: top(inns, (a, b) => b.r - a.r), big: x => `${x.r}/${x.w}`, u: x => `in ${x.ov} overs · ${esc(x.mm.fmt)}` },
+      { t: "Lowest completed totals", note: "All out, or the full overs batted.", rows: top(inns.filter(x => x.done && !x.chase), (a, b) => a.r - b.r), big: x => `${x.r}/${x.w}`, u: x => `in ${x.ov} overs · ${esc(x.mm.fmt)}` },
+      { t: "Best chases", rows: top(inns.filter(x => x.chase), (a, b) => b.r - a.r), big: x => `${x.r}/${x.w}`, u: x => `in ${x.ov} overs · won by ${esc(x.mm.margin)}` },
+      { t: "Biggest wins by runs", rows: top(won.filter(m => mg(m).r), (a, b) => mg(b).r - mg(a).r).map(mm => ({ mm, team: mm.win.name })), big: x => mg(x.mm).r, u: x => `runs · ${esc(x.mm.fmt)}` },
+      { t: "Biggest wins by wickets", rows: top(won.filter(m => mg(m).w), (a, b) => mg(b).w - mg(a).w || a.inns.at(-1).b - b.inns.at(-1).b).map(mm => ({ mm, team: mm.win.name })), big: x => mg(x.mm).w, u: x => `wickets · ${esc(x.mm.fmt)}` },
+      { t: "Closest finishes", rows: top(won.filter(isClose), (a, b) => (mg(a).r || mg(a).w * 3) - (mg(b).r || mg(b).w * 3)).map(mm => ({ mm, team: mm.win.name })), big: x => esc(x.mm.margin), u: () => "" },
+    ],
+  };
+  return XR.built;
+}
+function renderXR() {
+  const el = $("#streaksBody"); if (!el || !M?.length) return;
+  const X = buildXR(), when = mm => `<a href="#match-${mm.id}">#${mm.id} · ${fmtD(mm.date, { day: "numeric", month: "short" })}</a>`;
+  const who = id => { const p = P.get(id); return p ? `<a class="xr-who" href="${purl(id)}">${miniThumb(p)}<b>${esc(pname(id))}</b></a>` : ""; };
+  const tm = name => `<span class="xr-who"><span class="chip ${team(name).key}"></span><b>${esc(team(name).short || name)}</b></span>`;
+  const card = (t, note, rows) => `<article class="xr-card"><h3 class="tbl-title">${t}</h3>${note ? `<p class="rank-note">${note}</p>` : ""}${rows.length ? `<ol class="xr-list">${rows.join("")}</ol>` : `<p class="dnb">Nothing yet.</p>`}</article>`;
+  const li = (i, left, big, small) => `<li><span class="xr-n">${i + 1}</span>${left}<b class="xr-big">${big}</b><small class="xr-d">${small}</small></li>`;
+  el.innerHTML = `
+    <h3 class="xr-h">Clutch players</h3>
+    <p class="rank-note">Points per match (runs + 20 per wicket + 10 per catch) in the ${X.closeN} close matches: won by under ${CLOSE_RUNS} runs or by ${CLOSE_WKTS} wickets or fewer. Two close matches or more.</p>
+    <div class="xr-grid">${card("Best in close matches", "", X.clutch.map((x, i) => li(i, who(x.p.id), Math.round(x.per), `pts a match · ${x.r} runs, ${x.w} wkts · won ${x.won} of ${x.n}`)))}</div>
+    <h3 class="xr-h">Streaks</h3>
+    <div class="xr-grid">${X.streaks.map(s => card(s.t, s.note, s.rows.map((x, i) => li(i, who(x.id), x.n, `${s.u}${x.live ? ` · <span class="xr-live">still going</span>` : ""} · ${x.from && x.to ? (x.from === x.to ? when(x.to) : `${when(x.from)} to ${when(x.to)}`) : when(x.mm)}`)))).join("")}</div>
+    <h3 class="xr-h">Over by over</h3>
+    <div class="xr-grid">${X.overs.map(s => card(s.t, s.note, s.rows.map((x, i) => li(i, who(x.id), s.big(x), `${s.u(x)} · ${when(x.mm)}`)))).join("")}</div>
+    <h3 class="xr-h">Team record book</h3>
+    <div class="xr-grid">${X.teams.map(s => card(s.t, s.note, s.rows.map((x, i) => li(i, tm(x.team), s.big(x), `${s.u(x)}${s.u(x) ? " · " : ""}${when(x.mm)}`)))).join("")}</div>`;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
@@ -554,7 +648,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderXR(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderPredict(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded

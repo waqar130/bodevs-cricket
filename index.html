@@ -616,7 +616,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
         <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
-        <a href="#predict">Predictions</a><a href="#tables">Rankings &amp; records</a><a href="#records">Record book</a><a href="#compare">Compare players</a>
+        <a href="#predict">Predictions</a><a href="#tables">Rankings &amp; records</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
         <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
@@ -811,6 +811,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <label class="cmp-sel"><span class="label">Player B</span><select id="cmpB"></select></label>
       </div>
       <div id="cmpBody" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="streaks">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Streaks &amp; records</p><h2 class="hd">Streaks, overs &amp; team records</h2></div>
+        <p>Who delivers in tight games, the longest runs of form, the biggest overs, and the team record book. All worked out from the scorecards and the ball-by-ball commentary.</p>
+      </div>
+      <div id="streaksBody"></div>
     </div>
   </section>
 
@@ -1023,7 +1033,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -1791,6 +1801,21 @@ async function fillCard(){
 }
 
 const MINB=12; // balls needed before a matchup counts for rate-based notables
+// last 10 matches: runs as bars, wickets as dots above, wins marked under each match
+function formChart(p){
+  const log=[...p.log.values()].slice(-10);if(log.length<2)return"";
+  const W=640,Hh=150,pad=24,bw=(W-pad*2)/log.length,mx=Math.max(30,...log.map(l=>l.bat.reduce((a,x)=>a+x.r,0)));
+  const bars=log.map((l,i)=>{const r=l.bat.reduce((a,x)=>a+x.r,0),w=l.bowl.reduce((a,x)=>a+x.w,0),won=!!(l.mm.win&&l.mm.win.name===l.team);
+    const h=Math.max(2,r/mx*(Hh-56)),x=pad+i*bw+bw*0.18,y=Hh-28-h,cx=pad+i*bw+bw/2;
+    return `<g><title>Match #${l.mm.id}, ${fmtD(l.mm.date,{day:"numeric",month:"short"})}: ${r} runs, ${w} wicket${w===1?"":"s"}, ${won?"won":"lost"}</title>
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw*0.64).toFixed(1)}" height="${h.toFixed(1)}" class="fc-bar ${p.tm.key}"/>
+      <text x="${cx.toFixed(1)}" y="${(y-5).toFixed(1)}" class="fc-v">${r}</text>
+      ${Array.from({length:w},(_,j)=>`<circle cx="${(cx-(w-1)*5+j*10).toFixed(1)}" cy="${(y-22).toFixed(1)}" r="4" class="fc-w"/>`).join("")}
+      <text x="${cx.toFixed(1)}" y="${Hh-10}" class="fc-m ${won?"won":""}">${won?"W":"L"}</text></g>`}).join("");
+  return `<h3 class="tbl-title">Form, last ${log.length} matches</h3>
+    <div class="fc-wrap"><svg class="fc" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Runs and wickets in his last ${log.length} matches">${bars}<line x1="${pad}" x2="${W-pad}" y1="${Hh-28}" y2="${Hh-28}" class="fc-base"/></svg>
+    <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w"></i>Wickets</span><span><b>W</b>/<b>L</b> result</span></p></div>`;
+}
 // batting first v chasing, score bands, hauls, per-match rates, impact on results, and the captain's record
 function splitsBlock(p){
   const log=[...p.log.values()];if(!log.length)return"";
@@ -1814,7 +1839,8 @@ function splitsBlock(p){
       ${cell("Bowling first",`${wins(bw)} of ${bw.length}`,`won · ${pc(wins(bw),bw.length)}`)}
       ${cell("Tosses won",`${toss.length} of ${mine.length}`,`won ${wins(toss)} of those`)}
     </div>`}
-  return `<h2 class="sec-t">Splits &amp; impact</h2><div class="statgrid">
+  const cl=typeof clutchOf==="function"?clutchOf(p):{n:0};
+  return `<h2 class="sec-t">Splits &amp; impact</h2>${formChart(p)}<div class="statgrid">
     ${cell("Batting first",av(sp.bf),`avg · SR ${srr(sp.bf)} · ${sp.bf.r} runs in ${sp.bf.i} inns`)}
     ${cell("Chasing",av(sp.ch),`avg · SR ${srr(sp.ch)} · ${sp.ch.r} runs in ${sp.ch.i} inns`)}
     ${cell("30+ scores",t30,`${t50} went on to 50 · ${pc(t50,t30)} converted`)}
@@ -1824,6 +1850,7 @@ function splitsBlock(p){
     ${cell("Wickets per match",r1(p.bowl.w/p.matches),`${haul3} three-wicket haul${haul3===1?"":"s"} · ${p.bowl.md} maiden${p.bowl.md===1?"":"s"}`)}
     ${cell("When he scores 30+",pc(w30,m30),`his side won ${w30} of ${m30}`)}
     ${cell("When he takes 2+ wkts",pc(w2w,m2w),`his side won ${w2w} of ${m2w}`)}
+    ${cell("Close matches",cl.n?Math.round(cl.per):"–",cl.n?`pts a match in ${cl.n} close games · won ${cl.won}`:"none played yet")}
     ${cell("Overall win %",pc(log.filter(l=>l.mm.win&&l.mm.win.name===l.team).length,log.length),`in ${log.length} matches`)}
   </div>${cap}`;
 }
