@@ -75,7 +75,7 @@ function digestText(W) {
   const res = [...W.WM].reverse().map(m => `#${m.id}: ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`).join("\n");
   const ms = milestonesIn(W), hot = formData().filter(x => x.trend === "hot").slice(0, 3).map(x => x.p.full_name || x.p.name);
   return [`🏏 BoDevs Cricket · Week of ${weekRange(W)}`, "", res, "",
-    tw.length === 2 ? `This week: ${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}` : "",
+    tw.length === 2 ? `${W === WEEK ? "This" : "That"} week: ${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}` : "",
     `Season: Tigers ${t}–${f} Falcons`, "",
     ...W.podium.map(x => `${x.n === 1 ? "⭐" : x.role === "Impact Player" ? "🥈" : "🥉"} ${x.role}: ${pname(x.id)}${x.id === W.pow.id ? ` (${pw?.title || ""})` : ""}: ${x.r} runs, ${x.w} wkt${x.w === 1 ? "" : "s"}, ${x.c} catch${x.c === 1 ? "" : "es"}, ${x.pts} pts`),
     `💥 Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`,
@@ -107,22 +107,25 @@ async function drawDigest(W) {
   x.fillStyle = CC.ink; for (const l of lines.slice(0, 4)) { fitFont(x, l, 960, 34, 500, MONO); x.fillText(l, 60, y); y += 54; }
   return c;
 }
+let dgTok = 0;
 async function renderDigest() {
   const el = $("#digestBody"); if (!el || !WEEK) return;
-  const txt = digestText(WEEK);
+  const W = selW(), tok = ++dgTok, txt = digestText(W);
+  $("#digest h2").textContent = W === WEEK ? "This week" : `Issue ${W.issue}`;
   el.innerHTML = `<div class="dg-grid"><div class="dg-copy">
       <p class="label">Ready to paste into the team group</p><pre class="dg-text" id="dgText"></pre>
       <div class="pick-actions"><button type="button" class="btn solid" id="dgText2">Copy text</button><a class="btn" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download image</button></div>
       <p class="label" id="dgMsg"></p></div>
-    <img class="card-img dg-img" id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(WEEK))}"></div>`;
+    <img class="card-img dg-img" id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(W))}"></div>`;
   $("#dgText").textContent = txt;
   // draw the image card only once the digest is actually on screen
   await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#dgImg")); });
-  const c = await drawDigest(WEEK); $("#dgImg").src = c.toDataURL("image/png");
+  if (tok !== dgTok) return; // a newer week was picked meanwhile
+  const c = await drawDigest(W); if (tok !== dgTok) return; $("#dgImg").src = c.toDataURL("image/png");
   // reuse shareUI with this section's ids
   const msg = $("#dgMsg");
   $("#dgText2").onclick = () => copyText(txt, msg); $("#dgCopy").onclick = () => copyCanvas(c, msg); $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
-  const dl = $("#dgDl"); const fname = `bodevs-cricket-digest-issue-${WEEK.issue}.png`;
+  const dl = $("#dgDl"); const fname = `bodevs-cricket-digest-issue-${W.issue}.png`;
   if (IS_LOCAL || !window.claude?.use) { dl.hidden = false; dl.onclick = () => downloadCanvas(c, fname); }
   else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false; dl.onclick = async () => { try { await d.save({ filename: fname, data: await new Promise(r => c.toBlob(r, "image/png")) }); msg.textContent = "Saved."; } catch {} }; }).catch(() => {});
 }
@@ -443,16 +446,18 @@ function computeMoves() {
 }
 function renderSince() {
   const el = $("#sinceBody"); if (!el || !WEEK) return;
-  const moves = computeMoves(), items = [];
-  const pw = P.get(WEEK.pow.id), tw = Object.entries(WEEK.tw);
-  items.push(`<a class="sc-item" href="${purl(pw.id)}"><span class="sc-k">MVP</span>${esc(pname(pw.id))} is player of the week</a>`);
-  if (tw.length === 2) items.push(`<a class="sc-item" href="#digest"><span class="sc-k">Results</span>${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short} this week</a>`);
-  milestonesIn(WEEK).slice(0, 3).forEach(m => { const name = m.split(":")[0], id = [...P.values()].find(p => (p.full_name || p.name) === name)?.id;
+  const W = selW(), now = W === WEEK, moves = computeMoves(), items = [];
+  const tw = Object.entries(W.tw);
+  W.mvps.forEach(x => items.push(`<a class="sc-item" href="${purl(x.id)}"><span class="sc-k">${W.joint ? "Joint MVP" : "MVP"}</span>${esc(pname(x.id))} ${now ? "is" : "was"} player of the week</a>`));
+  if (tw.length === 2) items.push(`<a class="sc-item" href="#digest"><span class="sc-k">Results</span>${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short} ${now ? "this week" : "that week"}</a>`);
+  milestonesIn(W).slice(0, 3).forEach(m => { const name = m.split(":")[0], id = [...P.values()].find(p => (p.full_name || p.name) === name)?.id;
     items.push(`<a class="sc-item" href="${id ? purl(id) : "#milestones"}"><span class="sc-k">Milestone</span>${esc(m)}</a>`); });
-  moves.filter(m => m.d !== "new").slice(0, 3).forEach(m => items.push(`<a class="sc-item" href="#tables"><span class="sc-k up">▲ ${m.d}</span>${esc(pname(m.p.id))} to #${m.now} in ${m.label}</a>`));
-  const firstIds = new Set(WEEK.WM.map(m => m.id));
-  P.forEach(p => { if (p.matches && [...p.mids].every(id => firstIds.has(id))) items.push(`<a class="sc-item" href="${purl(p.id)}"><span class="sc-k">Debut</span>${esc(pname(p.id))}</a>`); });
-  el.innerHTML = `<span class="label sc-lab">Since last Monday</span><div class="sc-row">${items.join("")}</div>`;
+  // rank moves are measured against today's rankings, so only for the current week
+  if (now) moves.filter(m => m.d !== "new").slice(0, 3).forEach(m => items.push(`<a class="sc-item" href="#tables"><span class="sc-k up">▲ ${m.d}</span>${esc(pname(m.p.id))} to #${m.now} in ${m.label}</a>`));
+  // debut: the player's first match falls in this week
+  const firstIds = new Set(W.WM.map(m => m.id));
+  P.forEach(p => { const first = [...p.log.values()].sort((a, b) => a.mm.date - b.mm.date || a.mm.id - b.mm.id)[0]; if (first && firstIds.has(first.mm.id)) items.push(`<a class="sc-item" href="${purl(p.id)}"><span class="sc-k">Debut</span>${esc(pname(p.id))}</a>`); });
+  el.innerHTML = `<span class="label sc-lab">${now ? "Since last Monday" : `Issue ${W.issue} · ${esc(weekRange(W))}`}</span><div class="sc-row">${items.join("")}</div>`;
   // rank-change arrows in the rankings lists
   const keys = ["kBat", "kBowl", "kAll"];
   document.querySelectorAll("#rankings .rank-col").forEach((col, ci) => col.querySelectorAll(".rank-list a").forEach(a => {
@@ -473,7 +478,10 @@ function recordsThisWeek(W) {
 }
 function renderWeekAwards() {
   const el = $("#weekAwardsBody"); if (!el || !WEEK) return;
-  const W = WEEK, ids = new Set(W.WM.map(m => m.id)), pod = new Set(W.podium.map(x => x.id));
+  const W = selW(), now = W === WEEK;
+  $("#weekawards .kicker").textContent = now ? "Weekly awards" : `Weekly awards · Issue ${W.issue}`;
+  $("#weekawards h2").textContent = now ? "The week's honours" : `Honours, week of ${weekRange(W)}`;
+  const ids = new Set(W.WM.map(m => m.id)), pod = new Set(W.podium.map(x => x.id));
   const card = (k, p, stat, line) => p ? `<article class="wa-card ${p.tm.key}"><p class="kicker">${k}</p>
     <a class="wa-who" href="${purl(p.id)}">${miniThumb(p)}<b>${esc(pname(p.id))}</b></a><div class="wa-stat">${stat}</div><p class="wa-line">${line}</p></article>` : "";
   // each award goes to a different player, and never to an MVP, who has the cover
@@ -484,22 +492,22 @@ function renderWeekAwards() {
   const bw = pick(W.ranked.filter(e => e.bb > 0 && e.w > 0).sort((a, b) => b.w - a.w || a.rc / a.bb - b.rc / b.bb));
   const ct = pick(W.ranked.filter(e => e.c > 1).sort((a, b) => b.c - a.c || b.pts - a.pts));
   // most improved: this week's points per match against the player's average before this week (3+ earlier matches)
-  const before = id => { const p = P.get(id); if (!p) return null; const l = [...p.log.values()].filter(x => !ids.has(x.mm.id)); return l.length >= 3 ? l.reduce((a, x) => a + impactOf(x), 0) / l.length : null; };
+  const before = id => { const p = P.get(id); if (!p) return null; const l = [...p.log.values()].filter(x => x.mm.date < W.ws); return l.length >= 3 ? l.reduce((a, x) => a + impactOf(x), 0) / l.length : null; };
   const imp = pick(W.ranked.map(e => ({ e, now: e.pts / Math.max(1, e.m.size), was: before(e.id) })).filter(x => x.was !== null && x.now > x.was).sort((a, b) => (b.now - b.was) - (a.now - a.was)));
   // tough week: lowest points per match among regulars (5+ career matches)
   const tw = pick([...W.ranked].filter(e => (P.get(e.id)?.matches || 0) >= 5).sort((a, b) => a.pts / Math.max(1, a.m.size) - b.pts / Math.max(1, b.m.size)));
   const recs = recordsThisWeek(W);
   el.innerHTML = `<div class="wa-grid">
       ${bw ? card("Bowler of the week", P.get(bw.id), `${bw.w}/${bw.rc}`, `in ${ovs(bw.bb)} overs · econ ${r1(bw.rc / bw.bb * 6)}`) : ""}
-      ${ct ? card("Safest hands", P.get(ct.id), `${ct.c} catch${ct.c > 1 ? "es" : ""}`, "Most catches this week.") : ""}
-      ${imp ? card("Most improved", P.get(imp.e.id), `+${Math.round(imp.now - imp.was)} pts`, `${Math.round(imp.now)} points a match this week, up from a ${Math.round(imp.was)} average.`) : ""}
+      ${ct ? card("Safest hands", P.get(ct.id), `${ct.c} catch${ct.c > 1 ? "es" : ""}`, `Most catches ${now ? "this" : "that"} week.`) : ""}
+      ${imp ? card("Most improved", P.get(imp.e.id), `+${Math.round(imp.now - imp.was)} pts`, `${Math.round(imp.now)} points a match ${now ? "this" : "that"} week, up from a ${Math.round(imp.was)} average.`) : ""}
       ${rs ? card("Rising star", P.get(rs.id), `${rs.pts} pts`, `${rs.r} runs · ${rs.w} wkt${rs.w === 1 ? "" : "s"} · ${rs.c} ct, from outside the top 5.`) : ""}
       ${tw ? card("Tough week", P.get(tw.id), `${tw.pts} pts`, "Quiet one. Back stronger on Sunday.") : ""}
     </div>
-    <h3 class="tbl-title" style="margin-top:34px">Records this week</h3>
+    <h3 class="tbl-title" style="margin-top:34px">${now ? "Records this week" : "Records set that week, still in the top 10"}</h3>
     ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
       return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
-      : `<p class="dnb">No record-book entries this week.</p>`}
+      : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
     <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch. The podium on the cover uses the same points.</p>`;
   el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
 }
@@ -538,6 +546,11 @@ function renderNextSunday() {
   </div>`;
   clearInterval(nsTimer); nsTimer = setInterval(() => { const n = $("#nsLeft"); if (n) n.textContent = left(); else clearInterval(nsTimer); }, 60e3);
 }
+
+/* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
+let SELW = null;
+const selW = () => SELW || WEEK;
+window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderDigest(); };
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {

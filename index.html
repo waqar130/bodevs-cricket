@@ -1069,7 +1069,10 @@ function model(){
   }));
   P.forEach(p=>{if(!p.team){const t=Object.entries(p.teams).sort((a,b)=>b[1]-a[1])[0];p.team=t?t[0]:"";p.tm=team(p.team)}
     const B=p.bat,W=p.bowl;B.avg=B.inns-B.no?B.r/(B.inns-B.no):NaN;B.sr=B.b?B.r/B.b*100:0;
-    W.econ=W.b?W.r/W.b*6:NaN;W.avg=W.w?W.r/W.w:NaN;W.sr=W.w?W.b/W.w:NaN;p.matches=p.mids.size;});
+    W.econ=W.b?W.r/W.b*6:NaN;W.avg=W.w?W.r/W.w:NaN;W.sr=W.w?W.b/W.w:NaN;p.matches=p.mids.size;
+    B.dnb=0;W.inns=0;W.dnb=0;p.log.forEach(l=>l.mm.s.scorecards.forEach(sc=>{
+      if(sc.batting_team===l.team&&!sc.batting.some(x=>x.id===p.id))B.dnb++;
+      if(sc.bowling_team===l.team){if(sc.bowling.some(x=>x.id===p.id))W.inns++;else W.dnb++}}));});
 
   // player of the match: runs (+ a bonus for scoring faster than a run a ball) + 25 per wicket + 10 per catch + 15 for the winning side
   M.forEach(mm=>{const t=new Map();const g=(id,name,tm)=>{if(!t.has(id))t.set(id,{id,name,tm,r:0,b:0,no:true,w:0,rc:0,bb:0,c:0,bat:[],bowl:[]});return t.get(id)};
@@ -1284,11 +1287,11 @@ function render(){
 
   // tables
   const bats=all.filter(p=>p.bat.inns).sort((a,b)=>b.bat.r-a.bat.r);
-  $("#batTable").innerHTML=`<thead><tr><th>Player</th><th>M</th><th>Inns</th><th>Runs</th><th>HS</th><th>Avg</th><th>SR</th><th>50</th><th>4s</th><th>6s</th></tr></thead><tbody>${bats.map(p=>{const B=p.bat;
-    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)} ${honours(p,"inline")}</td><td>${p.matches}</td><td>${B.inns}</td><td class="hi">${B.r}</td><td>${B.hs.r}${B.hs.no?"*":""}</td><td>${r1(B.avg)}</td><td>${r1(B.sr)}</td><td>${B.fifty+B.hundred}</td><td>${B.f}</td><td>${B.s}</td></tr>`}).join("")}</tbody>`;
+  $("#batTable").innerHTML=`<thead><tr><th>Player</th><th>M</th><th>Inns</th><th title="Not out">NO</th><th title="Did not bat">DNB</th><th>Runs</th><th>HS</th><th>Avg</th><th>SR</th><th>50</th><th>4s</th><th>6s</th></tr></thead><tbody>${bats.map(p=>{const B=p.bat;
+    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)} ${honours(p,"inline")}</td><td>${p.matches}</td><td>${B.inns}</td><td>${B.no}</td><td>${B.dnb}</td><td class="hi">${B.r}</td><td>${B.hs.r}${B.hs.no?"*":""}</td><td>${r1(B.avg)}</td><td>${r1(B.sr)}</td><td>${B.fifty+B.hundred}</td><td>${B.f}</td><td>${B.s}</td></tr>`}).join("")}</tbody>`;
   const bowls=all.filter(p=>p.bowl.b).sort((a,b)=>b.bowl.w-a.bowl.w||a.bowl.econ-b.bowl.econ);
-  $("#bowlTable").innerHTML=`<thead><tr><th>Player</th><th>Ov</th><th>Wkts</th><th>Runs</th><th>Best</th><th>Econ</th><th>Avg</th><th>Ct</th></tr></thead><tbody>${bowls.map(p=>{const W=p.bowl;
-    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)}</td><td>${ovs(W.b)}</td><td class="hi">${W.w}</td><td>${W.r}</td><td>${W.best.w}/${W.best.r}</td><td>${r1(W.econ)}</td><td>${r1(W.avg)}</td><td>${p.fld.c}</td></tr>`}).join("")}</tbody>`;
+  $("#bowlTable").innerHTML=`<thead><tr><th>Player</th><th>Inns</th><th title="Did not bowl">DNB</th><th>Ov</th><th>Wkts</th><th>Runs</th><th>Best</th><th>Econ</th><th>Avg</th><th>Ct</th></tr></thead><tbody>${bowls.map(p=>{const W=p.bowl;
+    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)}</td><td>${W.inns}</td><td>${W.dnb}</td><td>${ovs(W.b)}</td><td class="hi">${W.w}</td><td>${W.r}</td><td>${W.best.w}/${W.best.r}</td><td>${r1(W.econ)}</td><td>${r1(W.avg)}</td><td>${p.fld.c}</td></tr>`}).join("")}</tbody>`;
 
   const thumb=p=>`<span class="thumb ${p.tm.key}">${p.photo?`<img src="${p.photo}" alt="" loading="lazy">`:`<b>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</b>`}</span>`;
   const rankCol=(title,r,k,sub)=>{const list=[...P.values()].filter(p=>p[k]).sort((a,b)=>a[k]-b[k]),top=list[0]?.[r]||1;
@@ -1460,7 +1463,8 @@ function initMvp(){
     dots.forEach((d,j)=>d.setAttribute("aria-selected",j===i));
     const W=WEEKS[i];$("#mvpPos").textContent=`Issue ${W.issue} · ${i+1} of ${n}`;
     $("#mvpPrev").disabled=i===0;$("#mvpNext").disabled=i===n-1;
-    dots[i]?.scrollIntoView({block:"nearest",inline:"nearest"});};
+    dots[i]?.scrollIntoView({block:"nearest",inline:"nearest"});
+    window.setWeek?.(i);};
   const go=i=>{i=Math.max(0,Math.min(n-1,i));track.scrollTo({left:slides[i].offsetLeft-track.offsetLeft,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});mark(i)};
   $("#mvpPrev").onclick=()=>go(cur-1);$("#mvpNext").onclick=()=>go(cur+1);
   dots.forEach((d,i)=>d.onclick=()=>go(i));
@@ -1500,7 +1504,7 @@ function drawCompare(){
     ["Batting","Innings",p=>p.bat.inns,n,1],["Batting","Runs",p=>p.bat.r,n,1],
     ["Batting","Batting average",p=>q(p.bat.inns-p.bat.no>0,p.bat.avg),d1,1],["Batting","Strike rate",p=>q(p.bat.b>=30,p.bat.sr),d1,1],
     ["Batting","Highest score",p=>p.bat.hs?p.bat.hs.r:0,(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",1],
-    ["Batting","50s + 100s",p=>p.bat.fifty+p.bat.hundred,n,1],["Batting","Sixes",p=>p.bat.s,n,1],["Batting","Fours",p=>p.bat.f,n,1],
+    ["Batting","50s + 100s",p=>p.bat.fifty+p.bat.hundred,n,1],["Batting","Sixes",p=>p.bat.s,n,1],["Batting","Fours",p=>p.bat.f,n,1],["Batting","Not outs",p=>p.bat.no,n,1],
     ["Batting","Boundary %",p=>q(p.bat.r>=50,(p.bat.f*4+p.bat.s*6)/p.bat.r*100),pct,1],
     ["Batting","Dot balls faced",p=>q(p.bat.b>=30,p.bat.dots/p.bat.b*100),pct,0],["Batting","Ducks",p=>p.bat.ducks,n,0],
     ["Bowling","Wickets",p=>p.bowl.w,n,1],["Bowling","Overs bowled",p=>p.bowl.b/6,(v,p)=>ovs(p.bowl.b),1],
@@ -1888,9 +1892,12 @@ function playerPage(id){
     <div><span class="label">Sixes</span><b>${B.s}</b><small>${B.f} fours</small></div>
     <div><span class="label">Boundary %</span><b>${B.r?Math.round((B.f*4+B.s*6)/B.r*100):0}%</b><small>of runs in 4s and 6s</small></div>
     <div><span class="label">Dot balls</span><b>${B.b?Math.round(B.dots/B.b*100):0}%</b><small>${B.dots} dots</small></div>
+    <div><span class="label">Not outs</span><b>${B.no}</b><small>${B.inns?Math.round(B.no/B.inns*100):0}% of innings</small></div>
+    <div><span class="label">Did not bat</span><b>${B.dnb}</b><small>of ${B.inns+B.dnb} team innings</small></div>
   </div>
   <h2 class="sec-t">Bowling &amp; fielding</h2><div class="statgrid">
     <div><span class="label">Wickets</span><b>${W.w}</b><small>${ovs(W.b)} overs</small></div>
+    <div><span class="label">Innings bowled</span><b>${W.inns}</b><small>did not bowl in ${W.dnb} of ${W.inns+W.dnb}</small></div>
     <div><span class="label">Economy</span><b>${r1(W.econ)}</b><small>${W.r} runs conceded</small></div>
     <div><span class="label">Average</span><b>${r1(W.avg)}</b><small>runs per wicket</small></div>
     <div><span class="label">Strike rate</span><b>${r1(W.sr)}</b><small>balls per wicket</small></div>
