@@ -200,13 +200,13 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .cmp-grp .ca{text-align:right}.cmp-grp .cb{text-align:left}
 
 /* strengths & weaknesses, dismissal patterns */
-.sw-grid{display:grid;gap:22px}
-@media(min-width:800px){.sw-grid{grid-template-columns:1fr 1fr}}
-.sw-col ul{list-style:none;margin-top:6px}
-.sw-col li{position:relative;padding:10px 0 10px 26px;border-bottom:1px solid var(--rule);font:400 17px/1.45 var(--f-body)}
-.sw-col li::before{position:absolute;left:0;top:11px;font:700 14px var(--f-data)}
-.sw-col.good li::before{content:"▲";color:#1f8a4c}
-.sw-col.bad li::before{content:"▼";color:var(--red)}
+.sx-grid{display:grid;gap:22px}
+@media(min-width:800px){.sx-grid{grid-template-columns:1fr 1fr}}
+.sx-col ul{list-style:none;margin-top:6px}
+.sx-col li{position:relative;padding:10px 0 10px 26px;border-bottom:1px solid var(--rule);font:400 17px/1.45 var(--f-body)}
+.sx-col li::before{position:absolute;left:0;top:11px;font:700 14px var(--f-data)}
+.sx-col.good li::before{content:"▲";color:#1f8a4c}
+.sx-col.bad li::before{content:"▼";color:var(--red)}
 .pt-grid{display:grid;gap:22px;margin-top:10px}
 @media(min-width:800px){.pt-grid{grid-template-columns:1fr 1fr}}
 .pt-row{display:grid;grid-template-columns:96px minmax(0,1fr) 28px 80px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--rule);font:500 13px var(--f-data)}

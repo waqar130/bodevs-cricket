@@ -1905,8 +1905,8 @@ function patternsBlock(p,ctx){
   const byBt=asBowl.filter(x=>x.outs>0).sort((a,b)=>b.outs-a.outs||a.r-b.r).map(x=>`<tr><td class="nm ${P.get(x.bat).tm.key}"><span class="chip"></span>${plink(x.bat,nm(x.bat))}</td><td class="hi">${x.outs}</td><td>${x.how.caught||0}</td><td>${x.how.bowled||0}</td><td>${other(x)}</td><td>${x.r}/${x.b}</td></tr>`);
   const tb=(rows,cols)=>`<div class="tbl-wrap"><table class="data"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
   return `<h2 class="sec-t">Strengths &amp; weaknesses</h2>
-  <div class="sw-grid"><div class="sw-col good"><h3 class="tbl-title">Strengths</h3><ul>${S.map(x=>`<li>${x}</li>`).join("")}</ul></div>
-    <div class="sw-col bad"><h3 class="tbl-title">Weaknesses</h3><ul>${Wk.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>
+  <div class="sx-grid"><div class="sx-col good"><h3 class="tbl-title">Strengths</h3><ul>${S.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    <div class="sx-col bad"><h3 class="tbl-title">Weaknesses</h3><ul>${Wk.map(x=>`<li>${x}</li>`).join("")}</ul></div></div>
   ${outs?`<h2 class="sec-t">Dismissal patterns</h2><p class="label">From ${outs} dismissals in the ball-by-ball data (run outs left out)</p>
   <div class="pt-grid"><div><h3 class="tbl-title">By balls faced</h3>${bars(bat.st,STARTS,outs,e=>`SR ${r1(srr(e))}`)}</div>
     <div><h3 class="tbl-title">By stage of the innings</h3>${bars(bat.ph,PHASES,outs,e=>`SR ${r1(srr(e))}`)}</div></div>
