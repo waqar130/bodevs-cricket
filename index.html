@@ -1100,6 +1100,22 @@ function model(){
     const dm=t[3].match(/DROPPED BY (.+?),/);if(dm){const fid=up.get(dm[1]);if(fid)fx(bt,fid,"d")}
   })));
 
+  // dropped catches: fielder, bowler and batter for each, and the runs the batter added from that ball on
+  DROPS=[];P.forEach(p=>p.drp={made:0,madeR:0,off:0,offR:0,lives:0,livesR:0,by:new Map(),offBy:new Map(),cost:new Map()});
+  M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
+    const balls=(sc.commentary||[]).filter(c=>c.type==="ball");   // newest first
+    balls.forEach((c,k)=>{const t=String(c.text).match(/^(.+?) TO (.+?), DROPPED BY (.+?),/);if(!t)return;
+      const bw=up.get(t[1]),bt=up.get(t[2]),fl=up.get(t[3]);if(!bt)return;
+      let r=0;for(let j=k;j>=0;j--){const b=balls[j],u=String(b.text).match(/^.+? TO (.+?), /);if(!u||up.get(u[1])!==bt||b.badge.kind==="wide")continue;
+        const mk=String(b.badge.mark);r+=b.badge.kind==="six"?6:b.badge.kind==="four"?4:/^d+$/.test(mk)?+mk:0}
+      DROPS.push({mm,bt,bw,fl,r,over:c.over});
+      const inc=(m,id)=>{if(id)m.set(id,(m.get(id)||0)+1)};
+      const F=P.get(fl),W=P.get(bw),B=P.get(bt);
+      if(F){F.drp.made++;F.drp.madeR+=r;inc(F.drp.cost,bt)}
+      if(W){W.drp.off++;W.drp.offR+=r;inc(W.drp.offBy,fl)}
+      if(B){B.drp.lives++;B.drp.livesR+=r;inc(B.drp.by,fl)}
+    })}));
+
   // every week (Tue-Mon), latest first; WEEK is the current issue
   const weekKeys=[...new Set(M.map(m=>m.week))];               // M is newest first
   WEEKS=weekKeys.map((k,i)=>weekStats(M.filter(m=>m.week===k),weekKeys.length-i));
@@ -1183,7 +1199,7 @@ function render(){
             <div><span class="label">Sixes</span><b>${wr.s}</b></div><div><span class="label">Wkts</span><b>${wr.w}</b></div>
           </div>
           <p class="mvp-week"><span class="label">That week</span> ${Wk.WM.length} match${Wk.WM.length>1?"es":""}${res?` · ${res}`:""} · ${Wk.sixes} sixes · ${Wk.runs} runs${Wk.WM.length?` · <a href="#match-${Wk.WM[0].id}">Scorecards</a>`:""}</p>
-          ${Wk.podium.length>1?`<div class="podium">${Wk.podium.slice(1).map((x,j)=>{const q=P.get(x.id);return q?`<a class="pod-card ${q.tm.key}" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}><span class="pod-n">${j+2}</span>${miniThumb(q)}<span class="pod-txt"><small>${j?"Game Changer":"Impact Player"}</small><b>${esc(pname(q.id))}</b><i>${x.r} runs · ${x.w} wkt${x.w===1?"":"s"} · ${x.c} ct · ${x.pts} pts</i></span></a>`:""}).join("")}</div>`:""}
+          ${Wk.podium.length?`<div class="podium">${Wk.podium.map((x,j)=>{const q=P.get(x.id);return q?`<a class="pod-card ${q.tm.key}${j?"":" first"}" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}><span class="pod-n">${j+1}</span>${miniThumb(q)}<span class="pod-txt"><small>${["MVP","Impact Player","Game Changer"][j]}</small><b>${esc(pname(q.id))}</b><i>${x.r} runs · ${x.w} wkt${x.w===1?"":"s"} · ${x.c} ct · ${x.pts} pts</i></span></a>`:""}).join("")}</div>`:""}
         </div>
       </div>
     </article>`};
@@ -1494,6 +1510,8 @@ function renderShame(){
     {k:"The Duck Club",line:"Out without scoring.",rows:top(ps,p=>p.bat.ducks,p=>p.bat.ducks>0).map(p=>({p,v:p.bat.ducks,u:"ducks"}))},
     {k:"Golden Ducks",line:"Out first ball. The walk back is long.",rows:top([...golden].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"golden ducks"}))},
     {k:"Butterfingers",line:"Most catches put down.",rows:top(ps,p=>p.fld.drop,p=>p.fld.drop>0).map(p=>({p,v:p.fld.drop,u:"drops"}))},
+    {k:"Unlucky bowler",line:"Most catches dropped off his bowling.",rows:top(ps,p=>p.drp.off*1000+p.drp.offR,p=>p.drp.off>0).map(p=>({p,v:p.drp.off,u:`drops · cost him ${p.drp.offR} runs`}))},
+    {k:"Lucky charm",line:"Batters the fielding side drops the most.",rows:top(ps,p=>p.drp.lives*1000+p.drp.livesR,p=>p.drp.lives>0).map(p=>({p,v:p.drp.lives,u:`lives · ${p.drp.livesR} runs after`}))},
     {k:"The Wide King",line:"Wides and no-balls bowled.",rows:top(ps,p=>p.bowl.wd+p.bowl.nb,p=>p.bowl.wd+p.bowl.nb>0).map(p=>({p,v:p.bowl.wd+p.bowl.nb,u:`extras · ${p.bowl.wd} wd, ${p.bowl.nb} nb`}))},
     {k:"Most expensive spell",line:"Runs conceded in one spell.",rows:top(spells,x=>x.r*100-x.w).map(x=>({p:P.get(x.id),v:x.r,u:`runs · ${x.w}/${x.r} in ${x.ov} ov`,mm:x.mm}))},
     {k:"Slowest innings",line:"Lowest strike rate, 10 balls or more.",rows:top(slow,x=>-x.r/x.b).map(x=>({p:P.get(x.id),v:Math.round(x.r/x.b*100),u:`SR · ${x.r}${x.no?"*":""} off ${x.b}`,mm:x.mm}))},
@@ -1507,7 +1525,7 @@ function renderShame(){
 }
 
 /* ---------- record book ---------- */
-let RECS=null;const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi"}};
+let RECS=null,DROPS=[];const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi"}};
 try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv)}catch(e){}
 const runVal=t=>t.kind==="six"?6:t.kind==="four"?4:/^\d+$/.test(String(t.mark))?+t.mark:0;
 function buildRecords(){
@@ -1723,6 +1741,16 @@ async function fillCard(){
 }
 
 const MINB=12; // balls needed before a matchup counts for rate-based notables
+function dropsBlock(p){
+  const d=p.drp;if(!d||!(d.made+d.off+d.lives))return"";
+  const most=m=>{const x=[...m].sort((a,b)=>b[1]-a[1])[0];return x&&P.get(x[0])?x:null};
+  const by=most(d.by),offBy=most(d.offBy),cost=most(d.cost);
+  return`<h2 class="sec-t">Dropped catches</h2><div class="statgrid">
+    <div><span class="label">Dropped by him</span><b>${d.made}</b><small>${d.made?`cost ${d.madeR} runs${cost?` · let off ${plink(cost[0])} most (${cost[1]})`:""}`:"Safe hands so far"}</small></div>
+    <div><span class="label">Off his bowling</span><b>${d.off}</b><small>${d.off?`cost him ${d.offR} runs${offBy?` · most by ${offBy[0]===p.id?"himself":plink(offBy[0])} (${offBy[1]})`:""}`:"Every chance taken"}</small></div>
+    <div><span class="label">Lives as a batter</span><b>${d.lives}</b><small>${d.lives?`${d.livesR} runs after being dropped${by?` · lucky charm: ${plink(by[0])} (${by[1]} drop${by[1]>1?"s":""})`:""}`:"Never given a second chance"}</small></div>
+  </div>`;
+}
 function rivalries(p){
   const id=p.id,asBat=[...H.values()].filter(x=>x.bat===id&&P.has(x.bowl)),asBowl=[...H.values()].filter(x=>x.bowl===id&&P.has(x.bat));
   const fl=[...FX.values()].filter(x=>x.bat===id);
@@ -1830,6 +1858,7 @@ function playerPage(id){
     <div><span class="label">Extras</span><b>${W.wd+W.nb}</b><small>${W.wd} wides · ${W.nb} no-balls</small></div>
     <div><span class="label">Catches</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
   </div>
+  ${dropsBlock(p)}
   ${rivalries(p)}
   ${typeof shareBlockPlayer==="function"?shareBlockPlayer(p):""}
   <h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>

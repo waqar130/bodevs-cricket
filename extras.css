@@ -170,3 +170,5 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .ns-list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);font:400 15px/1.35 var(--f-body)}
 .ns-list .thumb{width:36px;height:36px;flex:none}
 .ns-list small{color:var(--muted);font:400 12px var(--f-data)}
+.pod-card.first{background:var(--paper);border-color:var(--ink);border-left-color:var(--red)}
+.pod-card.first .pod-n{color:var(--red)}
