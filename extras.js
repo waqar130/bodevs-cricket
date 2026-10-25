@@ -383,9 +383,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "players",
+  squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", seasonawards: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
