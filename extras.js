@@ -78,6 +78,8 @@ function digestText(W) {
     tw.length === 2 ? `This week: ${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}` : "",
     `Season: Tigers ${t}–${f} Falcons`, "",
     `⭐ MVP: ${pname(W.pow.id)} (${pw?.title || ""}): ${W.pow.r} runs, ${W.pow.w} wkts, ${W.pow.c} catches`,
+    W.podium[1] ? `🥈 Impact Player: ${pname(W.podium[1].id)}: ${W.podium[1].r} runs, ${W.podium[1].w} wkts` : "",
+    W.podium[2] ? `🥉 Game Changer: ${pname(W.podium[2].id)}: ${W.podium[2].r} runs, ${W.podium[2].w} wkts` : "",
     `💥 Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`,
     `🎯 Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r} (${W.spell.ov} ov)`,
     ms.length ? `🏅 Milestones: ${ms.join(" · ")}` : "",
@@ -100,6 +102,7 @@ async function drawDigest(W) {
     const t = `#${m.id} ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`.toUpperCase(); fitFont(x, t, 960, 54, 800, DISP); x.fillText(t, 60, y); }
   y += 40; x.strokeStyle = CC.rule; x.lineWidth = 2; x.beginPath(); x.moveTo(60, y); x.lineTo(1020, y); x.stroke(); y += 50;
   const lines = [`Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`, `Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r}`];
+  if (W.podium[1]) lines.push(`Impact Player: ${pname(W.podium[1].id)}${W.podium[2] ? ` · Game Changer: ${pname(W.podium[2].id)}` : ""}`);
   const ms = milestonesIn(W); if (ms.length) lines.push(`Milestone: ${ms[0]}`);
   const t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length; lines.push(`Season: Tigers ${t}–${f} Falcons`);
   x.fillStyle = CC.ink; for (const l of lines.slice(0, 4)) { fitFont(x, l, 960, 34, 500, MONO); x.fillText(l, 60, y); y += 54; }
@@ -320,6 +323,7 @@ async function renderPredict() {
       : `<p class="dnb">The table fills in after the first week of predictions is scored on Monday.</p>`}
       <p class="rank-note" style="margin-top:12px">1 point for the right winner of the week, 2 for the right MVP. Scored automatically after the Monday sync.</p></div></div>`;
   if (me) $("#predMe").value = me;
+  renderNextSunday();
   $("#predForm").addEventListener("submit", async e => { e.preventDefault(); const msg = $("#predMsg");
     const body = { player: +$("#predMe").value, winner: (el.querySelector('input[name="pw"]:checked') || {}).value, mvp: +$("#predMvp").value };
     try { localStorage.setItem("bdc-me", body.player); } catch {}
@@ -378,7 +382,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
 const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
-const PAGE_OF = { top: "home", since: "home", digest: "home", picker: "home", predict: "home", matches: "home",
+const PAGE_OF = { top: "home", since: "home", weekawards: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", form: "players", milestones: "players", tables: "players", compare: "players",
   records: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", story: "season", numbers: "season",
@@ -458,9 +462,87 @@ function renderSince() {
     a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`); }));
 }
 
+/* ---------------- weekly awards + records broken ---------------- */
+function recordsThisWeek(W) {
+  if (typeof RECS === "undefined" || !RECS) return [];
+  // one line per category and player; "most runs conceded" is not one to celebrate
+  const ids = new Set(W.WM.map(m => m.id)), out = [], seen = new Set();
+  ["bat", "bowl"].forEach(tab => RECS[tab].forEach(cat => cat.k !== "exp" && cat.rows.forEach((x, i) => {
+    if (ids.has(x.mm.id) && !seen.has(cat.k + x.id)) { seen.add(cat.k + x.id); out.push({ tab, cat, x, i }); }
+  })));
+  return out.sort((a, b) => a.i - b.i);
+}
+function renderWeekAwards() {
+  const el = $("#weekAwardsBody"); if (!el || !WEEK) return;
+  const W = WEEK, ids = new Set(W.WM.map(m => m.id)), pod = new Set(W.podium.map(x => x.id));
+  const card = (k, p, stat, line) => p ? `<article class="wa-card ${p.tm.key}"><p class="kicker">${k}</p>
+    <a class="wa-who" href="${purl(p.id)}">${miniThumb(p)}<b>${esc(pname(p.id))}</b></a><div class="wa-stat">${stat}</div><p class="wa-line">${line}</p></article>` : "";
+  // each award goes to a different player, and never to the MVP, who has the cover
+  const used = new Set([W.pow.id]), pick = (list, ok = () => true) => { const x = list.find(e => !used.has(e.id ?? e.e.id) && ok(e)); if (x) used.add(x.id ?? x.e.id); return x; };
+  // rising star: best week (60+ points) from someone outside the all-rounder top 5
+  const rs = pick(W.ranked, e => (!P.get(e.id)?.kAll || P.get(e.id).kAll > 5) && e.pts >= 60);
+  // bowler of the week: most wickets, then the cheapest economy
+  const bw = pick(W.ranked.filter(e => e.bb > 0 && e.w > 0).sort((a, b) => b.w - a.w || a.rc / a.bb - b.rc / b.bb));
+  const ct = pick(W.ranked.filter(e => e.c > 1).sort((a, b) => b.c - a.c || b.pts - a.pts));
+  // most improved: this week's points per match against the player's average before this week (3+ earlier matches)
+  const before = id => { const p = P.get(id); if (!p) return null; const l = [...p.log.values()].filter(x => !ids.has(x.mm.id)); return l.length >= 3 ? l.reduce((a, x) => a + impactOf(x), 0) / l.length : null; };
+  const imp = pick(W.ranked.map(e => ({ e, now: e.pts / Math.max(1, e.m.size), was: before(e.id) })).filter(x => x.was !== null && x.now > x.was).sort((a, b) => (b.now - b.was) - (a.now - a.was)));
+  // tough week: lowest points per match among regulars (5+ career matches)
+  const tw = pick([...W.ranked].filter(e => (P.get(e.id)?.matches || 0) >= 5).sort((a, b) => a.pts / Math.max(1, a.m.size) - b.pts / Math.max(1, b.m.size)));
+  const recs = recordsThisWeek(W);
+  el.innerHTML = `<div class="wa-grid">
+      ${bw ? card("Bowler of the week", P.get(bw.id), `${bw.w}/${bw.rc}`, `in ${ovs(bw.bb)} overs · econ ${r1(bw.rc / bw.bb * 6)}`) : ""}
+      ${ct ? card("Safest hands", P.get(ct.id), `${ct.c} catch${ct.c > 1 ? "es" : ""}`, "Most catches this week.") : ""}
+      ${imp ? card("Most improved", P.get(imp.e.id), `+${Math.round(imp.now - imp.was)} pts`, `${Math.round(imp.now)} points a match this week, up from a ${Math.round(imp.was)} average.`) : ""}
+      ${rs ? card("Rising star", P.get(rs.id), `${rs.pts} pts`, `${rs.r} runs · ${rs.w} wkt${rs.w === 1 ? "" : "s"} · ${rs.c} ct, from outside the top 5.`) : ""}
+      ${tw ? card("Tough week", P.get(tw.id), `${tw.pts} pts`, "Quiet one. Back stronger on Sunday.") : ""}
+    </div>
+    <h3 class="tbl-title" style="margin-top:34px">Records this week</h3>
+    ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
+      return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
+      : `<p class="dnb">No record-book entries this week.</p>`}
+    <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch. The podium on the cover uses the same points.</p>`;
+  el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
+}
+
+/* ---------------- next Sunday ---------------- */
+function nextMilestones() {
+  const next = [];
+  P.forEach(p => { if (!p.matches) return; const tot = { r: p.bat.r, w: p.bowl.w, s: p.bat.s, c: p.fld.c };
+    MS.filter(m => m.k !== "m").forEach(m => { const st = m.steps.find(x => x > tot[m.k]); if (st && st - tot[m.k] <= m.near) next.push({ p, m, st, gap: st - tot[m.k], ratio: (st - tot[m.k]) / m.near }); }); });
+  return next.sort((a, b) => a.ratio - b.ratio);
+}
+function nextDeadline() {
+  if (PRED?.open?.deadline) return new Date(PRED.open.deadline);
+  const now = new Date(), pk = new Date(now.getTime() + 5 * 3600e3), sun = new Date(Date.UTC(pk.getUTCFullYear(), pk.getUTCMonth(), pk.getUTCDate() + ((7 - pk.getUTCDay()) % 7), 22));
+  if (sun <= pk) sun.setUTCDate(sun.getUTCDate() + 7); return new Date(sun.getTime() - 5 * 3600e3);
+}
+let nsTimer = null;
+function renderNextSunday() {
+  const el = $("#nextSundayBody"); if (!el || !WEEK) return;
+  const dl = nextDeadline(), left = () => { const ms = dl - Date.now(); if (ms <= 0) return "Closed for this week"; const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4); return `${d ? d + "d " : ""}${h}h ${m}m`; };
+  const entries = PRED ? Object.keys(PRED.weeks[PRED.open.week] || {}).length : null;
+  // last week's prediction winner
+  let lastWin = "";
+  if (PRED) { const wk = isoDay(WEEK.ws), e = PRED.weeks[wk];
+    if (e && Object.values(e).some(v => v.winner)) { const tw = Object.entries(WEEK.tw).map(([n, v]) => ({ k: team(n).key, w: v.w })), tt = tw.find(x => x.k === "t")?.w || 0, ff = tw.find(x => x.k === "f")?.w || 0, actual = tt > ff ? "t" : ff > tt ? "f" : "draw";
+      const sc = Object.entries(e).filter(([, v]) => v.winner).map(([pid, v]) => ({ pid: +pid, pts: (v.winner === actual ? 1 : 0) + (+v.mvp === WEEK.pow.id ? 2 : 0) })).sort((a, b) => b.pts - a.pts);
+      lastWin = sc[0] && sc[0].pts ? `${sc.filter(x => x.pts === sc[0].pts).map(x => esc(pname(x.pid))).join(", ")} scored ${sc[0].pts} point${sc[0].pts > 1 ? "s" : ""}` : "Nobody scored a point"; }
+    else lastWin = "Nobody predicted last week"; }
+  const ms = nextMilestones().slice(0, 4), hot = formData().filter(x => x.trend === "hot").slice(0, 3);
+  el.innerHTML = `<div class="ns-grid">
+    <div class="ns-card ns-pred"><p class="kicker">Prediction game</p><div class="ns-big" id="nsLeft">${left()}</div><p class="ns-line">until picks close, Sunday 10 PM</p>
+      <p class="ns-line">${entries === null ? "" : `<b>${entries}</b> prediction${entries === 1 ? "" : "s"} so far.`} ${lastWin ? `Last week: ${lastWin}.` : ""}</p>
+      <a class="btn solid" href="#predict">Make your prediction</a></div>
+    <div class="ns-card"><p class="kicker">Milestone watch</p>${ms.length ? `<ul class="ns-list">${ms.map(x => `<li>${miniThumb(x.p)}<span>${plink(x.p.id)} needs <b>${x.gap.toLocaleString()}</b> more for ${x.st.toLocaleString()} ${x.m.name}</span></li>`).join("")}</ul>` : `<p class="dnb">Nobody is close to a milestone this week.</p>`}</div>
+    <div class="ns-card"><p class="kicker">In form, watch out for</p>${hot.length ? `<ul class="ns-list">${hot.map(x => `<li>${miniThumb(x.p)}<span>${plink(x.p.id)} <b>form ${Math.round(x.form)}</b> <small>(season avg ${Math.round(x.avg)})</small></span></li>`).join("")}</ul>` : `<p class="dnb">Nobody is on a hot streak.</p>`}<a class="btn small" href="#picker" style="margin-top:12px">Pick the sides</a></div>
+  </div>`;
+  clearInterval(nsTimer); nsTimer = setInterval(() => { const n = $("#nsLeft"); if (n) n.textContent = left(); else clearInterval(nsTimer); }, 60e3);
+}
+
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderStory(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderPredict(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded

@@ -129,3 +129,44 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 /* rank movement in the rankings lists */
 .mv{display:inline-block;font:700 10px var(--f-data);padding:2px 5px;margin-right:6px;vertical-align:2px}
 .mv.up{color:#1f8a4c}.mv.down{color:var(--red)}.mv.new{color:var(--falcon)}
+
+/* MVP podium on the cover slides: #2 Impact Player, #3 Game Changer */
+.podium{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:18px}
+.pod-card{display:flex;align-items:center;gap:10px;min-width:0;text-decoration:none;background:var(--paper-2);border:1px solid var(--rule);border-left:4px solid var(--team,var(--ink));padding:8px 10px;color:var(--ink)}
+.pod-card.t{--team:var(--tiger)}.pod-card.f{--team:var(--falcon)}
+.pod-card:hover{border-color:var(--ink);border-left-color:var(--team,var(--ink))}
+.pod-n{font:900 30px/1 var(--f-display);color:var(--team,var(--ink));flex:none}
+.pod-card .thumb{width:40px;height:40px;flex:none}
+.pod-txt{display:flex;flex-direction:column;min-width:0}
+.pod-txt small{font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
+.pod-txt b{font:800 18px/1.1 var(--f-display);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pod-txt i{font:400 12px var(--f-data);font-style:normal;color:var(--muted)}
+
+/* weekly awards */
+.wa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+.wa-card{border-top:4px solid var(--team,var(--ink));padding-top:10px;min-width:0}
+.wa-card.t{--team:var(--tiger)}.wa-card.f{--team:var(--falcon)}
+.wa-who{display:flex;align-items:center;gap:10px;text-decoration:none;margin-top:6px}
+.wa-who .thumb{width:48px;height:48px;flex:none}
+.wa-who b{font:800 20px/1.1 var(--f-display);text-transform:uppercase}
+.wa-stat{font:900 38px/1 var(--f-display);margin-top:10px;color:var(--team,var(--ink))}
+.wa-line{font:400 14px/1.45 var(--f-body);color:var(--muted);margin-top:4px}
+.rb-list{list-style:none;margin-top:8px}
+.rb-list li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.rb-list a{text-decoration:none;font:500 16px var(--f-body);min-width:0}
+.rb-list small{font:400 12px var(--f-data);color:var(--muted)}
+.rb-tag{font:700 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--paper);padding:3px 7px;flex:none}
+.rb-tag.top{background:var(--red)}
+
+/* next Sunday */
+.ns-grid{display:grid;gap:22px}
+@media(min-width:900px){.ns-grid{grid-template-columns:1.1fr 1fr 1fr}}
+.ns-card{border-top:3px solid var(--ink);padding-top:10px;min-width:0}
+.ns-pred{background:var(--paper-2);padding:14px 16px;border-top-color:var(--red)}
+.ns-big{font:900 clamp(40px,5vw,56px)/1 var(--f-display);text-transform:uppercase;margin-top:6px}
+.ns-line{font:400 14px/1.5 var(--f-body);margin:6px 0}
+.ns-pred .btn{margin-top:8px}
+.ns-list{list-style:none;margin-top:6px}
+.ns-list li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule);font:400 15px/1.35 var(--f-body)}
+.ns-list .thumb{width:36px;height:36px;flex:none}
+.ns-list small{color:var(--muted);font:400 12px var(--f-data)}
