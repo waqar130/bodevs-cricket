@@ -77,9 +77,7 @@ function digestText(W) {
   return [`🏏 BoDevs Cricket · Week of ${weekRange(W)}`, "", res, "",
     tw.length === 2 ? `This week: ${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}` : "",
     `Season: Tigers ${t}–${f} Falcons`, "",
-    `⭐ MVP: ${pname(W.pow.id)} (${pw?.title || ""}): ${W.pow.r} runs, ${W.pow.w} wkts, ${W.pow.c} catches`,
-    W.podium[1] ? `🥈 Impact Player: ${pname(W.podium[1].id)}: ${W.podium[1].r} runs, ${W.podium[1].w} wkts` : "",
-    W.podium[2] ? `🥉 Game Changer: ${pname(W.podium[2].id)}: ${W.podium[2].r} runs, ${W.podium[2].w} wkts` : "",
+    ...W.podium.map(x => `${x.n === 1 ? "⭐" : x.role === "Impact Player" ? "🥈" : "🥉"} ${x.role}: ${pname(x.id)}${x.id === W.pow.id ? ` (${pw?.title || ""})` : ""}: ${x.r} runs, ${x.w} wkt${x.w === 1 ? "" : "s"}, ${x.c} catch${x.c === 1 ? "" : "es"}, ${x.pts} pts`),
     `💥 Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`,
     `🎯 Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r} (${W.spell.ov} ov)`,
     ms.length ? `🏅 Milestones: ${ms.join(" · ")}` : "",
@@ -91,7 +89,7 @@ async function drawDigest(W) {
   let y = 230; x.fillStyle = CC.red; x.font = `600 26px ${MONO}`; x.fillText(`WEEK OF ${weekRange(W).toUpperCase()}`, 60, y);
   const p = P.get(W.pow.id); y += 30;
   await drawPhoto(x, p, 60, y, 300);
-  const tx = 400, tw = 620; x.fillStyle = CC.red; x.font = `600 26px ${MONO}`; x.fillText("MVP OF THE WEEK", tx, y + 34);
+  const tx = 400, tw = 620; x.fillStyle = CC.red; x.font = `600 26px ${MONO}`; x.fillText(W.joint ? "JOINT MVP OF THE WEEK" : "MVP OF THE WEEK", tx, y + 34);
   x.fillStyle = CC.ink; const nm = (p?.full_name || p?.name || "").toUpperCase(); fitFont(x, nm, tw, 92, 900, DISP); x.fillText(nm, tx, y + 124);
   if (p?.title) { x.fillStyle = CC.red; fitFont(x, p.title.toUpperCase(), tw, 26, 600, MONO); x.fillText(p.title.toUpperCase(), tx, y + 166); }
   const st = [["RUNS", W.pow.r], ["WKTS", W.pow.w], ["SIXES", W.pow.s], ["CT", W.pow.c]];
@@ -102,7 +100,8 @@ async function drawDigest(W) {
     const t = `#${m.id} ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`.toUpperCase(); fitFont(x, t, 960, 54, 800, DISP); x.fillText(t, 60, y); }
   y += 40; x.strokeStyle = CC.rule; x.lineWidth = 2; x.beginPath(); x.moveTo(60, y); x.lineTo(1020, y); x.stroke(); y += 50;
   const lines = [`Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`, `Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r}`];
-  if (W.podium[1]) lines.push(`Impact Player: ${pname(W.podium[1].id)}${W.podium[2] ? ` · Game Changer: ${pname(W.podium[2].id)}` : ""}`);
+  if (W.joint) lines.push(`Joint MVP with ${W.mvps.slice(1).map(x => pname(x.id)).join(" and ")}`);
+  const rest = W.podium.filter(x => x.n > 1); if (rest.length) lines.push(rest.map(x => `${x.role}: ${pname(x.id)}`).join(" · "));
   const ms = milestonesIn(W); if (ms.length) lines.push(`Milestone: ${ms[0]}`);
   const t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length; lines.push(`Season: Tigers ${t}–${f} Falcons`);
   x.fillStyle = CC.ink; for (const l of lines.slice(0, 4)) { fitFont(x, l, 960, 34, 500, MONO); x.fillText(l, 60, y); y += 54; }
@@ -168,7 +167,7 @@ function renderStory() {
   const maxR = Math.max(...weeks.map(w => w.runs)), maxS = Math.max(...weeks.map(w => w.sixes));
   $("#storyWeeks").innerHTML = `<div class="sw-row"><span class="label sw-lab">Runs</span>${weeks.map(w => `<div class="sw-col" title="Issue ${w.issue}: ${w.runs} runs"><span class="sw-v">${w.runs === maxR ? w.runs : ""}</span><i style="height:${Math.round(w.runs / maxR * 100)}%"></i></div>`).join("")}</div>
     <div class="sw-row"><span class="label sw-lab">Sixes</span>${weeks.map(w => `<div class="sw-col six" title="Issue ${w.issue}: ${w.sixes} sixes"><span class="sw-v">${w.sixes === maxS ? w.sixes : ""}</span><i style="height:${Math.round(w.sixes / maxS * 100)}%"></i></div>`).join("")}</div>
-    <div class="sw-row mvps"><span class="label sw-lab">MVP</span>${weeks.map(w => { const p = P.get(w.pow.id); return `<a class="sw-mvp" href="${purl(p.id)}" title="Issue ${w.issue} MVP: ${esc(pname(p.id))}">${miniThumb(p)}<small>W${w.issue}</small><b>${esc(short(p.id))}</b></a>`; }).join("")}</div>`;
+    <div class="sw-row mvps"><span class="label sw-lab">MVP</span>${weeks.map(w => { const p = P.get(w.pow.id); return `<a class="sw-mvp" href="${purl(p.id)}" title="Issue ${w.issue} ${w.joint ? "joint MVPs" : "MVP"}: ${w.mvps.map(x => esc(pname(x.id))).join(" & ")}">${miniThumb(p)}<small>W${w.issue}</small><b>${esc(short(p.id))}</b></a>`; }).join("")}</div>`;
 }
 
 /* ---------------- 3. Partnerships ---------------- */
@@ -305,7 +304,7 @@ async function renderPredict() {
   const pts = new Map(); const add = (id, k, v) => { const e = pts.get(id) || { id, weeks: 0, win: 0, mvp: 0, pts: 0 }; e[k] += v; pts.set(id, e); };
   Object.entries(PRED.weeks).forEach(([wk, entries]) => { const W = WEEKS.find(w => isoDay(w.ws) === wk); if (!W) return;
     const tw = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, w: v.w })), tt = tw.find(x => x.k === "t")?.w || 0, ff = tw.find(x => x.k === "f")?.w || 0, actual = tt > ff ? "t" : ff > tt ? "f" : "draw";
-    Object.entries(entries).forEach(([pid, v]) => { if (!v.winner) return; add(+pid, "weeks", 1); if (v.winner === actual) { add(+pid, "win", 1); add(+pid, "pts", 1); } if (+v.mvp === W.pow.id) { add(+pid, "mvp", 1); add(+pid, "pts", 2); } }); });
+    Object.entries(entries).forEach(([pid, v]) => { if (!v.winner) return; add(+pid, "weeks", 1); if (v.winner === actual) { add(+pid, "win", 1); add(+pid, "pts", 1); } if (W.isMvp(+v.mvp)) { add(+pid, "mvp", 1); add(+pid, "pts", 2); } }); });
   const board = [...pts.values()].sort((a, b) => b.pts - a.pts || b.mvp - a.mvp);
   el.innerHTML = `<div class="pick-grid">
     <form class="pred-form" id="predForm">
@@ -477,8 +476,8 @@ function renderWeekAwards() {
   const W = WEEK, ids = new Set(W.WM.map(m => m.id)), pod = new Set(W.podium.map(x => x.id));
   const card = (k, p, stat, line) => p ? `<article class="wa-card ${p.tm.key}"><p class="kicker">${k}</p>
     <a class="wa-who" href="${purl(p.id)}">${miniThumb(p)}<b>${esc(pname(p.id))}</b></a><div class="wa-stat">${stat}</div><p class="wa-line">${line}</p></article>` : "";
-  // each award goes to a different player, and never to the MVP, who has the cover
-  const used = new Set([W.pow.id]), pick = (list, ok = () => true) => { const x = list.find(e => !used.has(e.id ?? e.e.id) && ok(e)); if (x) used.add(x.id ?? x.e.id); return x; };
+  // each award goes to a different player, and never to an MVP, who has the cover
+  const used = new Set(W.mvps.map(x => x.id)), pick = (list, ok = () => true) => { const x = list.find(e => !used.has(e.id ?? e.e.id) && ok(e)); if (x) used.add(x.id ?? x.e.id); return x; };
   // rising star: best week (60+ points) from someone outside the all-rounder top 5
   const rs = pick(W.ranked, e => (!P.get(e.id)?.kAll || P.get(e.id).kAll > 5) && e.pts >= 60);
   // bowler of the week: most wickets, then the cheapest economy
@@ -526,7 +525,7 @@ function renderNextSunday() {
   let lastWin = "";
   if (PRED) { const wk = isoDay(WEEK.ws), e = PRED.weeks[wk];
     if (e && Object.values(e).some(v => v.winner)) { const tw = Object.entries(WEEK.tw).map(([n, v]) => ({ k: team(n).key, w: v.w })), tt = tw.find(x => x.k === "t")?.w || 0, ff = tw.find(x => x.k === "f")?.w || 0, actual = tt > ff ? "t" : ff > tt ? "f" : "draw";
-      const sc = Object.entries(e).filter(([, v]) => v.winner).map(([pid, v]) => ({ pid: +pid, pts: (v.winner === actual ? 1 : 0) + (+v.mvp === WEEK.pow.id ? 2 : 0) })).sort((a, b) => b.pts - a.pts);
+      const sc = Object.entries(e).filter(([, v]) => v.winner).map(([pid, v]) => ({ pid: +pid, pts: (v.winner === actual ? 1 : 0) + (WEEK.isMvp(+v.mvp) ? 2 : 0) })).sort((a, b) => b.pts - a.pts);
       lastWin = sc[0] && sc[0].pts ? `${sc.filter(x => x.pts === sc[0].pts).map(x => esc(pname(x.pid))).join(", ")} scored ${sc[0].pts} point${sc[0].pts > 1 ? "s" : ""}` : "Nobody scored a point"; }
     else lastWin = "Nobody predicted last week"; }
   const ms = nextMilestones().slice(0, 4), hot = formData().filter(x => x.trend === "hot").slice(0, 3);

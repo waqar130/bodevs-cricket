@@ -13,7 +13,7 @@ Live at **https://cricket.waqarahmed.net**
 
 ## Pages and data files
 
-- The cover shows the weekly podium: MVP, Impact Player (#2) and Game Changer (#3) on weekly points (runs + 20 per wicket + 10 per catch). Below it, the weekly awards (bowler, safest hands, most improved, rising star, tough week), records set that week, and a Next Sunday card with the prediction countdown, milestone watch and form players.
+- The cover shows the weekly podium: MVP (joint MVPs when the top points tie), Impact Player (#2) and Game Changer (#3) on weekly points (runs + 20 per wicket + 10 per catch). Below it, the weekly awards (bowler, safest hands, most improved, rising star, tough week), records set that week, and a Next Sunday card with the prediction countdown, milestone watch and form players.
 - The site has five pages, switched by the tabs under the masthead: **This week** (`#home`), **Players**, **Stats**, **Season** and **Club**. Old section links such as `#records` open the right page. Player and match pages are `#<player-slug>` and `#match-<id>`; `/p/<slug>` and `/m/<id>` give WhatsApp link previews.
 - `data/fixtures.json` lists matches against outside teams and `assets/gallery/gallery.json` lists match-night photos (`{week: "YYYY-MM-DD" of the Tuesday, src, caption}`). Both sections stay hidden while empty.
 - Predictions are saved in `STORAGE_DIR` (default `storage/`; on Railway a volume is mounted at `/app/storage`).

@@ -1010,8 +1010,11 @@ function weekStats(WM,issue){
   });
   // MVP points: runs + 20 per wicket + 10 per catch. #1 MVP, #2 Impact Player, #3 Game Changer.
   const pts=e=>e.r+20*e.w+10*e.c;
-  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e)})).sort((a,b)=>b.pts-a.pts),pow=ranked[0],podium=ranked.slice(0,3);
-  return{WM,ws,we,pow,podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
+  // a tie on top makes joint MVPs; the next two places are still Impact Player and Game Changer
+  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e)})).sort((a,b)=>b.pts-a.pts||b.r-a.r),pow=ranked[0];
+  const mvps=ranked.filter(e=>e.pts===pow.pts),joint=mvps.length>1,rest=ranked.slice(mvps.length);
+  const podium=[...mvps.map(e=>({...e,role:joint?"Joint MVP":"MVP",n:1})),...rest.slice(0,2).map((e,j)=>({...e,role:j?"Game Changer":"Impact Player",n:mvps.length+j+1}))];
+  return{WM,ws,we,pow,mvps,joint,isMvp:id=>mvps.some(e=>e.id===id),podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
@@ -1122,7 +1125,7 @@ function model(){
   WEEK=WEEKS[0];
   // honours: MVP = player of the week, MOM = man of the match
   P.forEach(p=>{p.mvpN=0;p.pomN=0;p.impN=0;p.gcN=0});
-  WEEKS.forEach(w=>{const p=P.get(w.pow.id);if(p)p.mvpN++;const a=w.podium[1]&&P.get(w.podium[1].id),b=w.podium[2]&&P.get(w.podium[2].id);if(a)a.impN++;if(b)b.gcN++});
+  WEEKS.forEach(w=>w.podium.forEach(x=>{const p=P.get(x.id);if(!p)return;if(x.n===1)p.mvpN++;else if(x.role==="Impact Player")p.impN++;else p.gcN++}));
   M.forEach(m=>{const p=m.pom&&P.get(m.pom.id);if(p)p.pomN++});
 }
 
@@ -1187,19 +1190,19 @@ function render(){
     return `<article class="mvp-slide" id="mvp-${Wk.issue}" aria-roledescription="slide" aria-label="Issue ${Wk.issue}, week of ${weekRange(Wk)}" ${i?'aria-hidden="true"':""}>
       <div class="cover-grid">
         <a class="cover-art" href="${purl(p.id)}" aria-label="${esc(pname(p.id))} profile" ${i?'tabindex="-1"':""}>
-          <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">${i?"MVP":"Player of the week"} · Issue ${Wk.issue}</span></div>
+          <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">${Wk.joint?"Joint MVP":i?"MVP":"Player of the week"} · Issue ${Wk.issue}</span></div>
           <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt="">
         </a>
         <div class="mvp-copy">
           <p class="kicker">${i?"Back issue":"Cover story"} · Week of ${weekRange(Wk)}</p>
           <h1 class="hd cover-head">${head}</h1>
-          <p class="cover-dek"><b>${esc(pname(p.id))}</b>, ${esc(p.title)}, made ${wr.r} runs off ${wr.b} balls${wr.w?`, took ${wr.w} wicket${wr.w>1?"s":""}`:""}${wr.c?` and held ${wr.c} catch${wr.c>1?"es":""}`:""}. ${Wk.knock.id===p.id?`The best of it was ${Wk.knock.r}${Wk.knock.no?"*":""} off ${Wk.knock.b}.`:""}</p>
+          <p class="cover-dek"><b>${esc(pname(p.id))}</b>, ${esc(p.title)}, made ${wr.r} runs off ${wr.b} balls${wr.w?`, took ${wr.w} wicket${wr.w>1?"s":""}`:""}${wr.c?` and held ${wr.c} catch${wr.c>1?"es":""}`:""}. ${Wk.knock.id===p.id?`The best of it was ${Wk.knock.r}${Wk.knock.no?"*":""} off ${Wk.knock.b}.`:""}${Wk.joint?` Shares the MVP with ${Wk.mvps.slice(1).map(x=>`<b>${esc(pname(x.id))}</b>`).join(" and ")}, ${wr.pts} points each.`:""}</p>
           <div class="cover-stats">
             <div><span class="label">Runs</span><b>${wr.r}</b></div><div><span class="label">SR</span><b>${r1(wr.b?wr.r/wr.b*100:0)}</b></div>
             <div><span class="label">Sixes</span><b>${wr.s}</b></div><div><span class="label">Wkts</span><b>${wr.w}</b></div>
           </div>
           <p class="mvp-week"><span class="label">That week</span> ${Wk.WM.length} match${Wk.WM.length>1?"es":""}${res?` · ${res}`:""} · ${Wk.sixes} sixes · ${Wk.runs} runs${Wk.WM.length?` · <a href="#match-${Wk.WM[0].id}">Scorecards</a>`:""}</p>
-          ${Wk.podium.length?`<div class="podium">${Wk.podium.map((x,j)=>{const q=P.get(x.id);return q?`<a class="pod-card ${q.tm.key}${j?"":" first"}" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}><span class="pod-n">${j+1}</span>${miniThumb(q)}<span class="pod-txt"><small>${["MVP","Impact Player","Game Changer"][j]}</small><b>${esc(pname(q.id))}</b><i>${x.r} runs · ${x.w} wkt${x.w===1?"":"s"} · ${x.c} ct · ${x.pts} pts</i></span></a>`:""}).join("")}</div>`:""}
+          ${Wk.podium.length?`<div class="podium">${Wk.podium.map((x,j)=>{const q=P.get(x.id);return q?`<a class="pod-card ${q.tm.key}${x.n===1?" first":""}" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}><span class="pod-n">${x.n}</span>${miniThumb(q)}<span class="pod-txt"><small>${x.role}</small><b>${esc(pname(q.id))}</b><i>${x.r} runs · ${x.w} wkt${x.w===1?"":"s"} · ${x.c} ct · ${x.pts} pts</i></span></a>`:""}).join("")}</div>`:""}
         </div>
       </div>
     </article>`};
@@ -1207,7 +1210,7 @@ function render(){
       <div class="mvp-bar"><span class="kicker">MVP of the week</span><span class="label" id="mvpPos"></span>
         <div class="mvp-nav"><button type="button" class="mvp-btn" id="mvpPrev" aria-label="Newer week">← Newer</button><button type="button" class="mvp-btn" id="mvpNext" aria-label="Older week">Older →</button></div></div>
       <div class="mvp-track" id="mvpTrack" tabindex="0">${WEEKS.map(slide).join("")}</div>
-      <div class="mvp-dots" role="tablist" aria-label="Choose a week">${WEEKS.map((Wk,i)=>`<button type="button" role="tab" data-i="${i}" aria-selected="${!i}" aria-label="Issue ${Wk.issue}: ${esc(pname(Wk.pow.id))}"><span>${Wk.issue}</span><i>${esc(short(Wk.pow.id))}</i></button>`).join("")}</div>
+      <div class="mvp-dots" role="tablist" aria-label="Choose a week">${WEEKS.map((Wk,i)=>`<button type="button" role="tab" data-i="${i}" aria-selected="${!i}" aria-label="Issue ${Wk.issue}: ${Wk.mvps.map(x=>esc(pname(x.id))).join(" & ")}"><span>${Wk.issue}</span><i>${Wk.mvps.map(x=>esc(short(x.id))).join(" & ")}</i></button>`).join("")}</div>
     </div>
     <div class="coverlines cl-row">
       <a class="coverline" href="#rivalry"><div><span class="kicker">The rivalry</span><div class="cl-h">${lead[0]} lead ${lead[1]}–${lead[3]}</div></div><span class="cl-n">${M.length}</span><span class="cl-p">matches played since ${fmtD(M[M.length-1].date,{day:"numeric",month:"short"})}</span></a>
