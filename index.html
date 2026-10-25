@@ -616,7 +616,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
         <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
-        <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
+        <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#seasonbook">Season in detail</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
         <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
@@ -689,6 +689,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p>Eight awards, one holder each, and the chasing pack behind them. MVP and Man of the Match count weekly and match awards; the rest are season totals.</p>
       </div>
       <div id="seasonAwardsBody"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="seasonbook">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">The season in detail</p><h2 class="hd">Season book</h2></div>
+        <p>The turning points of the rivalry, every month and format at a glance, the race for player of the season, and the season's superlatives.</p>
+      </div>
+      <div id="seasonBookBody"></div>
     </div>
   </section>
 
@@ -1055,7 +1065,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -2031,6 +2041,7 @@ const PTABS=[["overview","Overview"],["batting","Batting"],["bowling","Bowling &
 function playerTabs(p,h,tab){
   const parts=h.split(/<!--pane:(\w+)-->/),panes={};
   for(let i=1;i<parts.length;i+=2)panes[parts[i]]=(panes[parts[i]]||"")+parts[i+1];
+  const ex=typeof playerExtras==="function"?playerExtras(p):{};Object.entries(ex).forEach(([k,v])=>panes[k]=(k==="overview"||k==="matches"?v+(panes[k]||""):(panes[k]||"")+v));
   const tabs=PTABS.filter(([k])=>panes[k]&&panes[k].trim()),cur=tabs.some(([k])=>k===tab)?tab:"overview";
   return parts[0]+`<span class="pp-anchor"></span><nav class="pp-tabs" role="tablist" aria-label="${esc(pname(p.id))}">${tabs.map(([k,l])=>`<a role="tab" href="${purl(p.id)}/${k}" data-pp="${k}" aria-selected="${k===cur}">${l}</a>`).join("")}</nav>
     ${tabs.map(([k])=>`<div class="pp-pane" id="pp-${k}" role="tabpanel"${k===cur?"":" hidden"}>${panes[k]}</div>`).join("")}`;

@@ -387,7 +387,7 @@ const PAGES = [["home", "This week"], ["players", "Players"], ["compare", "Compa
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
-  rivalry: "season", seasonawards: "season", story: "season", numbers: "season",
+  rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
 function tagPages() {
@@ -797,7 +797,7 @@ function renderWeekNumbers() {
       ${card("Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
       ${card("Rivalry swing", `<p class="wn-big">${b0.t}–${b0.f} <span class="wn-arrow">→</span> ${b1.t}–${b1.f}<small>Tigers–Falcons, before and after the week</small></p>
         <p class="wn-line">${wk.t + wk.f ? `The week went ${wk.t > wk.f ? `Tigers ${wk.t}–${wk.f}` : wk.f > wk.t ? `Falcons ${wk.f}–${wk.t}` : `${wk.t}–${wk.f}, honours even`}` : "No results that week"}${rd.length ? `, with a run difference of ${rd.map(x => `${x.d > 0 ? "+" : ""}${x.d} for the ${x.k === "t" ? "Tigers" : "Falcons"}`).find((_, i) => rd[i].d > 0) || "level"}` : ""}.</p>`)}
-    </div>`;
+    </div>${weekMore(W, now)}`;
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
 }
 
@@ -822,6 +822,183 @@ function renderSeasonAwards() {
   <p class="rank-note" style="margin-top:12px">Re-counted after every Monday sync. Each player's page shows the awards he holds in his trophy cabinet.</p>`;
 }
 
+/* ---------------- shared helpers for the season book, weekly extras and player extras ---------------- */
+const mPts = l => l.bat.reduce((a, x) => a + x.r, 0) + 20 * l.bowl.reduce((a, x) => a + x.w, 0) + 10 * l.c;   // match points, as the MVP race counts them
+const dShort = d => fmtD(d, { day: "numeric", month: "short" });
+const matchLink = mm => `<a href="#match-${mm.id}">#${mm.id} · ${dShort(mm.date)}</a>`;
+// order each batter came in, by his first ball faced in the commentary
+function battingOrder(sc) {
+  if (sc._order) return sc._order;
+  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id])), seen = [];
+  (sc.commentary || []).filter(c => c.type === "ball").reverse().forEach(c => { const t = String(c.text).match(/^.+? TO (.+?), /); const id = t && up.get(t[1]); if (id && !seen.includes(id)) seen.push(id); });
+  sc.batting.forEach(x => { if (!seen.includes(x.id)) seen.push(x.id); });
+  return sc._order = seen;
+}
+
+/* ---------------- season book: turning points, months, formats, MVP race, superlatives ---------------- */
+function renderSeasonBook() {
+  const el = $("#seasonBookBody"); if (!el || !M?.length) return;
+  const ms = chrono(), K = { t: "Tigers", f: "Falcons" };
+  // 1. turning points
+  const tp = []; let t = 0, f = 0, leader = null, run = { k: null, n: 0, from: null }, best = { t: { n: 0 }, f: { n: 0 } };
+  ms.forEach(m => { if (!m.win) return; const k = m.win.key; k === "t" ? t++ : f++;
+    const now = t > f ? "t" : f > t ? "f" : null;
+    if (now && now !== leader) tp.push({ m, txt: leader ? `${K[now]} take the lead, ${Math.max(t, f)}–${Math.min(t, f)}` : `${K[now]} go ahead, ${Math.max(t, f)}–${Math.min(t, f)}` });
+    if (!now && leader) tp.push({ m, txt: `All square at ${t}–${f}` });
+    leader = now || leader && null;
+    if (run.k === k) run.n++; else run = { k, n: 1, from: m }; if (run.n > best[k].n) best[k] = { n: run.n, from: run.from, to: m }; });
+  ["t", "f"].forEach(k => { const b = best[k]; if (b.n >= 2) tp.push({ m: b.to, txt: `${K[k]} complete their longest run: ${b.n} wins in a row, from ${matchLink(b.from)}` }); });
+  const big = (u) => [...ms].filter(m => m.win && new RegExp(`by \\d+ ${u}`).test(m.m.result || "")).sort((a, b) => +(b.m.result.match(/by (\d+)/)[1]) - +(a.m.result.match(/by (\d+)/)[1]))[0];
+  [big("run"), big("wicket")].forEach(m => m && tp.push({ m, txt: `Biggest win: ${m.win.short} by ${esc(m.margin)}` }));
+  tp.sort((a, b) => a.m.date - b.m.date || a.m.id - b.m.id);
+  // 2. month by month
+  const months = new Map(); ms.forEach(m => { const k = m.date.getFullYear() + "-" + String(m.date.getMonth() + 1).padStart(2, "0"); if (!months.has(k)) months.set(k, []); months.get(k).push(m); });
+  const monthRows = [...months].map(([k, list]) => { const ids = new Set(list.map(m => m.id)), tot = new Map();
+    list.forEach(m => (m.perf || []).forEach(e => { const x = tot.get(e.id) || { id: e.id, r: 0, w: 0 }; x.r += e.r; x.w += e.w; tot.set(e.id, x); }));
+    const tr = [...tot.values()].sort((a, b) => b.r - a.r)[0], tw = [...tot.values()].sort((a, b) => b.w - a.w)[0];
+    const six = list.reduce((a, m) => a + m.s.scorecards.reduce((x, sc) => x + sc.batting.reduce((y, b) => y + b.sixes, 0), 0), 0);
+    const mvps = new Map(); WEEKS.filter(w => w.WM.some(m => ids.has(m.id))).forEach(w => w.mvps.forEach(x => mvps.set(x.id, (mvps.get(x.id) || 0) + 1)));
+    const topMvp = [...mvps].sort((a, b) => b[1] - a[1])[0];
+    return `<tr><td class="nm">${fmtD(list[0].date, { month: "long" })}</td><td>${list.length}</td><td>${list.filter(m => m.win?.key === "t").length}–${list.filter(m => m.win?.key === "f").length}</td>
+      <td>${tr ? `${plink(tr.id, short(tr.id))} ${tr.r}` : "–"}</td><td>${tw && tw.w ? `${plink(tw.id, short(tw.id))} ${tw.w}` : "–"}</td><td>${topMvp ? `${plink(topMvp[0], short(topMvp[0]))} ${topMvp[1]}` : "–"}</td><td>${six}</td></tr>`; });
+  // 3. format by format
+  const fmts = [...new Set(ms.map(m => m.fmt))].map(fm => { const list = ms.filter(m => m.fmt === fm), inns = list.flatMap(m => m.s.scorecards.map(sc => ({ m, sc })));
+    const runs = inns.reduce((a, x) => a + x.sc.runs, 0), balls_ = inns.reduce((a, x) => a + balls(x.sc.overs), 0);
+    const bi = inns.flatMap(x => x.sc.batting.map(b => ({ m: x.m, b }))).sort((a, b) => b.b.runs - a.b.runs || a.b.balls - b.b.balls)[0];
+    const bs = inns.flatMap(x => x.sc.bowling.map(b => ({ m: x.m, b }))).sort((a, b) => b.b.wickets - a.b.wickets || a.b.runs - b.b.runs)[0];
+    const fi = inns.filter(x => x.sc.innings_no === 1);
+    return `<tr><td class="nm">${esc(fm)}</td><td>${list.length}</td><td>${list.filter(m => m.win?.key === "t").length}–${list.filter(m => m.win?.key === "f").length}</td><td>${fi.length ? Math.round(fi.reduce((a, x) => a + x.sc.runs, 0) / fi.length) : "–"}</td><td>${r1(runs / balls_ * 6)}</td>
+      <td>${bi ? `${plink(bi.b.id, short(bi.b.id))} ${bi.b.runs}${bi.b.out ? "" : "*"} (${bi.b.balls})` : "–"}</td><td>${bs ? `${plink(bs.b.id, short(bs.b.id))} ${bs.b.wickets}/${bs.b.runs}` : "–"}</td></tr>`; });
+  // 4. MVP points race, week by week (top 5 by total)
+  const wk = [...WEEKS].reverse(), acc = new Map(), series = new Map();
+  wk.forEach((w, i) => { w.ranked.forEach(e => acc.set(e.id, (acc.get(e.id) || 0) + e.pts)); acc.forEach((v, id) => { if (!series.has(id)) series.set(id, Array(wk.length).fill(0)); series.get(id)[i] = v; });
+    series.forEach((arr, id) => { if (!acc.has(id)) return; arr[i] = acc.get(id); }); });
+  series.forEach(arr => { for (let i = 1; i < arr.length; i++) if (!arr[i]) arr[i] = arr[i - 1]; });
+  const top5 = [...series].sort((a, b) => b[1].at(-1) - a[1].at(-1)).slice(0, 5), mx = Math.max(1, ...top5.map(x => x[1].at(-1)));
+  const CW = 900, CH = 280, L = 44, R = 130, T = 16, B = 34, xs = i => L + (wk.length > 1 ? i / (wk.length - 1) : 0) * (CW - L - R), ys = v => T + (CH - T - B) * (1 - v / mx);
+  const pal = ["var(--red)", "var(--ink)", "var(--falcon)", "var(--tiger)", "#1f8a4c"];
+  const race = `<svg class="ch" viewBox="0 0 ${CW} ${CH}" role="img" aria-label="Cumulative MVP points, top five">
+    ${[0, .25, .5, .75, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${CW - R}" y1="${ys(mx * g)}" y2="${ys(mx * g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(mx * g) + 4}" text-anchor="end">${Math.round(mx * g)}</text>`).join("")}
+    ${wk.map((w, i) => `<text class="ch-ax" x="${xs(i)}" y="${CH - 10}" text-anchor="middle">${w.issue}</text>`).join("")}
+    ${top5.map(([id, arr], j) => `<polyline fill="none" stroke="${pal[j]}" stroke-width="3" points="${arr.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ")}"/><text class="ch-end" x="${CW - R + 8}" y="${ys(arr.at(-1)) + 5}" fill="${pal[j]}">${esc(short(id))} ${arr.at(-1)}</text>`).join("")}
+  </svg><p class="rank-note">Weekly MVP points (runs + 20 per wicket + 10 per catch or run out + 20 per win he played a part in), added up issue by issue.</p>`;
+  // 5. superlatives
+  const ps = [...P.values()].filter(p => p.matches);
+  const cv = p => { const s = [...p.log.values()].flatMap(l => l.bat.map(b => b.r)); if (s.length < 10) return null; const mean = s.reduce((a, b) => a + b, 0) / s.length; if (mean < 15) return null;
+    const sd = Math.sqrt(s.reduce((a, b) => a + (b - mean) ** 2, 0) / s.length); return { p, v: sd / mean, mean, n: s.length }; };
+  const steady = ps.map(cv).filter(Boolean).sort((a, b) => a.v - b.v)[0];
+  const imp = ps.filter(p => p.matches >= 8).map(p => { const l = [...p.log.values()], h = Math.floor(l.length / 2), a = l.slice(0, h), b = l.slice(h);
+    return { p, a: a.reduce((s, x) => s + mPts(x), 0) / a.length, b: b.reduce((s, x) => s + mPts(x), 0) / b.length }; }).sort((x, y) => (y.b - y.a) - (x.b - x.a))[0];
+  const deb = ps.map(p => { const l = [...p.log.values()][0]; return l && { p, l, v: mPts(l) }; }).filter(Boolean).sort((a, b) => b.v - a.v)[0];
+  const hot = formData().sort((a, b) => b.form - a.form)[0];
+  const sup = [
+    steady && ["Most consistent batter", steady.p, `${Math.round(steady.mean)} a knock, the steadiest spread of scores over ${steady.n} innings`],
+    imp && imp.b > imp.a && ["Most improved", imp.p, `${Math.round(imp.a)} → ${Math.round(imp.b)} points a match, first half of his matches to the second`],
+    deb && ["Best debut", deb.p, `${deb.v} points in his first match, ${matchLink(deb.l.mm)}`],
+    hot && ["Hottest form now", hot.p, `form ${Math.round(hot.form)} over his last five matches, against a season ${Math.round(hot.avg)}`],
+  ].filter(Boolean);
+  el.innerHTML = `
+    <h3 class="xr-h">Turning points</h3>
+    <ol class="tp-list">${tp.map(x => `<li><span class="tp-d">${dShort(x.m.date)}</span><span>${x.txt}</span><a href="#match-${x.m.id}">#${x.m.id}</a></li>`).join("")}</ol>
+    <h3 class="xr-h">Month by month</h3>
+    <div class="tbl-wrap"><table class="data"><thead><tr><th>Month</th><th>M</th><th>Tigers–Falcons</th><th>Top scorer</th><th>Top wickets</th><th>Weekly MVPs</th><th>6s</th></tr></thead><tbody>${monthRows.join("")}</tbody></table></div>
+    <h3 class="xr-h">Format by format</h3>
+    <div class="tbl-wrap"><table class="data"><thead><tr><th>Format</th><th>M</th><th>Tigers–Falcons</th><th>Avg 1st inns</th><th>Run rate</th><th>Best innings</th><th>Best spell</th></tr></thead><tbody>${fmts.join("")}</tbody></table></div>
+    <h3 class="xr-h">Player of the season race</h3>${race}
+    <h3 class="xr-h">Season superlatives</h3>
+    <div class="ur-grid">${sup.map(([k, p, line]) => `<article class="ur-card ${p.tm.key}"><p class="kicker">${k}</p><a class="ur-who" href="${purl(p.id)}">${miniThumb(p)}<b>${esc(pname(p.id))}</b></a><p class="ur-line">${line}.</p></article>`).join("")}</div>`;
+}
+
+/* ---------------- weekly extras: movers, milestones, recaps, week v last week ---------------- */
+function weekMore(W, now) {
+  const idx = WEEKS.indexOf(W), prev = WEEKS[idx + 1], ids = new Set(W.WM.map(m => m.id)), X = buildXR().raw;
+  // rankings movers (measured against today's rankings, so for the current week)
+  let movers = "";
+  if (now) { computeMoves(); const L = { kBat: "Batting", kBowl: "Bowling", kAll: "All-rounder" }, list = [];
+    MOVES.forEach((d, key) => { const [id, k] = key.split("|"); if (typeof d === "number" && d !== 0) list.push({ id: +id, k, d, now: P.get(+id)?.[k] }); });
+    const up = list.filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 5), down = list.filter(x => x.d < 0).sort((a, b) => a.d - b.d).slice(0, 5);
+    const row = x => `<li><span class="mv ${x.d > 0 ? "up" : "down"}">${x.d > 0 ? "▲" : "▼"} ${Math.abs(x.d)}</span>${plink(x.id)} <small>${L[x.k]} #${x.now}</small></li>`;
+    movers = `<div class="xr-card"><h3 class="tbl-title">Rankings movers</h3><div class="mvr"><ul>${up.map(row).join("") || "<li class=\"dnb\">No climbers.</li>"}</ul><ul>${down.map(row).join("") || "<li class=\"dnb\">No fallers.</li>"}</ul></div></div>`; }
+  // milestones as cards
+  const ms = milestonesIn(W).map(s => { const [name, what] = s.split(": "); const p = [...P.values()].find(q => (q.full_name || q.name) === name); return p && { p, what }; }).filter(Boolean);
+  const msHtml = `<div class="xr-card"><h3 class="tbl-title">Milestones reached</h3>${ms.length ? `<div class="ms-cards">${ms.map(x => `<a class="ms-card ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}<span><b>${esc(x.what)}</b><small>${esc(pname(x.p.id))}</small></span></a>`).join("")}</div>` : `<p class="dnb">None ${now ? "this" : "that"} week.</p>`}</div>`;
+  // match recaps
+  const recap = mm => { const perf = mm.perf || [], bat = [...perf].sort((a, b) => b.r - a.r)[0], bowl = [...perf].filter(e => e.w).sort((a, b) => b.w - a.w || a.rc - b.rc)[0];
+    const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0];
+    return `<li><a class="rc-h" href="#match-${mm.id}">#${mm.id} · ${esc(mm.fmt)}</a><p>${mm.win ? `<b>${esc(mm.win.short)}</b> won by ${esc(mm.margin)}.` : esc(mm.m.status_label)} ${bat ? `${esc(short(bat.id))} top-scored with ${bat.r}${bat.b ? ` off ${bat.b}` : ""}` : ""}${bowl ? `; ${esc(short(bowl.id))} took ${bowl.w}/${bowl.rc}.` : "."}</p>
+      ${ob && ob.r >= 20 ? `<p class="rc-t">Turning point: ${esc(short(ob.id))} took ${ob.r} off over ${ob.ov}${ob.bw ? ` from ${esc(short(ob.bw))}` : ""}.</p>` : ""}</li>`; };
+  const recaps = `<div class="xr-card"><h3 class="tbl-title">Match recaps</h3><ul class="rc-list">${[...W.WM].reverse().map(recap).join("")}</ul></div>`;
+  // week v last week
+  const stat = Wk => { const i = new Set(Wk.WM.map(m => m.id)); return { runs: Wk.runs, sixes: Wk.sixes, wkts: Wk.wkts, extras: Wk.extras, drops: DROPS.filter(d => i.has(d.mm.id)).length, m: Wk.WM.length,
+    avg: Math.round(Wk.WM.flatMap(m => m.s.scorecards).reduce((a, sc) => a + sc.runs, 0) / Math.max(1, Wk.WM.flatMap(m => m.s.scorecards).length)) }; };
+  let vs = "";
+  if (prev) { const a = stat(W), b = stat(prev), rows = [["Matches", "m"], ["Runs", "runs"], ["Average innings", "avg"], ["Sixes", "sixes"], ["Wickets", "wkts"], ["Extras", "extras"], ["Drops", "drops"]];
+    vs = `<div class="xr-card"><h3 class="tbl-title">${now ? "This week" : `Issue ${W.issue}`} v issue ${prev.issue}</h3><ul class="wvw">${rows.map(([l, k]) => { const d = a[k] - b[k];
+      return `<li><span>${l}</span><b>${a[k]}</b><small class="${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "▲" : d < 0 ? "▼" : "="} ${Math.abs(d) || ""}</small><i>${b[k]}</i></li>`; }).join("")}</ul></div>`; }
+  return `<h3 class="xr-h">More from the week</h3><div class="xr-grid">${movers}${msHtml}${recaps}${vs}</div>`;
+}
+
+/* ---------------- player extras: timeline, best and worst, partners, position, teammates, achievements ---------------- */
+function playerExtras(p) {
+  if (!p.matches) return {};
+  const log = [...p.log.values()], X = buildXR().raw, out = {};
+  // achievements: first time he did each thing
+  const firsts = [];
+  const first = (label, test, detail) => { for (const l of log) { const r = test(l); if (r) { firsts.push({ label, mm: l.mm, detail: detail ? detail(l, r) : "" }); return; } } };
+  first("First 30", l => l.bat.find(b => b.r >= 30), (l, b) => `${b.r} off ${b.b}`);
+  first("First 50", l => l.bat.find(b => b.r >= 50), (l, b) => `${b.r} off ${b.b}`);
+  first("First 100", l => l.bat.find(b => b.r >= 100), (l, b) => `${b.r} off ${b.b}`);
+  first("5+ sixes in an innings", l => l.bat.find(b => b.s >= 5), (l, b) => `${b.s} sixes`);
+  first("Unbeaten 30+", l => l.bat.find(b => b.r >= 30 && b.no), (l, b) => `${b.r}*`);
+  first("3-wicket haul", l => l.bowl.find(b => b.w >= 3), (l, b) => `${b.w}/${b.r}`);
+  first("3 catches in a match", l => l.c >= 3 && l.c, (l, c) => `${c} catches`);
+  const six6 = X.overBat.filter(x => x.id === p.id && x.s >= 5).sort((a, b) => a.mm.date - b.mm.date)[0]; if (six6) firsts.push({ label: six6.s >= 6 ? "Six sixes in an over" : "5 sixes in an over", mm: six6.mm, detail: `${six6.r} off the over` });
+  const wm = X.overBowl.filter(x => x.id === p.id && x.r === 0 && x.w > 0).sort((a, b) => a.mm.date - b.mm.date)[0]; if (wm) firsts.push({ label: "Wicket maiden", mm: wm.mm, detail: `${wm.w}/0` });
+  const fm = WEEKS.slice().reverse().find(w => w.isMvp(p.id)); if (fm) firsts.push({ label: "First weekly MVP", mm: fm.WM[0], detail: `Issue ${fm.issue}` });
+  const fp = log.find(l => (l.mm.poms || []).some(x => x.id === p.id)); if (fp) firsts.push({ label: "First Man of the Match", mm: fp.mm, detail: "" });
+  firsts.sort((a, b) => a.mm.date - b.mm.date);
+  const ach = `<h2 class="sec-t">Achievements</h2>${firsts.length ? `<div class="ach-grid">${firsts.map(x => `<div class="ach"><span class="ach-i">★</span><b>${x.label}</b><small>${x.detail ? esc(x.detail) + " · " : ""}${matchLink(x.mm)}</small></div>`).join("")}</div>` : `<p class="dnb">The first badge is one good game away.</p>`}`;
+  // career timeline by issue
+  const wk = [...WEEKS].reverse().map(w => { const ls = log.filter(l => w.WM.some(m => m.id === l.mm.id)); return { w, r: ls.reduce((a, l) => a + l.bat.reduce((s, b) => s + b.r, 0), 0), wk: ls.reduce((a, l) => a + l.bowl.reduce((s, b) => s + b.w, 0), 0), n: ls.length }; });
+  const mxr = Math.max(30, ...wk.map(x => x.r)), mxw = Math.max(3, ...wk.map(x => x.wk)), CW = 640, CH = 170, bw = (CW - 40) / wk.length;
+  const ms = []; [...WEEKS].reverse().forEach(w => milestonesIn(w).forEach(s => { const [name, what] = s.split(": "); if (name === (p.full_name || p.name)) ms.push({ w, what }); }));
+  const tl = `<h2 class="sec-t">Career timeline</h2><div class="fc-wrap"><svg class="fc" viewBox="0 0 ${CW} ${CH}" role="img" aria-label="Runs and wickets each issue">
+    ${wk.map((x, i) => { const cx = 20 + i * bw + bw / 2, h = x.r / mxr * 90, hw = x.wk / mxw * 40;
+      return `<g><title>Issue ${x.w.issue}: ${x.n ? `${x.r} runs, ${x.wk} wickets` : "did not play"}</title>
+      <rect x="${(cx - bw * 0.32).toFixed(1)}" y="${(110 - h).toFixed(1)}" width="${(bw * 0.3).toFixed(1)}" height="${h.toFixed(1)}" class="fc-bar ${p.tm.key}"/>
+      <rect x="${(cx + 0.02 * bw).toFixed(1)}" y="${(110 - hw).toFixed(1)}" width="${(bw * 0.3).toFixed(1)}" height="${hw.toFixed(1)}" class="fc-w"/>
+      <text x="${cx.toFixed(1)}" y="128" class="fc-m">${x.w.issue}</text>${x.n ? "" : `<text x="${cx.toFixed(1)}" y="104" class="fc-m">–</text>`}</g>`; }).join("")}
+    <line x1="20" x2="${CW - 20}" y1="110" y2="110" class="fc-base"/></svg>
+    <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w" style="border-radius:0"></i>Wickets</span><span>by issue</span></p></div>
+    ${ms.length ? `<ul class="tl-ms">${ms.map(x => `<li><b>${esc(x.what)}</b> <span>Issue ${x.w.issue}</span></li>`).join("")}</ul>` : ""}`;
+  out.overview = ach + tl;
+  // best and worst
+  const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));
+  const topI = [...inns].sort((a, b) => b.b.r - a.b.r || a.b.b - b.b.b).slice(0, 5), topS = [...spells].filter(x => x.b.w).sort((a, b) => b.b.w - a.b.w || a.b.r - b.b.r).slice(0, 5);
+  const worst = [...log].filter(l => l.bat.length || l.bowl.length).sort((a, b) => mPts(a) - mPts(b) || b.bowl.reduce((s, x) => s + x.r, 0) - a.bowl.reduce((s, x) => s + x.r, 0)).slice(0, 3);
+  const lst = (rows) => `<ol class="xr-list">${rows.join("")}</ol>`, li2 = (i, big, small) => `<li><span class="xr-n">${i + 1}</span><b class="xr-big" style="text-align:left">${big}</b><span></span><small class="xr-d">${small}</small></li>`;
+  out.matches = `<h2 class="sec-t">Best &amp; worst</h2><div class="xr-grid">
+    <div class="xr-card"><h3 class="tbl-title">Top innings</h3>${lst(topI.map((x, i) => li2(i, `${x.b.r}${x.b.no ? "*" : ""} <small>(${x.b.b})</small>`, `${x.b.s} sixes · ${matchLink(x.l.mm)}`)))}</div>
+    <div class="xr-card"><h3 class="tbl-title">Top spells</h3>${topS.length ? lst(topS.map((x, i) => li2(i, `${x.b.w}/${x.b.r}`, `${ovs(x.b.b)} overs · ${matchLink(x.l.mm)}`))) : `<p class="dnb">No wickets yet.</p>`}</div>
+    <div class="xr-card"><h3 class="tbl-title">Quietest games</h3>${lst(worst.map((l, i) => li2(i, `${mPts(l)} pts`, `${l.bat.map(b => `${b.r}${b.no ? "*" : ""}`).join(" & ") || "dnb"} · ${l.bowl.map(b => `${b.w}/${b.r}`).join(" & ") || "dnb"} · ${matchLink(l.mm)}`)))}</div></div>`;
+  // partnership partners
+  const st = buildPartnerships().filter(s => s.ids.length > 1 && s.ids.includes(p.id)), pm = new Map();
+  st.forEach(s => s.ids.filter(id => id !== p.id).forEach(o => { const e = pm.get(o) || { o, n: 0, r: 0, b: 0, best: 0 }; e.n++; e.r += s.runs; e.b += s.balls; e.best = Math.max(e.best, s.runs); pm.set(o, e); }));
+  const partners = [...pm.values()].sort((a, b) => b.r - a.r);
+  // batting position
+  const pos = new Map(); log.forEach(l => l.mm.s.scorecards.forEach(sc => { if (sc.batting_team !== l.team) return; const i = battingOrder(sc).indexOf(p.id); const b = sc.batting.find(x => x.id === p.id); if (i < 0 || !b) return;
+    const e = pos.get(i + 1) || { n: 0, r: 0, b: 0, o: 0 }; e.n++; e.r += b.runs; e.b += b.balls; if (b.out) e.o++; pos.set(i + 1, e); }));
+  out.batting = `<h2 class="sec-t">Batting partners</h2>${partners.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>With</th><th>Stands</th><th>Runs</th><th>Avg stand</th><th>Run rate</th><th>Best</th></tr></thead><tbody>${partners.map(e => `<tr><td class="nm ${P.get(e.o)?.tm.key || ""}"><span class="chip"></span>${plink(e.o)}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${r1(e.r / e.n)}</td><td>${e.b ? r1(e.r / e.b * 6) : "–"}</td><td>${e.best}</td></tr>`).join("")}</tbody></table></div>` : `<p class="dnb">No partnerships yet.</p>`}
+    <h2 class="sec-t">By batting position</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Position</th><th>Inns</th><th>Runs</th><th>Avg</th><th>SR</th></tr></thead><tbody>${[...pos].sort((a, b) => a[0] - b[0]).map(([k, e]) => `<tr><td class="nm">${k === 1 || k === 2 ? `Opener (${k})` : `No. ${k}`}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${e.o ? r1(e.r / e.o) : "–"}</td><td>${e.b ? r1(e.r / e.b * 100) : "–"}</td></tr>`).join("")}</tbody></table></div>
+    <p class="rank-note" style="margin-top:8px">Position is the order he faced his first ball in each innings.</p>`;
+  // teammates: win rate with each player on his side
+  const tm = new Map(); log.forEach(l => { const won = !!(l.mm.win && l.mm.win.name === l.team); P.forEach(q => { if (q.id === p.id) return; const ql = q.log.get(l.mm.id); if (!ql || ql.team !== l.team) return;
+    const e = tm.get(q.id) || { n: 0, w: 0 }; e.n++; if (won) e.w++; tm.set(q.id, e); }); });
+  const mates = [...tm].filter(([, e]) => e.n >= 3).sort((a, b) => b[1].w / b[1].n - a[1].w / a[1].n || b[1].n - a[1].n);
+  out.splits = `<h2 class="sec-t">Best combinations</h2>${mates.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>Alongside</th><th>Matches</th><th>Won</th><th>Win %</th></tr></thead><tbody>${mates.map(([id, e]) => `<tr><td class="nm ${P.get(id)?.tm.key || ""}"><span class="chip"></span>${plink(id)}</td><td>${e.n}</td><td>${e.w}</td><td class="hi">${Math.round(e.w / e.n * 100)}%</td></tr>`).join("")}</tbody></table></div><p class="rank-note" style="margin-top:8px">Matches on the same side, three or more together.</p>` : `<p class="dnb">Not enough matches together yet.</p>`}`;
+  return out;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
@@ -829,7 +1006,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderSeasonBook(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded
