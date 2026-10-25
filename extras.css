@@ -282,3 +282,12 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .wn-big small{display:block;font:500 11px var(--f-data);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:6px}
 .wn-arrow{color:var(--red)}
 .wn-line{font:400 15px/1.5 var(--f-body);margin-top:10px}
+
+/* player sub-pages */
+.pp-anchor{display:block;height:0;margin-top:26px}
+.pp-tabs{position:sticky;top:56px;z-index:5;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--paper);border-bottom:3px solid var(--ink);margin:0 0 8px}
+.pp-tabs::-webkit-scrollbar{display:none}
+.pp-tabs a{flex:none;font:800 clamp(15px,1.8vw,19px)/1 var(--f-display);text-transform:uppercase;text-decoration:none;color:var(--muted);padding:12px 16px 10px 0;margin-right:16px;border-bottom:4px solid transparent;margin-bottom:-3px}
+.pp-tabs a:hover{color:var(--ink)}
+.pp-tabs a[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red)}
+.pp-pane>.sec-t:first-child{margin-top:18px}

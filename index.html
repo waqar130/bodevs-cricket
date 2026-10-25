@@ -1856,7 +1856,7 @@ function splitsBlock(p){
       ${cell("Tosses won",`${toss.length} of ${mine.length}`,`won ${wins(toss)} of those`)}
     </div>`}
   const cl=typeof clutchOf==="function"?clutchOf(p):{n:0};
-  return `<h2 class="sec-t">Splits &amp; impact</h2>${formChart(p)}<div class="statgrid">
+  return `<h2 class="sec-t">Splits &amp; impact</h2><div class="statgrid">
     ${cell("Batting first",av(sp.bf),`avg · SR ${srr(sp.bf)} · ${sp.bf.r} runs in ${sp.bf.i} inns`)}
     ${cell("Chasing",av(sp.ch),`avg · SR ${srr(sp.ch)} · ${sp.ch.r} runs in ${sp.ch.i} inns`)}
     ${cell("30+ scores",t30,`${t50} went on to 50 · ${pc(t50,t30)} converted`)}
@@ -1985,9 +1985,9 @@ function rivalries(p){
   const tbl=(rows,cols)=>rows.length?`<div class="tbl-wrap"><table class="data"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`:`<p class="dnb">No balls in this matchup yet.</p>`;
   const batRows=asBat.sort((a,b)=>b.b-a.b).map(x=>`<tr><td class="nm ${P.get(x.bowl).tm.key}"><span class="chip"></span>${plink(x.bowl,nm(x.bowl))}</td><td>${x.b}</td><td class="hi">${x.r}</td><td>${r1(sr(x))}</td><td>${x.f}</td><td>${x.s}</td><td>${Math.round(dp(x))}%</td><td>${x.outs}</td><td>${x.outs?r1(x.r/x.outs):"–"}</td></tr>`);
   const bowlRows=asBowl.sort((a,b)=>b.b-a.b).map(x=>`<tr><td class="nm ${P.get(x.bat).tm.key}"><span class="chip"></span>${plink(x.bat,nm(x.bat))}</td><td>${x.b}</td><td>${x.r}</td><td>${r1(ec(x))}</td><td class="hi">${x.outs}</td><td>${x.s}</td><td>${Math.round(dp(x))}%</td><td>${x.wd}/${x.nb}</td></tr>`);
-  return `${patternsBlock(p,{asBat,asBowl,sr,ec,nm})}
+  return `<!--pane:scouting-->${patternsBlock(p,{asBat,asBowl,sr,ec,nm})}
   <div class="scout">${outN?`<div class="outbar">${Object.entries(outs).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span style="flex:${v}" class="ob-${k}"><b>${outLabel[k]||k}</b> ${v}</span>`).join("")}</div>`:""}</div>
-  <h2 class="sec-t">Rivalries</h2>
+  <!--pane:rivalries--><h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
       ${row("Nemesis",nem?.bowl,nem&&`Out ${nem.outs}×`,nem&&line(nem))}
@@ -2016,9 +2016,26 @@ function rivalries(p){
   </div>
   <p class="rank-note" style="margin-top:12px">Rate-based rivalries need at least ${MINB} balls in the matchup. Built from the ball-by-ball commentary.</p>`;
 }
+// player sub-pages: the header stays, each block group gets its own tab and link (#slug/batting)
+const PTABS=[["overview","Overview"],["batting","Batting"],["bowling","Bowling & fielding"],["splits","Splits & impact"],["scouting","Strengths & patterns"],["rivalries","Rivalries"],["matches","Matches"]];
+function playerTabs(p,h,tab){
+  const parts=h.split(/<!--pane:(\w+)-->/),panes={};
+  for(let i=1;i<parts.length;i+=2)panes[parts[i]]=(panes[parts[i]]||"")+parts[i+1];
+  const tabs=PTABS.filter(([k])=>panes[k]&&panes[k].trim()),cur=tabs.some(([k])=>k===tab)?tab:"overview";
+  return parts[0]+`<span class="pp-anchor"></span><nav class="pp-tabs" role="tablist" aria-label="${esc(pname(p.id))}">${tabs.map(([k,l])=>`<a role="tab" href="${purl(p.id)}/${k}" data-pp="${k}" aria-selected="${k===cur}">${l}</a>`).join("")}</nav>
+    ${tabs.map(([k])=>`<div class="pp-pane" id="pp-${k}" role="tabpanel"${k===cur?"":" hidden"}>${panes[k]}</div>`).join("")}`;
+}
+// switch tabs in place: no re-render, the link updates for sharing
+$("#detailBody").addEventListener("click",e=>{const a=e.target.closest(".pp-tabs [data-pp]");if(!a)return;e.preventDefault();
+  const k=a.dataset.pp;document.querySelectorAll(".pp-tabs [data-pp]").forEach(t=>t.setAttribute("aria-selected",t===a));
+  document.querySelectorAll(".pp-pane").forEach(x=>x.hidden=x.id!=="pp-"+k);
+  history.replaceState(history.state,"",a.getAttribute("href"));
+  // keep the chosen tab in view in the strip, and if the page was scrolled past the tabs, bring the new section's top to just under the bar
+  const nav=a.parentElement;nav.scrollLeft=Math.max(0,a.offsetLeft-16);
+  const bar=$(".dbar").getBoundingClientRect().height,anc=$(".pp-anchor").getBoundingClientRect().top;if(anc<bar)$("#detail").scrollTop+=anc-bar;});
 const miniThumb=p=>p?`<span class="thumb ${p.tm.key}">${p.photo?`<img src="${p.photo}" alt="" loading="lazy">`:`<b>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</b>`}</span>`:"";
 
-function playerPage(id){
+function playerPage(id,tab){
   const p=P.get(id);if(!p)return `<p class="err">Player #${id} isn't in the synced data.</p>`;
   const B=p.bat,W=p.bowl,others=Object.keys(p.teams).filter(t=>t!==p.team);
   const log=[...p.log.values()].sort((a,b)=>b.mm.date-a.mm.date||b.mm.id-a.mm.id);
@@ -2031,8 +2048,8 @@ function playerPage(id){
     <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;
   if(!p.matches)return h+`<p class="dek">No matches yet. The first scorecard will fill this page in.</p>`;
-  h+=awardsFor(p);
-  h+=`<h2 class="sec-t">Batting</h2><div class="statgrid">
+  h+="<!--pane:overview-->"+awardsFor(p)+formChart(p);
+  h+=`<!--pane:batting--><h2 class="sec-t">Batting</h2><div class="statgrid">
     <div><span class="label">Runs</span><b>${B.r}</b><small>${B.b} balls</small></div>
     <div><span class="label">Average</span><b>${r1(B.avg)}</b><small>${B.inns} inns · ${B.no} not out</small></div>
     <div><span class="label">Strike rate</span><b>${r1(B.sr)}</b><small>runs per 100 balls</small></div>
@@ -2044,7 +2061,7 @@ function playerPage(id){
     <div><span class="label">Not outs</span><b>${B.no}</b><small>${B.inns?Math.round(B.no/B.inns*100):0}% of innings</small></div>
     <div><span class="label">Did not bat</span><b>${B.dnb}</b><small>of ${B.inns+B.dnb} team innings</small></div>
   </div>
-  <h2 class="sec-t">Bowling &amp; fielding</h2><div class="statgrid">
+  <!--pane:bowling--><h2 class="sec-t">Bowling &amp; fielding</h2><div class="statgrid">
     <div><span class="label">Wickets</span><b>${W.w}</b><small>${ovs(W.b)} overs</small></div>
     <div><span class="label">Innings bowled</span><b>${W.inns}</b><small>did not bowl in ${W.dnb} of ${W.inns+W.dnb}</small></div>
     <div><span class="label">Economy</span><b>${r1(W.econ)}</b><small>${W.r} runs conceded</small></div>
@@ -2055,18 +2072,18 @@ function playerPage(id){
     <div><span class="label">Extras</span><b>${W.wd+W.nb}</b><small>${W.wd} wides · ${W.nb} no-balls</small></div>
     <div><span class="label">Catches</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
   </div>
-  ${splitsBlock(p)}
   ${dropsBlock(p)}
+  <!--pane:splits-->${splitsBlock(p)}
   ${rivalries(p)}
-  <p class="pl-cmp"><a class="btn" href="#compare" data-cmp="${p.id}">Compare with another player →</a></p>
+  <!--pane:overview--><p class="pl-cmp"><a class="btn" href="#compare" data-cmp="${p.id}">Compare with another player →</a></p>
   ${typeof shareBlockPlayer==="function"?shareBlockPlayer(p):""}
-  <h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>
+  <!--pane:matches--><h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>
   ${log.map(l=>{const won=l.mm.win&&l.mm.win.name===l.team;
     const bat=l.bat.map(x=>`${x.r}${x.no?"*":""} (${x.b})`).join(" & ")||"–";
     const bowl=l.bowl.map(x=>`${x.w}/${x.r} (${ovs(x.b)})`).join(" & ")||"–";
     return `<tr><td>${fmtD(l.mm.date,{day:"numeric",month:"short"})}</td><td class="nm"><a href="#match-${l.mm.id}">#${l.mm.id} · ${esc(l.mm.fmt)} for ${esc(team(l.team).short)}</a></td><td>${bat}</td><td>${bowl}</td><td>${l.c||"–"}</td><td>${l.mm.win?`<span class="wl ${won?"w":"l"}">${won?"W":"L"}</span>`:"–"}</td></tr>`}).join("")}
   </tbody></table></div>`;
-  return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/player?id=${p.id}" target="_blank" rel="noopener">Scorecard, player profile ↗</a></p>`;
+  return playerTabs(p,h,tab)+`<p class="src">Source: <a href="https://tassadduq.com/cricket/player?id=${p.id}" target="_blank" rel="noopener">Scorecard, player profile ↗</a></p>`;
 }
 
 // When served by our own server, check every 2 minutes for new scores and offer a refresh (no effect inside Claude).
@@ -2084,16 +2101,18 @@ function parseDetail(hash){
   if((m=h.match(/^match-(\d+)(?:-i(\d+))?$/)))return{type:"match",id:+m[1],tab:+m[2]||1};
   if((m=h.match(/^player-(\d+)$/))&&P?.has(+m[1]))return{type:"player",id:+m[1]};
   if(BySlug?.has(h))return{type:"player",id:BySlug.get(h)};
+  if((m=h.match(/^([a-z0-9-]+)\/(\w+)$/))&&BySlug?.has(m[1]))return{type:"player",id:BySlug.get(m[1]),tab:m[2]};
   return null;
 }
 function route(){
   if(!D)return;
   const r=parseDetail(location.hash),det=$("#detail");
-  if(r&&r.type==="player"&&location.hash!==purl(r.id)){history.replaceState(history.state,"",purl(r.id))}
+  if(r&&r.type==="player"&&location.hash!==purl(r.id)+(r.tab?"/"+r.tab:"")){history.replaceState(history.state,"",purl(r.id)+(r.tab?"/"+r.tab:""))}
   if(r){
-    $("#detailBody").innerHTML=r.type==="match"?matchPage(r.id,r.tab):playerPage(r.id);
+    $("#detailBody").innerHTML=r.type==="match"?matchPage(r.id,r.tab):playerPage(r.id,r.tab);
     if(r.type==="match")fillCard();else window.fillPlayerCard?.(r.id);
     det.hidden=false;det.scrollTop=0;document.body.style.overflow="hidden";
+    const sel=document.querySelector(".pp-tabs [aria-selected=true]");if(sel)sel.parentElement.scrollLeft=Math.max(0,sel.offsetLeft-16);
     document.title=(r.type==="match"?`Match #${r.id}`:pname(r.id))+" · BoDevs Cricket";
     $("#closeDetail").focus({preventScroll:true});
   }else{
