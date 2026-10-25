@@ -245,3 +245,21 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .fc-key i.t{background:var(--tiger)}.fc-key i.f{background:var(--falcon)}
 .fc-key .fc-k-w{background:var(--red);border-radius:50%}
 .xr-card .rank-note{margin:4px 0 0}
+
+/* underrated */
+.ur-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:22px}
+.ur-card{border-top:4px solid var(--team,var(--ink));padding-top:10px;min-width:0}
+.ur-card.t{--team:var(--tiger)}.ur-card.f{--team:var(--falcon)}
+.ur-who{display:flex;align-items:center;gap:10px;text-decoration:none;margin-top:6px}
+.ur-who .thumb{width:48px;height:48px;flex:none}
+.ur-who b{font:800 22px/1.1 var(--f-display);text-transform:uppercase}
+.ur-big{font:900 44px/1 var(--f-display);color:var(--team,var(--ink));margin-top:10px}
+.ur-big small{display:block;font:500 11px var(--f-data);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.ur-line{font:400 15px/1.45 var(--f-body);color:var(--ink-2);margin-top:8px}
+/* rivalry: tale of the tape */
+#tape{grid-column:1/-1;margin-top:34px}
+.tape-t{margin-bottom:4px}
+.tape-h{margin-top:6px}
+#tape .cmp-v small{font:400 12px var(--f-data);color:var(--muted)}
+.ur-tag{font:700 9px var(--f-data);letter-spacing:.08em;text-transform:uppercase;background:#1f8a4c;color:#fff;padding:2px 5px;vertical-align:2px}
+#tape .cmp-v.ca.win{color:var(--tiger)}#tape .cmp-v.cb.win{color:var(--falcon)}

@@ -99,7 +99,7 @@ section[id],#top{scroll-margin-top:64px}
 .side-top{display:flex;gap:20px;align-items:center}
 .side-top img{width:clamp(60px,14vw,96px)}
 .side-top>div,.tables>div,.sheets>div,.kit>div,.cover-grid>div{min-width:0}
-.side h3{font:900 clamp(40px,5vw,64px)/.9 var(--f-display);text-transform:uppercase;color:var(--team)}
+.side h3{font:900 clamp(32px,3.6vw,64px)/.9 var(--f-display);text-transform:uppercase;color:var(--team);overflow-wrap:break-word}
 .side .wins{font:900 clamp(96px,12vw,160px)/.8 var(--f-display);margin-left:auto}
 .side dl{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--rule)}
 .side dl div{padding:14px 12px 14px 0;border-bottom:1px solid var(--rule)}
@@ -616,7 +616,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
         <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
-        <a href="#predict">Predictions</a><a href="#tables">Rankings &amp; records</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a>
+        <a href="#predict">Predictions</a><a href="#tables">Rankings &amp; records</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
         <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
@@ -699,6 +699,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p>The people who build BoDevs products on weekdays and hit sixes on Sunday nights. Tap a player for their full career record.</p>
       </div>
       <div class="sheets" id="sheets"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="underrated">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Chance &amp; value</p><h2 class="hd">Underrated</h2></div>
+        <p>Not everyone gets the same share of the game. These are the players who make the most of the balls they get: high value per chance, from a small share of their side's batting and bowling.</p>
+      </div>
+      <div id="underratedBody"></div>
     </div>
   </section>
 
@@ -1033,7 +1043,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
@@ -1852,7 +1862,7 @@ function splitsBlock(p){
     ${cell("When he takes 2+ wkts",pc(w2w,m2w),`his side won ${w2w} of ${m2w}`)}
     ${cell("Close matches",cl.n?Math.round(cl.per):"–",cl.n?`pts a match in ${cl.n} close games · won ${cl.won}`:"none played yet")}
     ${cell("Overall win %",pc(log.filter(l=>l.mm.win&&l.mm.win.name===l.team).length,log.length),`in ${log.length} matches`)}
-  </div>${cap}`;
+  </div>${typeof oppBlock==="function"?oppBlock(p):""}${cap}`;
 }
 function dropsBlock(p){
   const d=p.drp;if(!d||!(d.made+d.off+d.lives))return"";

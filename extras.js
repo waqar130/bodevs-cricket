@@ -385,7 +385,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
 const PAGES = [["home", "This week"], ["players", "Players"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  squads: "players", form: "players", milestones: "players", tables: "players", compare: "players",
+  squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "players",
   records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -641,6 +641,121 @@ function renderXR() {
     <div class="xr-grid">${X.teams.map(s => card(s.t, s.note, s.rows.map((x, i) => li(i, tm(x.team), s.big(x), `${s.u(x)}${s.u(x) ? " · " : ""}${when(x.mm)}`)))).join("")}</div>`;
 }
 
+/* ---------------- opportunity, value per chance and the underrated list ---------------- */
+// how much of the game a player gets: innings batted and bowled, and his share of his side's balls
+function oppOf(p) {
+  if (p._opp) return p._opp;
+  let tBat = 0, tBowl = 0, tFaced = 0, tBowled = 0, impact = 0, pts = 10 * p.fld.ro;
+  p.log.forEach(l => {
+    l.mm.s.scorecards.forEach(sc => {
+      if (sc.batting_team === l.team) { tBat++; tFaced += sc.batting.reduce((a, x) => a + x.balls, 0); }
+      if (sc.bowling_team === l.team) { tBowl++; tBowled += sc.bowling.reduce((a, x) => a + balls(x.overs), 0); }
+    });
+    const r = l.bat.reduce((a, x) => a + x.r, 0), w = l.bowl.reduce((a, x) => a + x.w, 0);
+    if (r >= 10 || w > 0 || l.c > 0) impact++;
+    pts += r + 20 * w + 10 * l.c;
+  });
+  const batCh = tBat ? p.bat.inns / tBat : 0, bowlCh = tBowl ? p.bowl.inns / tBowl : 0;
+  const faceSh = tFaced ? p.bat.b / tFaced : 0, bowlSh = tBowled ? p.bowl.b / tBowled : 0, involved = p.bat.b + p.bowl.b;
+  return p._opp = { batCh, bowlCh, chance: (batCh + bowlCh) / 2, faceSh, bowlSh, share: (faceSh + bowlSh) / 2,
+    impact: p.matches ? impact / p.matches : 0, impactN: impact, pts, involved, value: involved ? pts / involved * 10 : 0 };
+}
+// underrated: below the club's median share of the game, ranked by value per chance
+function underratedList() {
+  const ps = [...P.values()].filter(p => p.matches >= 5).map(p => ({ p, o: oppOf(p) })).filter(x => x.o.involved >= 30);
+  const mv = ps.reduce((a, x) => a + x.o.value, 0) / (ps.length || 1), sh = ps.map(x => x.o.share).sort((a, b) => a - b), ms = sh.length ? sh[Math.floor((sh.length - 1) / 2)] : 0;
+  ps.forEach(x => { x.vs = x.o.value / mv; x.under = x.o.share <= ms; });
+  return { ps: ps.sort((a, b) => b.o.value - a.o.value), mv, ms };
+}
+const pct0 = v => Math.round(v * 100) + "%";
+function oppBlock(p) {
+  if (!p.matches) return "";
+  const o = oppOf(p), { mv } = underratedList(), cell = (l, b, sm) => `<div><span class="label">${l}</span><b>${b}</b><small>${sm}</small></div>`;
+  return `<h3 class="tbl-title" style="margin-top:28px">Opportunity &amp; value</h3><div class="statgrid">
+    ${cell("Chance to bat", pct0(o.batCh), `${p.bat.inns} of ${p.bat.inns + p.bat.dnb} team innings`)}
+    ${cell("Chance to bowl", pct0(o.bowlCh), `${p.bowl.inns} of ${p.bowl.inns + p.bowl.dnb} team innings`)}
+    ${cell("Share of balls faced", pct0(o.faceSh), "of his side's balls while he played")}
+    ${cell("Share of overs bowled", pct0(o.bowlSh), "of his side's overs while he played")}
+    ${cell("Impact rate", pct0(o.impact), `${o.impactN} of ${p.matches} matches with 10+ runs, a wicket or a catch`)}
+    ${cell("Value per chance", r1(o.value), `points per 10 balls involved · club ${r1(mv)}`)}
+  </div>`;
+}
+function renderUnderrated() {
+  const el = $("#underratedBody"); if (!el || !M?.length) return;
+  const { ps, mv, ms } = underratedList(), top3 = ps.filter(x => x.under).slice(0, 3);
+  el.innerHTML = `${top3.length ? `<div class="ur-grid">${top3.map((x, i) => `<article class="ur-card ${x.p.tm.key}"><p class="kicker">${["Most underrated", "Underrated", "Underrated"][i]}</p>
+      <a class="ur-who" href="${purl(x.p.id)}">${miniThumb(x.p)}<b>${esc(pname(x.p.id))}</b></a>
+      <div class="ur-big">${r1(x.o.value)}<small>pts per 10 balls</small></div>
+      <p class="ur-line">Gets ${pct0(x.o.share)} of his side's balls (club median ${pct0(ms)}) and returns ${x.vs >= 1 ? `${r1(x.vs)}× the club's value per chance` : `${pct0(x.vs)} of the club's value per chance`}.${i ? "" : " The best of anyone on a small share."} Makes an impact in ${pct0(x.o.impact)} of matches.</p></article>`).join("")}</div>` : ""}
+    <h3 class="tbl-title" style="margin-top:30px">Everyone: chance and value</h3>
+    <div class="tbl-wrap"><table class="data"><thead><tr><th>Player</th><th>M</th><th>Bat chance</th><th>Bowl chance</th><th>Balls faced</th><th>Overs bowled</th><th>Impact rate</th><th>Value</th><th>v club</th></tr></thead><tbody>
+    ${ps.map(x => `<tr><td class="nm ${x.p.tm.key}"><span class="chip"></span>${plink(x.p.id, x.p.name)}${x.under && top3.includes(x) ? ` <span class="ur-tag">Underrated</span>` : ""}</td><td>${x.p.matches}</td><td>${pct0(x.o.batCh)}</td><td>${pct0(x.o.bowlCh)}</td><td>${pct0(x.o.faceSh)}</td><td>${pct0(x.o.bowlSh)}</td><td>${pct0(x.o.impact)}</td><td class="hi">${r1(x.o.value)}</td><td>${r1(x.vs)}×</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="rank-note" style="margin-top:12px">Value = points (runs + 20 per wicket + 10 per catch or run out) per 10 balls he faced or bowled; the club average is ${r1(mv)}. Balls faced and overs bowled are his share of his side's while he played. Underrated: a share of the game at or below the club median (${pct0(ms)}), ranked by value. Five matches and 30 balls or more.</p>`;
+}
+
+/* ---------------- the rivalry: tale of the tape ---------------- */
+function renderTape() {
+  const host = $("#rival"); if (!host || !M?.length) return;
+  let el = $("#tape"); if (!el) { el = document.createElement("div"); el.id = "tape"; host.after(el); }
+  const K = ["t", "f"], old = [...M].reverse(), done = M.filter(m => m.win);
+  const by = f => Object.fromEntries(K.map(k => [k, f(k)]));
+  const wins = by(k => done.filter(m => m.win.key === k));
+  const firstBat = m => team(m.s.scorecards[0]?.batting_team || "").key;
+  const inns = by(k => M.flatMap(m => m.s.scorecards.filter(sc => team(sc.batting_team).key === k).map(sc => ({ m, sc }))));
+  const sum = (a, f) => a.reduce((x, y) => x + f(y), 0);
+  const streak = k => { let cur = 0, best = 0; old.forEach(m => { if (!m.win) return; if (m.win.key === k) { cur++; best = Math.max(best, cur); } else cur = 0; }); return { cur, best }; };
+  const mg = (m, u) => +((String(m.m.result || "").match(new RegExp(`by (\\d+) ${u}`)) || [])[1] || 0);
+  const team_ = k => [...P.values()].filter(p => p.tm.key === k && p.matches);
+  const lead = (k, f) => team_(k).sort((a, b) => f(b) - f(a))[0];
+  const mvps = by(k => WEEKS.reduce((a, w) => a + w.mvps.filter(x => P.get(x.id)?.tm.key === k).length, 0));
+  const toss = by(k => M.filter(m => m.m.toss_winner && team(m.m.toss_winner).key === k));
+  const close = by(k => done.filter(m => isClose(m) && m.win.key === k).length);
+  const fmts = [...new Set(done.map(m => m.fmt))];
+  const ex = by(k => sum(M.flatMap(m => m.s.scorecards.filter(sc => team(sc.bowling_team).key === k)), sc => sc.extras?.total || 0));
+  const fld = by(k => team_(k).reduce((a, p) => ({ c: a.c + p.fld.c, d: a.d + p.fld.drop, ro: a.ro + p.fld.ro }), { c: 0, d: 0, ro: 0 }));
+  const wk = by(k => sum(inns[k === "t" ? "f" : "t"], x => x.sc.wickets)), conceded = by(k => sum(inns[k === "t" ? "f" : "t"], x => x.sc.runs)), bBalls = by(k => sum(inns[k === "t" ? "f" : "t"], x => balls(x.sc.overs)));
+  const pl = (p, v) => p ? `${esc(short(p.id))} <small>${v}</small>` : "–";
+  // [label, tigers, falcons, numbers to compare (or null), higher is better]
+  const rows = [
+    ["Wins", wins.t.length, wins.f.length, [wins.t.length, wins.f.length], 1],
+    ...fmts.map(f => [`Wins in ${f}`, wins.t.filter(m => m.fmt === f).length, wins.f.filter(m => m.fmt === f).length, [wins.t.filter(m => m.fmt === f).length, wins.f.filter(m => m.fmt === f).length], 1]),
+    ["Wins batting first", ...K.map(k => wins[k].filter(m => firstBat(m) === k).length), K.map(k => wins[k].filter(m => firstBat(m) === k).length), 1],
+    ["Wins chasing", ...K.map(k => wins[k].filter(m => firstBat(m) !== k).length), K.map(k => wins[k].filter(m => firstBat(m) !== k).length), 1],
+    ["Close matches won", close.t, close.f, [close.t, close.f], 1],
+    ["Current winning run", ...K.map(k => streak(k).cur), K.map(k => streak(k).cur), 1],
+    ["Longest winning run", ...K.map(k => streak(k).best), K.map(k => streak(k).best), 1],
+    ["Biggest win by runs", ...K.map(k => Math.max(0, ...wins[k].map(m => mg(m, "run")))), K.map(k => Math.max(0, ...wins[k].map(m => mg(m, "run")))), 1],
+    ["Biggest win by wickets", ...K.map(k => Math.max(0, ...wins[k].map(m => mg(m, "wicket")))), K.map(k => Math.max(0, ...wins[k].map(m => mg(m, "wicket")))), 1],
+    ["Tosses won", toss.t.length, toss.f.length, [toss.t.length, toss.f.length], 1],
+    ["Won after winning the toss", ...K.map(k => toss[k].filter(m => m.win?.key === k).length), K.map(k => toss[k].filter(m => m.win?.key === k).length), 1],
+    ["Runs scored", ...K.map(k => sum(inns[k], x => x.sc.runs).toLocaleString()), K.map(k => sum(inns[k], x => x.sc.runs)), 1],
+    ["Run rate", ...K.map(k => r1(sum(inns[k], x => x.sc.runs) / sum(inns[k], x => balls(x.sc.overs)) * 6)), K.map(k => sum(inns[k], x => x.sc.runs) / sum(inns[k], x => balls(x.sc.overs))), 1],
+    ["Sixes", ...K.map(k => sum(inns[k], x => sum(x.sc.batting, b => b.sixes))), K.map(k => sum(inns[k], x => sum(x.sc.batting, b => b.sixes))), 1],
+    ["Fours", ...K.map(k => sum(inns[k], x => sum(x.sc.batting, b => b.fours))), K.map(k => sum(inns[k], x => sum(x.sc.batting, b => b.fours))), 1],
+    ["Highest total", ...K.map(k => { const x = [...inns[k]].sort((a, b) => b.sc.runs - a.sc.runs)[0]; return x ? `${x.sc.runs}/${x.sc.wickets}` : "–"; }), K.map(k => Math.max(0, ...inns[k].map(x => x.sc.runs))), 1],
+    ["Average first-innings score", ...K.map(k => { const a = inns[k].filter(x => x.sc.innings_no === 1); return a.length ? Math.round(sum(a, x => x.sc.runs) / a.length) : "–"; }), K.map(k => { const a = inns[k].filter(x => x.sc.innings_no === 1); return a.length ? sum(a, x => x.sc.runs) / a.length : 0; }), 1],
+    ["Wickets taken", wk.t, wk.f, [wk.t, wk.f], 1],
+    ["Economy", ...K.map(k => r1(conceded[k] / bBalls[k] * 6)), K.map(k => conceded[k] / bBalls[k]), 0],
+    ["Extras given away", ex.t, ex.f, [ex.t, ex.f], 0],
+    ["Catches", fld.t.c, fld.f.c, [fld.t.c, fld.f.c], 1],
+    ["Catch success", ...K.map(k => pct0(fld[k].c / ((fld[k].c + fld[k].d) || 1))), K.map(k => fld[k].c / ((fld[k].c + fld[k].d) || 1)), 1],
+    ["Run outs", fld.t.ro, fld.f.ro, [fld.t.ro, fld.f.ro], 1],
+    ["Weekly MVPs", mvps.t, mvps.f, [mvps.t, mvps.f], 1],
+    ["Men of the Match", ...K.map(k => done.filter(m => m.pom && team(m.pom.tm).key === k).length), K.map(k => done.filter(m => m.pom && team(m.pom.tm).key === k).length), 1],
+    ["Top run scorer", ...K.map(k => { const p = lead(k, p => p.bat.r); return pl(p, p?.bat.r); }), null],
+    ["Top wicket taker", ...K.map(k => { const p = lead(k, p => p.bowl.w); return pl(p, p?.bowl.w); }), null],
+    ["Six king", ...K.map(k => { const p = lead(k, p => p.bat.s); return pl(p, p?.bat.s); }), null],
+    ["Safest hands", ...K.map(k => { const p = lead(k, p => p.fld.c); return pl(p, p?.fld.c); }), null],
+  ];
+  let wt = 0, wf = 0;
+  const body = rows.map(([l, a, b, n, hi]) => { const aw = n && n[0] !== n[1] && ((n[0] > n[1]) === !!hi), bw = n && n[0] !== n[1] && !aw; if (aw) wt++; if (bw) wf++;
+    return `<div class="cmp-row"><span class="cmp-v ca ${aw ? "win" : ""}">${a}</span><span class="cmp-l">${l}</span><span class="cmp-v cb ${bw ? "win" : ""}">${b}</span></div>`; }).join("");
+  el.innerHTML = `<h3 class="tbl-title tape-t">Tale of the tape</h3>
+    <div class="cmp-grp tape-h"><span class="ca">Tigers ${wt}</span><b>Categories</b><span class="cb">${wf} Falcons</span></div>
+    <div class="cmp-rows">${body}</div>`;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
@@ -648,7 +763,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderXR(); renderPartnerships(); renderTactics(); renderPhases();
+  renderSince(); renderWeekAwards(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderPredict(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded
