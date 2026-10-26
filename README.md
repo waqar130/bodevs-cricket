@@ -25,7 +25,7 @@ Live at **https://cricket.waqarahmed.net**
 
 ## Players
 
-Profiles in `sync.js` (`PROFILES`) set full names, jobs, photos and roles: `captain: true` for the two captains and `keeper: true` for the wicket-keeper (Mazhar), whose catches count as keeping catches (Golden Gloves, not Safest Hands).
+Profiles in `sync.js` (`PROFILES`) set full names, jobs, photos and roles: `captain: true` for the two captains and `keeper: true` for the wicket-keepers (Mazhar and Borni), whose catches count as keeping catches (Golden Gloves, not Safest Hands).
 
 ## App
 

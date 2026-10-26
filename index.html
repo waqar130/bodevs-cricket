@@ -1239,7 +1239,8 @@ function assignTitles(){
   const give=(p,title,why)=>{if(p&&!p.title){p.title=title;p.why=why}};
   const best=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a))[0];
   const played=p=>p.matches>0;
-  free().filter(p=>p.keeper&&p.matches).forEach(p=>give(p,"Head of Glovework",`Keeps wicket for the ${p.tm.short}: ${p.fld.c} catches and ${p.fld.ro} run outs behind the stumps.`));
+  // keepers, best first: one Head of Glovework, the rest VPs
+  free().filter(p=>p.keeper&&p.matches).sort((a,b)=>(b.fld.c+b.fld.ro)-(a.fld.c+a.fld.ro)).forEach((p,i)=>give(p,i?"VP, Glovework":"Head of Glovework",`Keeps wicket for the ${p.tm.short}: ${p.fld.c} catch${p.fld.c===1?"":"es"}${p.fld.ro?` and ${p.fld.ro} run out${p.fld.ro===1?"":"s"}`:""} behind the stumps.`));
   const s6=best(free(),p=>p.bat.s,played);give(s6,"Chief Six Officer",`${s6?.bat.s} sixes, more than anyone in the club.`);
   const hs=best(free(),p=>p.bat.hs?p.bat.hs.r*1000-p.bat.hs.b:-1,p=>p.bat.hs);give(hs,"Head of Demolition",`${hs?.bat.hs.r} off ${hs?.bat.hs.b} balls, the season's top score.`);
   free().filter(p=>p.bat.hundred).forEach(p=>give(p,"Director of Centuries",`Made a hundred: ${p.bat.hs.r} off ${p.bat.hs.b}.`));

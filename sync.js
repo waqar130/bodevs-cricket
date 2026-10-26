@@ -25,7 +25,7 @@ const PROFILES = {
   "Farhan":       { full: "Farhan Ghafoor",    job: "Co-Founder & Lead Strategist",               photo: "farhan-min.png", captain: true },
   "Saad Zubairi": { full: "Saad Zubairi",      job: "Support Specialist",                         photo: "saad-min.png" },
   "Ahsan":        { full: "Ahsan Sajjad",      job: "Technical Partner & Lead Engineer",          photo: "ahsan-min.png" },
-  "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png" },
+  "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png", keeper: true },
   "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png" },
   "Butt Sb":      { full: "Fahad Naveed Butt", ownPhoto: "players/10.webp" },
   "Mazhar":       { ownPhoto: "players/9.webp", keeper: true },
