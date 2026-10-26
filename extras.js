@@ -70,44 +70,6 @@ function milestonesIn(Wk) {
 }
 
 /* ---------------- 1. Monday digest ---------------- */
-function digestText(W) {
-  const tw = Object.entries(W.tw), pw = P.get(W.pow.id), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
-  const res = [...W.WM].reverse().map(m => `#${m.id}: ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`).join("\n");
-  const ms = milestonesIn(W), hot = formData().filter(x => x.trend === "hot").slice(0, 3).map(x => x.p.full_name || x.p.name);
-  return [`🏏 BoDevs Cricket · Week of ${weekRange(W)}`, "", res, "",
-    tw.length === 2 ? `${W === WEEK ? "This" : "That"} week: ${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}` : "",
-    `Season: Tigers ${t}–${f} Falcons`, "",
-    ...W.podium.map(x => `${x.n === 1 ? "⭐" : x.role === "Impact Player" ? "🥈" : "🥉"} ${x.role}: ${pname(x.id)}${x.id === W.pow.id ? ` (${pw?.title || ""})` : ""}: ${x.r} runs, ${x.w} wkt${x.w === 1 ? "" : "s"}, ${x.c} catch${x.c === 1 ? "" : "es"}, ${x.pts} pts`),
-    `💥 Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`,
-    `🎯 Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r} (${W.spell.ov} ov)`,
-    ms.length ? `🏅 Milestones: ${ms.join(" · ")}` : "",
-    hot.length ? `🔥 In form: ${hot.join(", ")}` : "",
-    "", `Full scorecards: ${SITE_BASE}`].filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
-}
-async function drawDigest(W) {
-  const { c, x } = await canvasBase(`The Monday digest · Issue ${W.issue}`);
-  let y = 230; x.fillStyle = CC.red; x.font = `600 26px ${MONO}`; x.fillText(`WEEK OF ${weekRange(W).toUpperCase()}`, 60, y);
-  const p = P.get(W.pow.id); y += 30;
-  await drawPhoto(x, p, 60, y, 300);
-  const tx = 400, tw = 620; x.fillStyle = CC.red; x.font = `600 26px ${MONO}`; x.fillText(W.joint ? "JOINT MVP OF THE WEEK" : "MVP OF THE WEEK", tx, y + 34);
-  x.fillStyle = CC.ink; const nm = (p?.full_name || p?.name || "").toUpperCase(); fitFont(x, nm, tw, 92, 900, DISP); x.fillText(nm, tx, y + 124);
-  if (p?.title) { x.fillStyle = CC.red; fitFont(x, p.title.toUpperCase(), tw, 26, 600, MONO); x.fillText(p.title.toUpperCase(), tx, y + 166); }
-  const st = [["RUNS", W.pow.r], ["WKTS", W.pow.w], ["SIXES", W.pow.s], ["CT", W.pow.c]];
-  st.forEach(([l, v], i) => { const sx = tx + i * 155; x.fillStyle = CC.muted; x.font = `500 22px ${MONO}`; x.fillText(l, sx, y + 230); x.fillStyle = CC.ink; x.font = `900 72px ${DISP}`; x.fillText(String(v), sx, y + 296); });
-  y += 350; x.strokeStyle = CC.ink; x.lineWidth = 4; x.beginPath(); x.moveTo(60, y); x.lineTo(1020, y); x.stroke(); y += 50;
-  x.fillStyle = CC.muted; x.font = `600 24px ${MONO}`; x.fillText("RESULTS", 60, y); y += 16;
-  for (const m of [...W.WM].reverse().slice(0, 4)) { y += 66; x.fillStyle = m.win?.key === "f" ? CC.f : m.win?.key === "t" ? CC.t : CC.ink;
-    const t = `#${m.id} ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`.toUpperCase(); fitFont(x, t, 960, 54, 800, DISP); x.fillText(t, 60, y); }
-  y += 40; x.strokeStyle = CC.rule; x.lineWidth = 2; x.beginPath(); x.moveTo(60, y); x.lineTo(1020, y); x.stroke(); y += 50;
-  const lines = [`Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} (${W.knock.b})`, `Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r}`];
-  if (W.joint) lines.push(`Joint MVP with ${W.mvps.slice(1).map(x => pname(x.id)).join(" and ")}`);
-  const rest = W.podium.filter(x => x.n > 1); if (rest.length) lines.push(rest.map(x => `${x.role}: ${pname(x.id)}`).join(" · "));
-  const ms = milestonesIn(W); if (ms.length) lines.push(`Milestone: ${ms[0]}`);
-  const t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length; lines.push(`Season: Tigers ${t}–${f} Falcons`);
-  x.fillStyle = CC.ink; for (const l of lines.slice(0, 4)) { fitFont(x, l, 960, 34, 500, MONO); x.fillText(l, 60, y); y += 54; }
-  return c;
-}
-let dgTok = 0;
 // the week's headline: who won the week, by how much
 function weekHeadline(W) {
   const tw = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, short: team(n).short, ...v }));
@@ -116,9 +78,9 @@ function weekHeadline(W) {
   if (a.w === b.w) return { h: `Honours even, ${a.w}–${b.w}`, d: rd ? `The ${esc(rd > 0 ? a.short : b.short)} edge it on runs, +${Math.abs(rd)}.` : "Level on runs too." };
   return { h: `${esc(a.short)} ${b.w ? "win" : "sweep"} the week ${a.w}–${b.w}`, d: `A run difference of ${rd > 0 ? "+" : ""}${rd} for the ${esc(a.short)}.` };
 }
-async function renderDigest() {
+function renderDigest() {
   const el = $("#digestBody"); if (!el || !WEEK) return;
-  const W = selW(), tok = ++dgTok, txt = digestText(W), X = buildXR().raw, ids = new Set(W.WM.map(m => m.id));
+  const W = selW(), X = buildXR().raw, ids = new Set(W.WM.map(m => m.id));
   const now = W === WEEK, hd = weekHeadline(W), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
   $("#digest h2").textContent = now ? "This week" : `Issue ${W.issue}`;
   const thumb = id => miniThumb(P.get(id)), nm = id => esc(pname(id));
@@ -136,30 +98,19 @@ async function renderDigest() {
     six?.s && ["Most sixes", six.s, nm(six.id)],
   ].filter(Boolean).map(([k, v, s]) => `<div class="dgt"><span class="label">${k}</span><b>${v}</b><small>${s}</small></div>`).join("");
   const ms = milestonesIn(W), hot = formData().filter(x => x.trend === "hot").slice(0, 4);
-  el.innerHTML = `<div class="dg-issue">
-    <div class="dg-main">
+  el.innerHTML = `<div class="dg-main">
       <div class="dg-mast"><span>The Monday digest</span><span>Issue ${W.issue} · ${esc(weekRange(W))}</span></div>
       <h3 class="dg-h">${hd.h}.</h3>
       <p class="dg-d">${hd.d} Season: <b>Tigers ${t}–${f} Falcons</b>.</p>
+      <div class="dg-cols"><div>
       <h4 class="dg-k">Results</h4><ul class="dg-res">${results}</ul>
       <h4 class="dg-k">The podium</h4><div class="dg-pod">${pod}</div>
+      </div><div>
       <h4 class="dg-k">Top performers</h4><div class="dg-tiles">${tiles}</div>
       ${ms.length ? `<h4 class="dg-k">Milestones</h4><p class="dg-chips">${ms.map(s => `<span>🏅 ${esc(s)}</span>`).join("")}</p>` : ""}
       ${hot.length ? `<h4 class="dg-k">In form</h4><p class="dg-chips">${hot.map(x => `<a href="${purl(x.p.id)}">🔥 ${esc(pname(x.p.id))} <small>form ${Math.round(x.form)}</small></a>`).join("")}</p>` : ""}
-    </div>
-    <aside class="dg-side"><p class="label">Share the week</p>
-      <div class="dg-frame"><img id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(W))}"><span class="pst-load">Drawing the card…</span></div>
-      <div class="pick-actions"><a class="btn solid" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download</button></div>
-      <p class="label" id="dgMsg"></p></aside></div>`;
-  $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
-  // draw the image card only once the digest is actually on screen
-  await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#dgImg")); });
-  if (tok !== dgTok) return; // a newer week was picked meanwhile
-  const c = await drawDigest(W); if (tok !== dgTok) return; $("#dgImg").src = c.toDataURL("image/png"); el.querySelector(".dg-frame .pst-load")?.remove();
-  const msg = $("#dgMsg"); $("#dgCopy").onclick = () => copyCanvas(c, msg);
-  const dl = $("#dgDl"), fname = `bodevs-cricket-digest-issue-${W.issue}.png`;
-  if (IS_LOCAL || !window.claude?.use) { dl.hidden = false; dl.onclick = () => downloadCanvas(c, fname); }
-  else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false; dl.onclick = async () => { try { await d.save({ filename: fname, data: await new Promise(r => c.toBlob(r, "image/png")) }); msg.textContent = "Saved."; } catch (err) { msg.textContent = "Couldn't save the image."; } }; });
+      </div></div>
+    </div>`;
 }
 
 /* ---------------- 2. Season story (charts) ---------------- */

@@ -18,12 +18,6 @@
 .live-tag{display:inline-flex;align-items:center;gap:8px;font:700 11px var(--f-data);letter-spacing:.1em;text-transform:uppercase;background:#0d0d0c;padding:5px 9px}
 .live-note{font:400 11px var(--f-data);opacity:.8;margin-left:auto}
 
-/* digest */
-.dg-grid{display:grid;gap:28px}
-@media(min-width:900px){.dg-grid{grid-template-columns:1fr 320px;align-items:start}}
-.dg-copy{min-width:0}
-.dg-text{font:400 14px/1.6 var(--f-data);background:var(--paper-2);border-left:4px solid var(--red);padding:16px 18px;white-space:pre-wrap;margin-top:8px;max-height:420px;overflow:auto}
-.dg-img{max-width:320px}
 
 /* season story charts */
 .ch-card{border-top:3px solid var(--ink);padding-top:12px}
@@ -541,8 +535,6 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .pa-card.ms.na .pa-big{color:var(--muted)}
 
 /* Monday digest: a newsletter issue */
-.dg-issue{display:grid;gap:28px;align-items:start}
-@media(min-width:960px){.dg-issue{grid-template-columns:minmax(0,1fr) 340px}}
 .dg-main{border:3px solid var(--ink);padding:clamp(16px,3vw,32px);background:var(--paper)}
 .dg-mast{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font:700 11px var(--f-data);letter-spacing:.12em;text-transform:uppercase;border-bottom:1px solid var(--ink);padding-bottom:8px;color:var(--red)}
 .dg-h{font:900 clamp(38px,5vw,64px)/.92 var(--f-display);text-transform:uppercase;margin:14px 0 8px}
@@ -576,8 +568,5 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .dg-chips{display:flex;flex-wrap:wrap;gap:6px}
 .dg-chips span,.dg-chips a{font:500 13px var(--f-body);background:var(--paper-2);padding:6px 10px;text-decoration:none;color:var(--ink)}
 .dg-chips small{color:var(--muted);font:400 11px var(--f-data)}
-.dg-side{position:sticky;top:130px}
-.dg-frame{position:relative;background:#1b1a18;border:8px solid #232220;border-radius:14px;aspect-ratio:4/5;overflow:hidden;margin:8px 0 12px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
-.dg-frame img{display:block;width:100%;height:100%;object-fit:cover}
-.dg-frame img:not([src]){visibility:hidden}
-@media(max-width:959px){.dg-side{position:static;max-width:420px}}
+.dg-cols{display:grid;gap:0 36px}
+@media(min-width:960px){.dg-cols{grid-template-columns:1fr 1fr}}
