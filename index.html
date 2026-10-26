@@ -1633,6 +1633,8 @@ function drawCompare(){
     ["Batting","Highest score",p=>p.bat.hs?p.bat.hs.r:0,(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",1],
     ["Batting","50s + 100s",p=>p.bat.fifty+p.bat.hundred,n,1],["Batting","Sixes",p=>p.bat.s,n,1],["Batting","Fours",p=>p.bat.f,n,1],["Batting","Not outs",p=>p.bat.no,n,1],
     ["Batting","Boundary %",p=>q(p.bat.r>=50,(p.bat.f*4+p.bat.s*6)/p.bat.r*100),pct,1],
+    ["Batting","Average v pace",p=>{const x=styleSplit(p).fast;return q(x.o>=2,x.r/x.o)},d1,1],["Batting","Average v spin",p=>{const x=styleSplit(p).spin;return q(x.o>=2,x.r/x.o)},d1,1],
+    ["Batting","SR v pace",p=>{const x=styleSplit(p).fast;return q(x.b>=30,x.r/x.b*100)},d1,1],["Batting","SR v spin",p=>{const x=styleSplit(p).spin;return q(x.b>=30,x.r/x.b*100)},d1,1],
     ["Batting","Dot balls faced",p=>q(p.bat.b>=30,p.bat.dots/p.bat.b*100),pct,0],["Batting","Ducks",p=>p.bat.ducks,n,0],
     ["Bowling","Wickets",p=>p.bowl.w,n,1],["Bowling","Overs bowled",p=>p.bowl.b/6,(v,p)=>ovs(p.bowl.b),1],
     ["Bowling","Economy",p=>q(p.bowl.b>=36,p.bowl.econ),d1,0],["Bowling","Bowling average",p=>q(p.bowl.b>=36&&p.bowl.w>0,p.bowl.avg),d1,0],
@@ -2026,6 +2028,8 @@ function patternsBlock(p,ctx){
     const ss=styleSplit(p),srS=e=>e.b?e.r/e.b*100:0;
     if(ss.fast.b>=30&&ss.spin.b>=30){const f=srS(ss.fast),sp=srS(ss.spin),[hi,lo,hk,lk]=f>=sp?[f,sp,"pace","spin"]:[sp,f,"spin","pace"];
       if(hi>lo*1.15){S.push(`Feasts on ${hk}: strike rate ${r1(hi)} against it.`);Wk.push(`Slower against ${lk}: strike rate ${r1(lo)}, against ${r1(hi)} off ${hk}.`)}
+      if(ss.fast.o>=3&&ss.spin.o>=3){const aF=ss.fast.r/ss.fast.o,aS=ss.spin.r/ss.spin.o,[ha,la,hk,lk]=aF>=aS?[aF,aS,"pace","spin"]:[aS,aF,"spin","pace"];
+        if(la<ha*0.7){S.push(`Hard to get out against ${hk}: averages ${r1(ha)}.`);Wk.push(`Averages only ${r1(la)} against ${lk}, against ${r1(ha)} off ${hk}.`)}}
       const oF=ss.fast.o?ss.fast.b/ss.fast.o:1e9,oS=ss.spin.o?ss.spin.b/ss.spin.o:1e9;
       if(Math.min(oF,oS)<Math.max(oF,oS)*0.6&&Math.min(oF,oS)<40)Wk.push(`Gets out to ${oF<oS?"pace":"spin"} more: once every ${r1(Math.min(oF,oS))} balls.`)}
     if(p.bat.b>=60&&p.bat.dots/p.bat.b>0.4)Wk.push(`Dots ${pc(p.bat.dots,p.bat.b)}% of balls faced, so tight lines build pressure.`);
