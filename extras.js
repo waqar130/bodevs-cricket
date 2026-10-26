@@ -739,7 +739,6 @@ function renderWeekNumbers() {
   const el = $("#weekNumbersBody"); if (!el || !WEEK) return;
   const W = selW(), now = W === WEEK, ids = new Set(W.WM.map(m => m.id)), inW = mm => ids.has(mm.id), X = buildXR().raw;
   const who = id => { const p = P.get(id); return p ? `<a class="xr-who" href="${purl(id)}">${miniThumb(p)}<b>${esc(pname(id))}</b></a>` : ""; };
-  const card = (t, body) => `<article class="xr-card"><h3 class="tbl-title">${t}</h3>${body}</article>`;
   const li = (i, left, big, small) => `<li><span class="xr-n">${i + 1}</span>${left}<b class="xr-big">${big}</b><small class="xr-d">${small}</small></li>`;
   const list = rows => rows.length ? `<ol class="xr-list">${rows.join("")}</ol>` : `<p class="dnb">Nothing ${now ? "this" : "that"} week.</p>`;
   const at = mm => `<a href="#match-${mm.id}">#${mm.id}</a>`;
@@ -766,24 +765,31 @@ function renderWeekNumbers() {
   const b0 = sc(before), b1 = sc(upTo), wk = sc(W.WM.filter(m => m.win));
   const rd = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, d: v.for - v.against }));
   const wm = weekMore(W, now);
-  el.innerHTML = `
-    <h3 class="xr-h">The week's matches</h3><div class="wn-recaps">${wm.recaps}</div>
-    <h3 class="xr-h">Team of the week</h3>
-    <div class="wn-xi">${xi.map((x, i) => `<a class="wn-pl ${x.p.tm.key}" href="${purl(x.p.id)}"><span class="wn-n">${i + 1}</span>${miniThumb(x.p)}<b>${esc(pname(x.p.id))}</b><span class="wn-role">${role(x.e)}</span><small>${x.e.r} runs · ${x.e.w} wkt${x.e.w === 1 ? "" : "s"} · ${x.e.c} ct</small><span class="wn-pts">${x.e.pts} pts</span></a>`).join("")}</div>
-    <div class="xr-grid" style="margin-top:30px">
-      ${card("Above his usual", list(above.map((x, i) => li(i, who(x.p.id), r1(x.x) + "×", `${Math.round(x.wk)} pts a match against a usual ${Math.round(x.u)}`))))}
-      ${card("Overs of the week", ob.length || obat.length ? `<ol class="xr-list wn-ov">
+  const H3 = (n, t) => `<h3 class="iw-h"><span>${String(n).padStart(2, "0")}</span>${t}</h3>`;
+  const tile = (cls, t, inner) => `<article class="iw-card ${cls}"><h4 class="iw-ck">${t}</h4>${inner}</article>`;
+  el.innerHTML = `<div class="iw">
+    ${H3(1, "The matches")}${wm.recaps}
+    </div><div class="iw-band"><div class="wrap">${H3(2, "Team of the week")}
+      <div class="iw-xi">${xi.map((x, i) => `<a class="iw-pl ${x.p.tm.key}" href="${purl(x.p.id)}"><span class="iw-pn">${i + 1}</span><span class="iw-ph">${x.p.photo ? `<img src="${x.p.photo}" alt="" loading="lazy">` : `<b>${esc((x.p.full_name || x.p.name).split(" ").map(w => w[0]).join("").slice(0, 2))}</b>`}</span>
+        <span class="iw-role">${role(x.e)}</span><b class="iw-name">${esc(pname(x.p.id))}</b><small>${x.e.r} runs · ${x.e.w} wkt${x.e.w === 1 ? "" : "s"} · ${x.e.c} ct</small><em>${x.e.pts}<small>pts</small></em></a>`).join("")}</div>
+    </div></div><div class="iw">
+    ${H3(3, "By the numbers")}
+    <div class="iw-grid">
+      ${tile("swing", "Rivalry swing", `<p class="wn-big">${b0.t}–${b0.f} <span class="wn-arrow">→</span> ${b1.t}–${b1.f}<small>Tigers–Falcons, before and after the week</small></p>
+        <p class="wn-line">${wk.t + wk.f ? `The week went ${wk.t > wk.f ? `Tigers ${wk.t}–${wk.f}` : wk.f > wk.t ? `Falcons ${wk.f}–${wk.t}` : `${wk.t}–${wk.f}, honours even`}` : "No results that week"}${rd.length ? `, with a run difference of ${rd.map(x => `${x.d > 0 ? "+" : ""}${x.d} for the ${x.k === "t" ? "Tigers" : "Falcons"}`).find((_, i) => rd[i].d > 0) || "level"}` : ""}.</p>`)}
+      ${tile("drops", "Drops", dr.length ? `<p class="wn-big">${dr.length}<small>catches put down, costing ${cost} runs</small></p>
+        ${dear2 ? `<p class="wn-line">Costliest: ${plink(dear2.fl)} dropped ${plink(dear2.bt)}${dear2.bw ? (dear2.bw === dear2.fl ? " off his own bowling" : ` off ${plink(dear2.bw)}`) : ""}, who added ${dear2.r} more. ${at(dear2.mm)}</p>` : ""}
+        ${lucky && lucky[1] > 1 ? `<p class="wn-line">Lucky charm of the week: ${plink(lucky[0])}, dropped ${lucky[1]} times.</p>` : ""}` : `<p class="dnb">Every chance taken ${now ? "this" : "that"} week.</p>`)}
+      ${tile("overs", "Overs of the week", ob.length || obat.length ? `<ol class="xr-list wn-ov">
         ${ovRow("Biggest over", bigBat, bigBat ? bigBat.r : "", bigBat ? `runs off ${bigBat.b} balls${bigBat.bw ? ` from ${esc(short(bigBat.bw))}` : ""} · ${at(bigBat.mm)}` : "")}
         ${ovRow("Best over", best, best ? `${best.w}/${best.r}` : "", best ? `over ${best.ov} · ${at(best.mm)}` : "")}
         ${ovRow("Costliest over", dear, dear ? dear.r : "", dear ? `runs in over ${dear.ov} · ${at(dear.mm)}` : "")}
         ${ovRow("Sixes in a row", sixer, sixer ? sixer.n : "", sixer ? `back to back · ${at(sixer.mm)}` : "")}</ol>` : `<p class="dnb">No ball-by-ball data for this week.</p>`)}
-      ${card("Drops", dr.length ? `<p class="wn-big">${dr.length}<small>catches put down, costing ${cost} runs</small></p>
-        ${dear2 ? `<p class="wn-line">Costliest: ${plink(dear2.fl)} dropped ${plink(dear2.bt)}${dear2.bw ? (dear2.bw === dear2.fl ? " off his own bowling" : ` off ${plink(dear2.bw)}`) : ""}, who added ${dear2.r} more. ${at(dear2.mm)}</p>` : ""}
-        ${lucky && lucky[1] > 1 ? `<p class="wn-line">Lucky charm of the week: ${plink(lucky[0])}, dropped ${lucky[1]} times.</p>` : ""}` : `<p class="dnb">Every chance taken ${now ? "this" : "that"} week.</p>`)}
-      ${card("Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
-      ${card("Rivalry swing", `<p class="wn-big">${b0.t}–${b0.f} <span class="wn-arrow">→</span> ${b1.t}–${b1.f}<small>Tigers–Falcons, before and after the week</small></p>
-        <p class="wn-line">${wk.t + wk.f ? `The week went ${wk.t > wk.f ? `Tigers ${wk.t}–${wk.f}` : wk.f > wk.t ? `Falcons ${wk.f}–${wk.t}` : `${wk.t}–${wk.f}, honours even`}` : "No results that week"}${rd.length ? `, with a run difference of ${rd.map(x => `${x.d > 0 ? "+" : ""}${x.d} for the ${x.k === "t" ? "Tigers" : "Falcons"}`).find((_, i) => rd[i].d > 0) || "level"}` : ""}.</p>`)}
-    </div>${wm.more}`;
+      ${tile("above", "Above his usual", list(above.map((x, i) => li(i, who(x.p.id), r1(x.x) + "×", `${Math.round(x.wk)} pts a match against a usual ${Math.round(x.u)}`))))}
+      ${tile("stands", "Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
+    </div>
+    ${wm.more.replace('<h3 class="xr-h">More from the week</h3>', H3(4, "More from the week"))}`;
+
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
 }
 
@@ -791,7 +797,8 @@ function renderWeekNumbers() {
 function renderSeasonAwards() {
   const el = $("#seasonAwardsBody"); if (!el || typeof AWARDS === "undefined" || !AWARDS.length) return;
   const fmt = (a, x) => a.dec ? r1(x) : Math.round(x).toLocaleString();
-  el.innerHTML = `<div class="sa-grid">${AWARDS.map(a => {
+  if (typeof addUniqueAwards === "function") addUniqueAwards();
+  const card = a => {
     const list = a.list.slice(0, 5), h = list[0]; if (!h) return "";
     const n = a.n(h), second = list[1], gap = second ? Math.abs(n - a.n(second)) : 0, tied = second && gap === 0;
     const lead = !second ? "Only qualifier so far." : tied ? `Level with ${plink(second.id)}.` : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
@@ -804,8 +811,29 @@ function renderSeasonAwards() {
       <ol class="sa-race">${list.slice(1).map((p, i) => `<li><span class="xr-n">${i + 2}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
       ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.k === "Mr Economy" ? r1(p.bowl.econ) + " an over" : Math.round(p.bat.sr) + " SR"})`).join("; ")}.</p>` : ""}
     </article>`;
-  }).join("")}</div>
-  <p class="rank-note" style="margin-top:12px">Re-counted after every Monday sync. Each player's page shows the awards he holds in his trophy cabinet.</p>`;
+  };
+  // awards by kind
+  const GROUPS = [["Honours", ["MVP of the season", "Man of the Match", "Clutch King", "Most Valuable per Ball", "Iron Man"]],
+    ["Batting", ["Golden Bat", "Six King", "Strike Rate King", "Powerplay Punisher", "The Wall", "Mr Consistent", "The Finisher", "Over Destroyer", "Partnership King", "The Survivor"]],
+    ["Bowling", ["Golden Ball", "Mr Economy", "Death-over Specialist", "Dot-ball Machine", "Comeback Kid"]],
+    ["Fielding & keeping", ["Safest Hands", "Golden Gloves", "Run-out King"]]];
+  const used = new Set(), groups = GROUPS.map(([g, names]) => { const list = names.map(n => AWARDS.find(a => a.k === n)).filter(Boolean); list.forEach(a => used.add(a)); return [g, list]; });
+  const rest = AWARDS.filter(a => !used.has(a)); if (rest.length) groups.push(["More", rest]);
+  // milestones across the club: how many have unlocked each, and who leads
+  const ps = [...P.values()].filter(p => p.matches), X = buildXR().raw;
+  const inns = p => [...p.log.values()].flatMap(l => l.bat), spells = p => [...p.log.values()].flatMap(l => l.bowl);
+  const MS2 = [["Half-century", p => inns(p).filter(b => b.r >= 50).length, "fifties"], ["Century", p => inns(p).filter(b => b.r >= 100).length, "hundreds"],
+    ["Six machine", p => inns(p).filter(b => b.s >= 5).length, "innings with 5+ sixes"], ["Over destroyer", p => X.overBat.filter(x => x.id === p.id && x.s >= 5).length, "overs with 5+ sixes"],
+    ["Finisher", p => inns(p).filter(b => b.r >= 30 && b.no).length, "unbeaten 30+ scores"], ["Three-wicket haul", p => spells(p).filter(b => b.w >= 3).length, "hauls"],
+    ["Wicket maiden", p => X.overBowl.filter(x => x.id === p.id && x.r === 0 && x.w > 0).length, "wicket maidens"], ["Safe pair", p => [...p.log.values()].filter(l => l.c >= 3).length, "matches with 3+ catches"],
+    ["MVP of the week", p => p.mvpN, "weeks"], ["Man of the Match", p => p.pomN, "matches"]];
+  const ONE = {"fifties":"fifty","hundreds":"hundred","innings with 5+ sixes":"innings with 5+ sixes","overs with 5+ sixes":"over with 5+ sixes","unbeaten 30+ scores":"unbeaten 30+ score","hauls":"haul","wicket maidens":"wicket maiden","matches with 3+ catches":"match with 3+ catches","weeks":"week","matches":"match"};
+  const msRows = MS2.map(([k, f, u]) => { const got = ps.map(p => ({ p, n: f(p) })).filter(x => x.n > 0).sort((a, b) => b.n - a.n), top = got[0];
+    return `<tr><td class="nm">${k}</td><td class="hi">${got.length}<small class="label"> of ${ps.length}</small></td><td>${top ? `${plink(top.p.id)} <small class="label">${top.n} ${top.n === 1 ? (ONE[u] || u) : u}</small>` : "–"}</td><td class="sa-also">${got.slice(1, 4).map(x => `${esc(short(x.p.id))} ${x.n}`).join(" · ") || "–"}</td></tr>`; }).join("");
+  el.innerHTML = `${groups.map(([g, list]) => `<h3 class="sa-gh">${g}<span>${list.length} award${list.length === 1 ? "" : "s"}</span></h3><div class="sa-grid">${list.map(card).join("")}</div>`).join("")}
+    <h3 class="sa-gh">Milestones<span>across the club</span></h3>
+    <div class="tbl-wrap"><table class="data sa-ms"><thead><tr><th>Milestone</th><th>Unlocked by</th><th>Leader</th><th>Next</th></tr></thead><tbody>${msRows}</tbody></table></div>
+    <p class="rank-note" style="margin-top:12px">Re-counted after every Monday sync. Each player's trophy cabinet shows the awards he holds and the milestones he has unlocked.</p>`;
 }
 
 /* ---------------- shared helpers for the season book, weekly extras and player extras ---------------- */
@@ -910,10 +938,15 @@ function weekMore(W, now) {
   const msHtml = `<div class="xr-card"><h3 class="tbl-title">Milestones reached</h3>${ms.length ? `<div class="ms-cards">${ms.map(x => `<a class="ms-card ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}<span><b>${esc(x.what)}</b><small>${esc(pname(x.p.id))}</small></span></a>`).join("")}</div>` : `<p class="dnb">None ${now ? "this" : "that"} week.</p>`}</div>`;
   // match recaps
   const recap = mm => { const perf = mm.perf || [], bat = [...perf].sort((a, b) => b.r - a.r)[0], bowl = [...perf].filter(e => e.w).sort((a, b) => b.w - a.w || a.rc - b.rc)[0];
-    const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0];
-    return `<li><a class="rc-h" href="#match-${mm.id}">#${mm.id} · ${esc(mm.fmt)}</a><p>${mm.win ? `<b>${esc(mm.win.short)}</b> won by ${esc(mm.margin)}.` : esc(mm.m.status_label)} ${bat ? `${esc(short(bat.id))} top-scored with ${bat.r}${bat.b ? ` off ${bat.b}` : ""}` : ""}${bowl ? `; ${esc(short(bowl.id))} took ${bowl.w}/${bowl.rc}.` : "."}</p>
-      ${ob && ob.r >= 20 ? `<p class="rc-t">Turning point: ${esc(short(ob.id))} took ${ob.r} off over ${ob.ov}${ob.bw ? ` from ${esc(short(ob.bw))}` : ""}.</p>` : ""}</li>`; };
-  const recaps = `<div class="xr-card"><h3 class="tbl-title">Match recaps</h3><ul class="rc-list">${[...W.WM].reverse().map(recap).join("")}</ul></div>`;
+    const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0], k = mm.win?.key || "";
+    const sides = [mm.m.team_a.name, mm.m.team_b.name].map(n => `<div class="iw-side ${team(n).key} ${mm.win?.name === n ? "won" : ""}"><b>${esc(team(n).short)}</b><span>${mm.inns.filter(i => i.team === n).map(i => `${i.runs}/${i.wk}`).join(" &amp; ")}</span></div>`).join("");
+    return `<article class="iw-match ${k}"><a class="iw-mh" href="#match-${mm.id}"><span class="iw-mk">Match #${mm.id} · ${esc(mm.fmt)} · ${fmtD(mm.date, { weekday: "short", day: "numeric", month: "short" })}</span>
+      <h4>${mm.win ? `${esc(mm.win.short)} won by ${esc(mm.margin)}` : esc(mm.m.status_label)}</h4></a>
+      <div class="iw-score">${sides}</div>
+      <p class="iw-dek">${bat ? `<b>${esc(short(bat.id))}</b> top-scored with ${bat.r}${bat.b ? ` off ${bat.b}` : ""}` : ""}${bowl ? `; <b>${esc(short(bowl.id))}</b> took ${bowl.w}/${bowl.rc}.` : "."}</p>
+      ${ob && ob.r >= 20 ? `<blockquote class="iw-pull">${esc(short(ob.id))} took ${ob.r} off over ${ob.ov}${ob.bw ? ` from ${esc(short(ob.bw))}` : ""}.<cite>Turning point</cite></blockquote>` : ""}
+      ${(mm.poms || []).length ? `<span class="moms">${mm.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${mm.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>` : ""}</article>`; };
+  const recaps = `<div class="iw-matches n${W.WM.length}">${[...W.WM].reverse().map(recap).join("")}</div>`;
   // week v last week
   const stat = Wk => { const i = new Set(Wk.WM.map(m => m.id)); return { runs: Wk.runs, sixes: Wk.sixes, wkts: Wk.wkts, extras: Wk.extras, drops: DROPS.filter(d => i.has(d.mm.id)).length, m: Wk.WM.length,
     avg: Math.round(Wk.WM.flatMap(m => m.s.scorecards).reduce((a, sc) => a + sc.runs, 0) / Math.max(1, Wk.WM.flatMap(m => m.s.scorecards).length)) }; };
