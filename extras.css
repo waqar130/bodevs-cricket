@@ -500,12 +500,12 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .pb{display:inline-flex;align-items:center;font:700 11px/1 var(--f-data);letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;border:1px solid var(--ink);background:var(--paper);color:var(--ink)}
 .pb.cric{background:var(--red);border-color:var(--red);color:#fff}
 .pb.cric::before{content:"★";margin-right:6px;font-size:12px}
-.pb.job{background:var(--ink);color:var(--paper)}
+.pb.pjob{background:var(--ink);color:var(--paper)}
 .pb.team.t{border-color:var(--tiger);color:var(--tiger)}.pb.team.f{border-color:var(--falcon);color:var(--falcon)}
 .pb.role{border-style:dashed}.pb.role.wk{border-color:#1f8a4c;color:#1f8a4c}
 .pb.ftag{border-color:transparent}
 .pb.ftag.steady,.pb.ftag.new{background:var(--paper-2)}
-.pbadges.sm{gap:5px;margin:6px 0 2px}.pbadges.sm .pb{font-size:9px;padding:4px 6px;letter-spacing:.06em}.pbadges.sm .pb.cric::before{font-size:9px;margin-right:4px}
+.pbadges.sm{gap:5px;margin:6px 0 2px}.pbadges.sm .pb{font-size:10.5px;line-height:1.25;padding:5px 7px;letter-spacing:.04em}.pbadges.sm .pb.cric::before{font-size:9px;margin-right:4px}
 
 /* MVP cover, magazine spread: who, why, what each MVP did */
 @media(min-width:900px){.cover-grid.mvx{grid-template-columns:5fr 7fr;gap:56px;align-items:center}.cover-grid.mvx.n3{grid-template-columns:6fr 6fr}}
@@ -534,3 +534,10 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 
 /* player page: for each team */
 .ts-verdict{font:400 18px/1.45 var(--f-body);margin:4px 0 12px;max-width:60ch}
+
+/* designation badges: always light text on the dark job badge */
+.pbadges .pb.pjob{background:var(--ink);color:#f5f5f1;border-color:var(--ink)}
+/* man of the match badges in the match list */
+.moms{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.mom-b{display:inline-flex;align-items:center;font:700 10.5px/1 var(--f-data);letter-spacing:.06em;text-transform:uppercase;background:#ffd23f;color:#141413;padding:5px 8px;border-left:3px solid var(--ink)}
+.mom-b.t{border-left-color:var(--tiger)}.mom-b.f{border-left-color:var(--falcon)}
