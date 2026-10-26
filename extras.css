@@ -506,3 +506,28 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .pb.ftag{border-color:transparent}
 .pb.ftag.steady,.pb.ftag.new{background:var(--paper-2)}
 .pbadges.sm{gap:5px;margin:6px 0 2px}.pbadges.sm .pb{font-size:9px;padding:4px 6px;letter-spacing:.06em}.pbadges.sm .pb.cric::before{font-size:9px;margin-right:4px}
+
+/* MVP cover, magazine spread: who, why, what each MVP did */
+@media(min-width:900px){.cover-grid.mvx{grid-template-columns:5fr 7fr;gap:56px;align-items:center}.cover-grid.mvx.n3{grid-template-columns:6fr 6fr}}
+.mvx-eyebrow{display:inline-block;margin-top:14px;font:700 12px var(--f-data);letter-spacing:.14em;text-transform:uppercase;background:#ffd23f;color:#141413;padding:7px 11px}
+.mvx-head{font-size:clamp(56px,7.4vw,120px);line-height:.88;margin-top:12px;overflow-wrap:break-word}
+.mvx.n2 .mvx-head,.mvx.n3 .mvx-head{font-size:clamp(48px,6.2vw,100px)}
+.mvx-why{font:400 clamp(19px,2vw,24px)/1.4 var(--f-body);color:var(--ink-2);margin-top:14px;max-width:40ch}
+.mvx-why b{color:var(--red);font-weight:700}
+.mvx-why span{display:block;font:400 13px var(--f-data);color:var(--muted);margin-top:6px}
+.mvx-cards{display:grid;gap:12px;margin-top:22px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.mvx-card{position:relative;display:flex;flex-direction:column;gap:4px;text-decoration:none;color:var(--ink);border-top:5px solid var(--team,var(--ink));background:var(--paper-2);padding:14px 70px 14px 14px;min-width:0}
+.mvx-card.t{--team:var(--tiger)}.mvx-card.f{--team:var(--falcon)}
+.mvx-card:hover{background:#ecebe4}
+.mvx-who{font:700 11px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mvx-feat{font:900 clamp(30px,3.4vw,46px)/1 var(--f-display);text-transform:uppercase}
+.mvx-feat b{color:var(--red);font-weight:900}
+.mvx-line{font:400 13px/1.45 var(--f-data);color:var(--ink-2)}
+.mvx-pts{position:absolute;right:12px;top:12px;text-align:right;font:900 34px/1 var(--f-display)}
+.mvx-pts small{display:block;font:600 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mvx .mvp-week{margin-top:18px}
+.mvx.n3 .mvx-cards{grid-template-columns:1fr;gap:8px}
+.mvx.n3 .mvx-card{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:2px 14px;align-items:center;padding:10px 70px 10px 12px}
+.mvx.n3 .mvx-who{grid-column:1/-1}
+.mvx.n3 .mvx-feat{font-size:clamp(26px,2.6vw,34px)}
+@media(max-width:560px){.mvx.n3 .mvx-card{grid-template-columns:1fr}}
