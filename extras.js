@@ -108,26 +108,58 @@ async function drawDigest(W) {
   return c;
 }
 let dgTok = 0;
+// the week's headline: who won the week, by how much
+function weekHeadline(W) {
+  const tw = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, short: team(n).short, ...v }));
+  if (tw.length < 2) return { h: `Issue ${W.issue}`, d: "" };
+  const [a, b] = tw.sort((x, y) => y.w - x.w || (y.for - y.against) - (x.for - x.against)), rd = a.for - a.against;
+  if (a.w === b.w) return { h: `Honours even, ${a.w}–${b.w}`, d: rd ? `The ${esc(rd > 0 ? a.short : b.short)} edge it on runs, +${Math.abs(rd)}.` : "Level on runs too." };
+  return { h: `${esc(a.short)} ${b.w ? "win" : "sweep"} the week ${a.w}–${b.w}`, d: `A run difference of ${rd > 0 ? "+" : ""}${rd} for the ${esc(a.short)}.` };
+}
 async function renderDigest() {
   const el = $("#digestBody"); if (!el || !WEEK) return;
-  const W = selW(), tok = ++dgTok, txt = digestText(W);
-  $("#digest h2").textContent = W === WEEK ? "This week" : `Issue ${W.issue}`;
-  el.innerHTML = `<div class="dg-grid"><div class="dg-copy">
-      <p class="label">The week in one message</p><pre class="dg-text" id="dgText"></pre>
-      <div class="pick-actions"><a class="btn" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download image</button></div>
-      <p class="label" id="dgMsg"></p></div>
-    <img class="card-img dg-img" id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(W))}"></div>`;
-  $("#dgText").textContent = txt;
+  const W = selW(), tok = ++dgTok, txt = digestText(W), X = buildXR().raw, ids = new Set(W.WM.map(m => m.id));
+  const now = W === WEEK, hd = weekHeadline(W), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
+  $("#digest h2").textContent = now ? "This week" : `Issue ${W.issue}`;
+  const thumb = id => miniThumb(P.get(id)), nm = id => esc(pname(id));
+  // results
+  const results = [...W.WM].reverse().map(m => `<li><a class="dgr ${m.win?.key || ""}" href="#match-${m.id}"><span class="dgr-id">#${m.id} · ${esc(m.fmt)}</span><b>${m.win ? `${esc(m.win.short)} won` : esc(m.m.status_label)}</b><span class="dgr-m">${m.win ? `by ${esc(m.margin)}` : ""}</span>
+    ${(m.poms || []).length ? `<span class="moms">${m.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${m.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>` : ""}</a></li>`).join("");
+  // podium
+  const pod = W.podium.slice(0, 4).map(x => `<a class="dgp ${P.get(x.id)?.tm.key || ""} ${x.n === 1 ? "top" : ""}" href="${purl(x.id)}">${thumb(x.id)}<span><small>${x.role}</small><b>${nm(x.id)}</b><i>${x.r} runs · ${x.w} wkt${x.w === 1 ? "" : "s"} · ${x.c} ct</i></span><em>${x.pts}<small>pts</small></em></a>`).join("");
+  // top performers
+  const ob = X.overBat.filter(x => ids.has(x.mm.id)).sort((a, b) => b.r - a.r)[0], six = [...W.ranked].sort((a, b) => b.s - a.s)[0];
+  const tiles = [
+    W.knock && ["Best knock", `${W.knock.r}${W.knock.no ? "*" : ""}`, `${nm(W.knock.id)} · ${W.knock.b} balls, ${W.knock.s} sixes`],
+    W.spell && ["Best spell", `${W.spell.w}/${W.spell.r}`, `${nm(W.spell.id)} · ${W.spell.ov} overs`],
+    ob && ["Biggest over", ob.r, `${nm(ob.id)}${ob.bw ? ` off ${esc(short(ob.bw))}` : ""}`],
+    six?.s && ["Most sixes", six.s, nm(six.id)],
+  ].filter(Boolean).map(([k, v, s]) => `<div class="dgt"><span class="label">${k}</span><b>${v}</b><small>${s}</small></div>`).join("");
+  const ms = milestonesIn(W), hot = formData().filter(x => x.trend === "hot").slice(0, 4);
+  el.innerHTML = `<div class="dg-issue">
+    <div class="dg-main">
+      <div class="dg-mast"><span>The Monday digest</span><span>Issue ${W.issue} · ${esc(weekRange(W))}</span></div>
+      <h3 class="dg-h">${hd.h}.</h3>
+      <p class="dg-d">${hd.d} Season: <b>Tigers ${t}–${f} Falcons</b>.</p>
+      <h4 class="dg-k">Results</h4><ul class="dg-res">${results}</ul>
+      <h4 class="dg-k">The podium</h4><div class="dg-pod">${pod}</div>
+      <h4 class="dg-k">Top performers</h4><div class="dg-tiles">${tiles}</div>
+      ${ms.length ? `<h4 class="dg-k">Milestones</h4><p class="dg-chips">${ms.map(s => `<span>🏅 ${esc(s)}</span>`).join("")}</p>` : ""}
+      ${hot.length ? `<h4 class="dg-k">In form</h4><p class="dg-chips">${hot.map(x => `<a href="${purl(x.p.id)}">🔥 ${esc(pname(x.p.id))} <small>form ${Math.round(x.form)}</small></a>`).join("")}</p>` : ""}
+    </div>
+    <aside class="dg-side"><p class="label">Share the week</p>
+      <div class="dg-frame"><img id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(W))}"><span class="pst-load">Drawing the card…</span></div>
+      <div class="pick-actions"><a class="btn solid" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download</button></div>
+      <p class="label" id="dgMsg"></p></aside></div>`;
+  $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
   // draw the image card only once the digest is actually on screen
   await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#dgImg")); });
   if (tok !== dgTok) return; // a newer week was picked meanwhile
-  const c = await drawDigest(W); if (tok !== dgTok) return; $("#dgImg").src = c.toDataURL("image/png");
-  // reuse shareUI with this section's ids
-  const msg = $("#dgMsg");
-  $("#dgCopy").onclick = () => copyCanvas(c, msg); $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
-  const dl = $("#dgDl"); const fname = `bodevs-cricket-digest-issue-${W.issue}.png`;
+  const c = await drawDigest(W); if (tok !== dgTok) return; $("#dgImg").src = c.toDataURL("image/png"); el.querySelector(".dg-frame .pst-load")?.remove();
+  const msg = $("#dgMsg"); $("#dgCopy").onclick = () => copyCanvas(c, msg);
+  const dl = $("#dgDl"), fname = `bodevs-cricket-digest-issue-${W.issue}.png`;
   if (IS_LOCAL || !window.claude?.use) { dl.hidden = false; dl.onclick = () => downloadCanvas(c, fname); }
-  else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false; dl.onclick = async () => { try { await d.save({ filename: fname, data: await new Promise(r => c.toBlob(r, "image/png")) }); msg.textContent = "Saved."; } catch {} }; }).catch(() => {});
+  else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false; dl.onclick = async () => { try { await d.save({ filename: fname, data: await new Promise(r => c.toBlob(r, "image/png")) }); msg.textContent = "Saved."; } catch (err) { msg.textContent = "Couldn't save the image."; } }; });
 }
 
 /* ---------------- 2. Season story (charts) ---------------- */
@@ -1317,15 +1349,15 @@ async function drawRound(x, p, cx, cy, r) {
   x.restore(); x.lineWidth = 6; x.strokeStyle = p?.tm.key === "f" ? CC.f : CC.t; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.stroke();
 }
 const fitText = (x, t, maxW, size, weight, fam) => { let s = size; x.font = `${weight} ${s}px ${fam}`; while (x.measureText(t).width > maxW && s > 18) { s -= 4; x.font = `${weight} ${s}px ${fam}`; } return s; };
-async function drawPoster(W, fmt = "story") {
+async function drawPoster(W) {
   await Promise.all(['900 160px "Big Shoulders Display"', '800 60px "Big Shoulders Display"', '600 28px "IBM Plex Mono"', '500 28px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
-  const story = fmt === "story", CWd = 1080, CHt = story ? 1920 : 1080, c = document.createElement("canvas"); c.width = CWd; c.height = CHt; const x = c.getContext("2d");
+  const CWd = 1080, CHt = 1920, c = document.createElement("canvas"); c.width = CWd; c.height = CHt; const x = c.getContext("2d");
   const mv = W.mvps.map(z => ({ z, p: P.get(z.id) })).filter(o => o.p), rest = W.podium.filter(z => z.n > 1).slice(0, 2), tw = Object.entries(W.tw);
   x.fillStyle = "#0d0d0c"; x.fillRect(0, 0, CWd, CHt);
   // header: logo, issue
   const logo = await loadImg("assets/logo.png"); if (logo) x.drawImage(logo, 60, 56, logo.width * 60 / logo.height, 60);
   x.textAlign = "right"; x.fillStyle = CC.gold; x.font = `900 64px ${DISP}`; x.fillText(`ISSUE ${W.issue}`, CWd - 60, 108); x.textAlign = "left";
-  if (story) {
+  {
     x.fillStyle = CC.gold; x.font = `900 120px ${DISP}`; x.fillText(W.joint ? "JOINT MVPS" : "MVP OF THE WEEK", 60, 270);
     x.fillStyle = "#bdb7aa"; x.font = `500 28px ${MONO}`; x.fillText(`${weekRange(W).toUpperCase()} · SPORTSX, G-12`, 60, 318);
     // photos
@@ -1352,17 +1384,6 @@ async function drawPoster(W, fmt = "story") {
       x.fillStyle = CC.red; x.font = `600 22px ${MONO}`; x.fillText(z.role.toUpperCase(), X + 132, SY + 34);
       x.fillStyle = "#fff"; fitText(x, short(p.id).toUpperCase(), 330, 52, 800, DISP); x.fillText(short(p.id).toUpperCase(), X + 132, SY + 84);
       x.fillStyle = "#bdb7aa"; x.font = `500 22px ${MONO}`; x.fillText(`${z.pts} PTS`, X + 132, SY + 114); }
-  } else {
-    // square: photos left, words right
-    const PX = 60, PY = 160, PH = 760, PW = 470, gap = 10, pw = (PW - gap * (mv.length - 1)) / mv.length;
-    for (let i = 0; i < mv.length; i++) { const X = PX + i * (pw + gap); await drawFill(x, mv[i].p, X, PY, pw, PH); x.fillStyle = mv[i].p.tm.key === "f" ? CC.f : CC.t; x.fillRect(X, PY + PH - 10, pw, 10); }
-    const TX = 580, TW = CWd - TX - 60;
-    x.fillStyle = CC.gold; x.font = `900 76px ${DISP}`; x.fillText(W.joint ? "JOINT MVPS" : "MVP OF", TX, 250); if (!W.joint) x.fillText("THE WEEK", TX, 326);
-    x.fillStyle = "#bdb7aa"; x.font = `500 22px ${MONO}`; x.fillText(weekRange(W).toUpperCase(), TX, W.joint ? 296 : 370);
-    let y = W.joint ? 380 : 470;
-    mv.forEach(({ z, p }) => { x.fillStyle = "#fff"; fitText(x, (p.full_name || p.name).toUpperCase(), TW, mv.length > 1 ? 56 : 72, 900, DISP); x.fillText((p.full_name || p.name).toUpperCase(), TX, y);
-      x.fillStyle = CC.gold; x.font = `600 22px ${MONO}`; x.fillText(`${z.r} RUNS · ${z.w} WKTS · ${z.pts} PTS`, TX, y + 40); y += mv.length > 1 ? 120 : 140; });
-    rest.forEach((z, i) => { x.fillStyle = CC.red; x.font = `600 20px ${MONO}`; x.fillText(z.role.toUpperCase(), TX, y + i * 76); x.fillStyle = "#fff"; x.font = `800 38px ${DISP}`; x.fillText(`${short(z.id).toUpperCase()} · ${z.pts}`, TX, y + 40 + i * 76); });
   }
   // result line and footer
   const res = tw.length === 2 ? `${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}`.toUpperCase() : "";
@@ -1371,22 +1392,20 @@ async function drawPoster(W, fmt = "story") {
   x.textAlign = "right"; x.font = `600 22px ${MONO}`; x.fillText("BODEVS CRICKET", CWd - 60, CHt - 36); x.textAlign = "left";
   return c;
 }
-let POSTER_FMT = "story", posterTok = 0;
+let posterTok = 0;
 async function renderPoster() {
   const host = $("#digestBody"); if (!host || !WEEK) return;
   let el = $("#posterBox"); if (!el) { el = document.createElement("div"); el.id = "posterBox"; host.after(el); }
   const W = selW(), tok = ++posterTok;
   el.innerHTML = `<div class="pst"><div class="pst-copy"><p class="kicker">MVP poster · Issue ${W.issue}</p><h3 class="pst-h">${W.joint ? "Joint MVPs" : "MVP of the week"}, ready to post</h3>
-      <p class="pst-dek">${W.mvps.map(z => `<b>${esc(pname(z.id))}</b>`).join(" & ")}${W.joint ? " share" : " takes"} the week with ${W.pow.pts} points. Pick a size, then copy, download or send it.</p>
-      <div class="pst-fmt" role="radiogroup" aria-label="Poster size">${[["story", "Story · 9:16", "WhatsApp status, Instagram stories"], ["square", "Square · 1:1", "Chats and posts"]].map(([k, l, s]) => `<button type="button" role="radio" aria-checked="${k === POSTER_FMT}" data-fmt="${k}"><b>${l}</b><small>${s}</small></button>`).join("")}</div>
+      <p class="pst-dek">${W.mvps.map(z => `<b>${esc(pname(z.id))}</b>`).join(" & ")}${W.joint ? " share" : " takes"} the week with ${W.pow.pts} points. Sized 9:16 for WhatsApp status and stories.</p>
       <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
       <p class="label" id="mvppMsg"></p></div>
-    <div class="pst-frame ${POSTER_FMT}"><img id="mvppImg" alt="MVP poster for issue ${W.issue}"><span class="pst-load">Drawing the poster…</span></div></div>`;
-  el.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => { POSTER_FMT = b.dataset.fmt; renderPoster(); });
+    <div class="pst-frame story"><img id="mvppImg" alt="MVP poster for issue ${W.issue}"><span class="pst-load">Drawing the poster…</span></div></div>`;
   await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "300px" }); io.observe(el); });
-  const c = await drawPoster(W, POSTER_FMT); if (tok !== posterTok || !$("#mvppImg")) return;
+  const c = await drawPoster(W); if (tok !== posterTok || !$("#mvppImg")) return;
   $("#mvppImg").src = c.toDataURL("image/png"); el.querySelector(".pst-load")?.remove();
-  shareUI("mvpp", c, `bodevs-mvp-issue-${W.issue}-${POSTER_FMT}.png`, `${W.joint ? "Joint MVPs" : "MVP"} of the week, issue ${W.issue}: ${W.mvps.map(z => `${pname(z.id)} (${z.pts} pts)`).join(" & ")}.\n${SITE_BASE}`, "mvppMsg");
+  shareUI("mvpp", c, `bodevs-mvp-issue-${W.issue}.png`, `${W.joint ? "Joint MVPs" : "MVP"} of the week, issue ${W.issue}: ${W.mvps.map(z => `${pname(z.id)} (${z.pts} pts)`).join(" & ")}.\n${SITE_BASE}`, "mvppMsg");
 }
 
 /* ---------------- search: players, matches and sections ("/" opens it) ---------------- */
