@@ -369,7 +369,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
 const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
+  playershero: "players", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -455,7 +455,7 @@ function recordsThisWeek(W) {
   if (typeof RECS === "undefined" || !RECS) return [];
   // one line per category and player; "most runs conceded" is not one to celebrate
   const ids = new Set(W.WM.map(m => m.id)), out = [], seen = new Set();
-  ["bat", "bowl"].forEach(tab => RECS[tab].forEach(cat => cat.k !== "exp" && cat.rows.forEach((x, i) => {
+  ["bat", "bowl", "fld"].forEach(tab => RECS[tab].forEach(cat => !["exp", "exs", "sxc", "lost"].includes(cat.k) && cat.rows.forEach((x, i) => {
     if (ids.has(x.mm.id) && !seen.has(cat.k + x.id)) { seen.add(cat.k + x.id); out.push({ tab, cat, x, i }); }
   })));
   return out.sort((a, b) => a.i - b.i);
@@ -791,6 +791,29 @@ function renderWeekNumbers() {
     ${wm.more.replace('<h3 class="xr-h">More from the week</h3>', H3(4, "More from the week"))}`;
 
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
+}
+
+/* ---------------- players cover: the squad in numbers and four faces worth knowing ---------------- */
+function renderPlayersHero() {
+  const el = $("#playersHeroBody"); if (!el || !M?.length) return;
+  const ps = [...P.values()].filter(p => p.matches), n = k => ps.filter(p => p.tm.key === k).length;
+  const used = new Set(), pick = (label, list, v, u) => { const p = list.find(q => !used.has(q.id)); if (!p) return null; used.add(p.id); return { label, p, v: v(p), u }; };
+  const by = f => [...ps].sort((a, b) => f(b) - f(a));
+  const F = typeof formData === "function" ? formData().filter(x => x.trend !== "new") : [];
+  const stars = [
+    F.length && pick("Hottest right now", F.map(x => x.p), p => Math.round(F.find(x => x.p === p).form), "form score"),
+    pick("Run machine", by(p => p.bat.r), p => p.bat.r.toLocaleString(), "runs"),
+    pick("Wicket taker", by(p => p.bowl.w), p => p.bowl.w, "wickets"),
+    pick("Six hitter", by(p => p.bat.s), p => p.bat.s, "sixes")].filter(Boolean);
+  const card = s => `<a class="sh-star ${s.p.tm.key}" href="${purl(s.p.id)}"><span class="sh-ph">${s.p.photo ? `<img src="${s.p.photo}" alt="" loading="lazy">` : ""}</span><small>${s.label}</small><b>${esc(pname(s.p.id))}</b><em>${s.v} <i>${s.u}</i></em></a>`;
+  el.innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">The dressing room · ${ps.length} players</p>
+      <h2 class="sh-head">The faces behind the numbers.</h2>
+      <p class="sh-dek">BoDevs on weekdays, SportsX on Sunday nights. Who's in form, who's underrated and who's closest to the next big number.</p>
+      <div class="sh-stats"><div><b>${n("t")}</b><span>Tigers</span></div><div><b>${n("f")}</b><span>Falcons</span></div><div><b>${ps.filter(p => p.keeper).length}</b><span>keepers</span></div>
+        <div><b>${ps.filter(p => p.bowl_style === "fast").length}</b><span>pace bowlers</span></div><div><b>${ps.filter(p => p.bowl_style === "spin").length}</b><span>spinners</span></div><div><b>${ps.filter(p => p.captain).length}</b><span>captains</span></div></div>
+    </div>
+    <div class="sh-stars ph-stars">${stars.map(card).join("")}</div></div>`;
 }
 
 /* ---------------- stats cover: the headline records, as big numbers ---------------- */
@@ -1548,7 +1571,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderPlayersHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };

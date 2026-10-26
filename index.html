@@ -737,6 +737,10 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept players-cover" id="playershero">
+    <div class="wrap" id="playersHeroBody"></div>
+  </section>
+
   <section class="dept" id="squads">
     <div class="wrap">
       <div class="dept-head">
@@ -875,6 +879,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <div class="rec-top" role="tablist" aria-label="Record type">
         <button role="tab" type="button" data-rt="bat" aria-selected="true">Batting</button>
         <button role="tab" type="button" data-rt="bowl" aria-selected="false">Bowling</button>
+        <button role="tab" type="button" data-rt="fld" aria-selected="false">Fielding</button>
       </div>
       <div class="rec-cats" id="recCats" role="tablist" aria-label="Category"></div>
       <div id="recBody" aria-live="polite"></div>
@@ -1119,7 +1124,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one
@@ -1725,22 +1730,27 @@ function renderShame(){
 }
 
 /* ---------- record book ---------- */
-let RECS=null,DROPS=[];const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi"}};
-try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv)}catch(e){}
+let RECS=null,DROPS=[];const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi",fld:"ctm"}};
+try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv,{cat:{...REC.cat,...sv.cat}})}catch(e){}
 const runVal=t=>t.kind==="six"?6:t.kind==="four"?4:/^\d+$/.test(String(t.mark))?+t.mark:0;
 function buildRecords(){
-  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map();
+  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map(),fInn=[],mFld=new Map();
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
-    const ino=sc.innings_no;
+    const ino=sc.innings_no,last=sc===mm.s.scorecards.at(-1),won=mm.win?.name===sc.batting_team,lost=!!mm.win&&!won;
     sc.batting.forEach(x=>{let c=0,f50=null,f100=null;
       (x.timeline||[]).forEach((t,i)=>{const p=c;c+=runVal(t);if(p<50&&c>=50)f50=i+1;if(p<100&&c>=100)f100=i+1});
-      inn.push({id:x.id,mm,ino,opp:sc.bowling_team,r:x.runs,b:x.balls,no:!x.out,s:x.sixes,f:x.fours,f50,f100});
+      inn.push({id:x.id,mm,ino,opp:sc.bowling_team,r:x.runs,b:x.balls,no:!x.out,s:x.sixes,f:x.fours,f50,f100,lost,chase:last&&ino>1&&won});
       const k=mm.id+"|"+x.id,e=mBat.get(k)||{id:x.id,mm,ino,opp:sc.bowling_team,r:0,b:0,parts:[]};
       e.r+=x.runs;e.b+=x.balls;e.parts.push(`${x.runs}${x.out?"":"*"} (${x.balls})`);mBat.set(k,e)});
     sc.bowling.forEach(x=>{const b=balls(x.overs);
       spells.push({id:x.id,mm,ino,opp:sc.batting_team,w:x.wickets,r:x.runs,b,ov:x.overs,dots:x.dots,s:x.sixes});
       const k=mm.id+"|"+x.id,e=mBowl.get(k)||{id:x.id,mm,ino,opp:sc.batting_team,w:0,r:0,b:0,parts:[]};
       e.w+=x.wickets;e.r+=x.runs;e.b+=b;e.parts.push(`${x.wickets}/${x.runs}`);mBowl.set(k,e)});
+    // fielding: catches and run outs per innings, and per match (both innings of a Test together)
+    const fi=new Map(),fe=id=>{if(!fi.has(id))fi.set(id,{id,mm,ino,opp:sc.batting_team,c:0,ro:0});return fi.get(id)};
+    const fid=x=>x.id||byName.get(x.name);(sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i)fe(i).c+=x.count});(sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i)fe(i).ro+=x.count||1});
+    fi.forEach(x=>{fInn.push(x);const k=mm.id+"|"+x.id,e=mFld.get(k)||{id:x.id,mm,ino,opp:x.opp,c:0,ro:0,parts:[]};
+      e.c+=x.c;e.ro+=x.ro;e.parts.push([x.c&&`${x.c} ct`,x.ro&&`${x.ro} ro`].filter(Boolean).join(", "));mFld.set(k,e)});
     (sc.commentary||[]).filter(c=>c.type==="over").forEach(c=>{
       const nm=String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/,""),id=byName.get(nm);if(!id)return;
       overs.push({id,mm,ino,opp:sc.batting_team,r:parseInt(c.text)||0,w:+((String(c.text).match(/(\d+) wicket/)||[])[1]||0),o:c.over_no,lbl:sc.label})});
@@ -1754,6 +1764,11 @@ function buildRecords(){
       {k:"f100",t:"Fastest hundreds",rows:top(inn,x=>x.f100,(a,b)=>a.f100-b.f100||b.r-a.r),big:x=>x.f100,unit:()=>"balls to reach 100",det:x=>`Went on to ${bt(x)} off ${x.b}`},
       {k:"six",t:"Most sixes in an innings",rows:top(inn,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:()=>"sixes",det:x=>`${bt(x)} off ${x.b} · SR ${r1(x.r/x.b*100)}`},
       {k:"sr",t:"Highest strike rates",note:"Innings of 15 balls or more.",rows:top(inn,x=>x.b>=15,(a,b)=>b.r/b.b-a.r/a.b||b.r-a.r),big:x=>Math.round(x.r/x.b*100),unit:()=>"strike rate",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
+      {k:"four",t:"Most fours in an innings",rows:top(inn,x=>x.f>0,(a,b)=>b.f-a.f||b.r-a.r),big:x=>x.f,unit:()=>"fours",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
+      {k:"bnd",t:"Most runs in boundaries",note:"Fours and sixes in one innings.",rows:top(inn,x=>x.f+x.s>0,(a,b)=>(b.f*4+b.s*6)-(a.f*4+a.s*6)||b.r-a.r),big:x=>x.f*4+x.s*6,unit:x=>`of ${x.r} runs from boundaries`,det:x=>`${x.f}×4 · ${x.s}×6 · ${Math.round((x.f*4+x.s*6)/Math.max(x.r,1)*100)}% of the innings`},
+      {k:"long",t:"Longest innings",rows:top(inn,x=>x.b>0,(a,b)=>b.b-a.b||b.r-a.r),big:x=>x.b,unit:()=>"balls faced",det:x=>`${bt(x)} · SR ${r1(x.r/x.b*100)}`},
+      {k:"chase",t:"Best in a winning chase",note:"Top scores in the final innings of a match the batting side won.",rows:top(inn,x=>x.chase,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.mm.margin||"won"}`},
+      {k:"lost",t:"Best in a losing cause",rows:top(inn,x=>x.lost,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
       {k:"mr",t:"Most runs in a match",note:"Both innings of a Test added together.",rows:top([...mBat.values()],all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs off ${x.b} balls`,det:x=>x.parts.join(" & ")},
     ],
     bowl:[
@@ -1761,8 +1776,19 @@ function buildRecords(){
       {k:"bbm",t:"Best match figures",note:"Both innings of a Test added together.",rows:top([...mBowl.values()],x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${ovs(x.b)} overs`,det:x=>x.parts.join(" & ")},
       {k:"eco",t:"Most economical spells",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>a.r/a.b-b.r/b.b||b.w-a.w),big:x=>r1(x.r/x.b*6),unit:()=>"runs an over",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
       {k:"dots",t:"Most dot balls in a spell",rows:top(spells,x=>x.dots>0,(a,b)=>b.dots-a.dots||a.r-b.r),big:x=>x.dots,unit:x=>`dot balls in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · ${Math.round(x.dots/x.b*100)}% dots`},
+      {k:"bsr",t:"Best strike rate in a spell",note:"Spells with 2 wickets or more. Balls bowled per wicket.",rows:top(spells,x=>x.w>=2,(a,b)=>a.b/a.w-b.b/b.w||b.w-a.w),big:x=>r1(x.b/x.w),unit:()=>"balls per wicket",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
+      {k:"dotp",t:"Highest dot-ball rate",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>b.dots/b.b-a.dots/a.b||a.r-b.r),big:x=>`${Math.round(x.dots/x.b*100)}%`,unit:x=>`dots in ${x.ov} overs`,det:x=>`${x.dots} dots · ${x.w}/${x.r}`},
       {k:"wkm",t:"Most wickets in an over",rows:top(overs,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>x.w,unit:()=>"wickets in one over",det:x=>`Over ${x.o} · ${x.r} runs`},
+      {k:"exs",t:"Most expensive spells",rows:top(spells,all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · econ ${r1(x.r/x.b*6)}`},
+      {k:"sxc",t:"Most sixes conceded in a spell",rows:top(spells,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:x=>`sixes in ${x.ov} overs`,det:x=>`${x.w}/${x.r}`},
       {k:"exp",t:"Most runs conceded in an over",rows:top(overs,all,(a,b)=>b.r-a.r||a.w-b.w),big:x=>x.r,unit:()=>"runs in one over",det:x=>`Over ${x.o} of the ${x.lbl} innings${x.w?` · ${x.w} wkt`:""}`},
+    ],
+    fld:[
+      {k:"ctm",t:"Most catches in a match",note:"Both innings of a Test added together.",rows:top([...mFld.values()],x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
+      {k:"cti",t:"Most catches in an innings",rows:top(fInn,x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches in one innings",det:x=>x.ro?`Plus ${x.ro} run out${x.ro>1?"s":""}`:"Catches only"},
+      {k:"rom",t:"Most run outs in a match",rows:top([...mFld.values()],x=>x.ro>0,(a,b)=>b.ro-a.ro||b.c-a.c),big:x=>x.ro,unit:x=>`run out${x.ro>1?"s":""}`,det:x=>x.parts.join(" & ")},
+      {k:"dis",t:"Most dismissals in a match",note:"Catches and run outs together.",rows:top([...mFld.values()],x=>x.c+x.ro>0,(a,b)=>(b.c+b.ro)-(a.c+a.ro)||b.c-a.c),big:x=>x.c+x.ro,unit:()=>"dismissals",det:x=>`${x.c} ct · ${x.ro} ro`},
+      {k:"kp",t:"Keeper: most catches in a match",note:"Catches by a wicket-keeper.",rows:top([...mFld.values()],x=>x.c>0&&P.get(x.id)?.keeper,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
     ]};
 }
 function renderRecords(){

@@ -696,8 +696,18 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .st-rec span{font:700 13px var(--f-body);color:#f3efe6;margin-top:4px}
 .st-rec:hover b{color:#ffd23f}
 /* numbered, heavy-ruled section heads on the stats page */
-main{counter-reset:spage tpage}
+main{counter-reset:spage tpage ppage}
 .dept[data-page="stats"]:not(#statshero){counter-increment:tpage}
 .dept[data-page="stats"]:not(#statshero) .dept-head{border-top:6px solid var(--ink);padding-top:18px}
 .dept[data-page="stats"]:not(#statshero) .dept-head .kicker::before{content:counter(tpage,decimal-leading-zero) "  ·  ";color:var(--red)}
 #streaks .xr-h,#matchups .xr-h{border-top:3px solid var(--ink);padding-top:10px}
+
+/* players page, magazine style */
+.players-cover{background:#0d0d0c;color:#f3efe6;border-bottom:0;padding-block:56px}
+.ph-stars{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:600px){.ph-stars{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.dept[data-page="players"]:not(#playershero){counter-increment:ppage}
+.dept[data-page="players"]:not(#playershero) .dept-head{border-top:6px solid var(--ink);padding-top:18px}
+.dept[data-page="players"]:not(#playershero) .dept-head .kicker::before{content:counter(ppage,decimal-leading-zero) "  ·  ";color:var(--red)}
+#squads .sheet-head{border-top:4px solid var(--ink);padding-top:12px}
+#milestones .tbl-title,#tables .tbl-title{border-top:3px solid var(--ink);padding-top:10px}
