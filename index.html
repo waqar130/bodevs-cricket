@@ -862,6 +862,10 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept stats-cover" id="statshero">
+    <div class="wrap" id="statsHeroBody"></div>
+  </section>
+
   <section class="dept" id="records">
     <div class="wrap">
       <div class="dept-head">
@@ -1115,7 +1119,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one

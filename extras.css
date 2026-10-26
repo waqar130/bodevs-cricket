@@ -667,7 +667,6 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .sh-star em{font:900 26px/1 var(--f-display);font-style:normal;color:#fff}
 .sh-star em i{font:600 10px var(--f-data);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#a9a49a}
 /* numbered, heavy-ruled section heads on the season page */
-main{counter-reset:spage}
 .dept[data-page="season"]:not(#seasonhero){counter-increment:spage}
 .dept[data-page="season"]:not(#seasonhero) .dept-head{border-top:6px solid var(--ink);padding-top:18px}
 .dept[data-page="season"]:not(#seasonhero) .dept-head .kicker::before{content:counter(spage,decimal-leading-zero) "  ·  ";color:var(--red)}
@@ -680,3 +679,25 @@ main{counter-reset:spage}
 /* tale of the tape: a proper head-to-head */
 #tape .tape-t{font:900 clamp(28px,3.4vw,42px)/1 var(--f-display);text-transform:uppercase;border-top:4px solid var(--ink);padding-top:10px}
 #tape .cmp-v{font-size:20px}
+
+/* stats page, magazine style */
+.stats-cover{background:#0d0d0c;color:#f3efe6;border-bottom:0;padding-block:56px}
+.st-head{font-size:clamp(52px,8vw,120px)!important}
+.st-recs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;margin-top:30px;border-top:1px solid #3a3935}
+@media(max-width:1000px){.st-recs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.st-recs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.st-rec{display:flex;flex-direction:column;gap:4px;padding:16px 14px 14px 0;text-decoration:none;color:inherit;border-bottom:1px solid #3a3935;min-width:0}
+.st-rec+.st-rec{padding-left:14px;border-left:1px solid #3a3935}
+@media(max-width:1000px){.st-rec:nth-child(3n+1){padding-left:0;border-left:0}}
+@media(max-width:560px){.st-rec:nth-child(3n+1){padding-left:14px;border-left:1px solid #3a3935}.st-rec:nth-child(2n+1){padding-left:0;border-left:0}}
+.st-rec small{font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:#ffd23f}
+.st-rec b{font:900 clamp(40px,4.6vw,64px)/1 var(--f-display);color:#fff}
+.st-rec i{font:400 12px var(--f-data);font-style:normal;color:#a9a49a}
+.st-rec span{font:700 13px var(--f-body);color:#f3efe6;margin-top:4px}
+.st-rec:hover b{color:#ffd23f}
+/* numbered, heavy-ruled section heads on the stats page */
+main{counter-reset:spage tpage}
+.dept[data-page="stats"]:not(#statshero){counter-increment:tpage}
+.dept[data-page="stats"]:not(#statshero) .dept-head{border-top:6px solid var(--ink);padding-top:18px}
+.dept[data-page="stats"]:not(#statshero) .dept-head .kicker::before{content:counter(tpage,decimal-leading-zero) "  ·  ";color:var(--red)}
+#streaks .xr-h,#matchups .xr-h{border-top:3px solid var(--ink);padding-top:10px}

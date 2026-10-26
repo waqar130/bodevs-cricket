@@ -370,7 +370,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
-  records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
+  statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
@@ -791,6 +791,21 @@ function renderWeekNumbers() {
     ${wm.more.replace('<h3 class="xr-h">More from the week</h3>', H3(4, "More from the week"))}`;
 
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
+}
+
+/* ---------------- stats cover: the headline records, as big numbers ---------------- */
+function renderStatsHero() {
+  const el = $("#statsHeroBody"); if (!el || !M?.length || typeof RECS === "undefined" || !RECS) return;
+  const X = buildXR().raw, inns = M.flatMap(m => m.s.scorecards), ballsN = inns.reduce((a, sc) => a + (sc.commentary || []).filter(c => c.type === "ball").length, 0);
+  const cat = (tab, k) => RECS[tab].find(c => c.k === k), rec = (tab, k, label) => { const c = cat(tab, k), x = c?.rows[0]; return x ? { label, big: c.big(x), unit: c.unit(x), id: x.id, mm: x.mm } : null; };
+  const bo = [...X.overBat].sort((a, b) => b.r - a.r)[0], sx = [...X.sixM].sort((a, b) => b.n - a.n)[0];
+  const tiles = [rec("bat", "hs", "Highest score"), rec("bat", "f50", "Fastest fifty"), rec("bowl", "bbi", "Best bowling"), rec("bat", "six", "Most sixes in an innings"),
+    bo && { label: "Biggest over", big: bo.r, unit: `runs off ${bo.b} balls${bo.bw ? ` from ${esc(short(bo.bw))}` : ""}`, id: bo.id, mm: bo.mm },
+    sx && { label: "Sixes in a row", big: sx.n, unit: "back to back", id: sx.id, mm: sx.mm }].filter(Boolean);
+  el.innerHTML = `<p class="sh-kicker">The stats desk · ${M.length} matches</p>
+    <h2 class="sh-head st-head">Every number, ball by ball.</h2>
+    <p class="sh-dek">${ballsN.toLocaleString()} balls in the commentary, turned into records, streaks, matchups and the occasional embarrassment.</p>
+    <div class="st-recs">${tiles.map(t => `<a class="st-rec" href="#match-${t.mm.id}"><small>${t.label}</small><b>${t.big}</b><i>${t.unit}</i><span>${esc(pname(t.id))} · #${t.mm.id}</span></a>`).join("")}</div>`;
 }
 
 /* ---------------- season cover: the headline, the numbers and the three big award holders ---------------- */
@@ -1533,7 +1548,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
