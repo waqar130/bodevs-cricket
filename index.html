@@ -1185,6 +1185,8 @@ function model(){
 
   // slugs
   BySlug=new Map();P.forEach(p=>{let sl=slugify(p.full_name||p.name)||"player-"+p.id;if(RESERVED.has(sl)||BySlug.has(sl)||/^match-/.test(sl))sl+="-"+p.id;p.slug=sl;BySlug.set(sl,p.id)});
+  // old links by scorecard name (#mazhar) still open the player
+  P.forEach(p=>{const al=slugify(p.name);if(al&&!BySlug.has(al)&&!RESERVED.has(al))BySlug.set(al,p.id)});
 
   // head to head from the commentary: batter x bowler, plus fielder catches/drops per batter
   H=new Map();FX=new Map();

@@ -27,8 +27,8 @@ const PROFILES = {
   "Ahsan":        { full: "Ahsan Sajjad",      job: "Technical Partner & Lead Engineer",          photo: "ahsan-min.png" },
   "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png", keeper: true },
   "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png" },
-  "Butt Sb":      { full: "Fahad Naveed Butt", ownPhoto: "players/10.webp" },
-  "Mazhar":       { ownPhoto: "players/9.webp", keeper: true },
+  "Butt Sb":      { full: "Fahad Naveed Butt", job: "Head of Sales", ownPhoto: "players/10.webp" },
+  "Mazhar":       { full: "Mazhar Saleem", job: "Head of Accounts & Finance", ownPhoto: "players/9.webp", keeper: true },
 };
 const BODEVS = "https://bodevs.com/";
 
