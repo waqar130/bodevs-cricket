@@ -1161,8 +1161,8 @@ function model(){
   P=new Map();byName=new Map();
   const blank=p=>({...p,tm:team(p.team||""),bat:{inns:0,no:0,r:0,b:0,f:0,s:0,dots:0,hs:null,fifty:0,hundred:0,ducks:0},
     bowl:{b:0,r:0,w:0,dots:0,wd:0,nb:0,md:0,best:null},fld:{c:0,ro:0,drop:0},mids:new Set(),log:new Map(),teams:{}});
-  D.players.forEach(p=>{P.set(p.id,blank(p));byName.set(p.name,p.id)});
-  const get=(id,name)=>{if(!P.has(id)){P.set(id,blank({id,name,team:""}));byName.set(name,id)}return P.get(id)};
+  D.players.forEach(p=>{P.set(p.id,blank({...p,src:p.name,name:p.full_name||p.name}));byName.set(p.name,p.id)});
+  const get=(id,name)=>{if(!P.has(id)){P.set(id,blank({id,name,src:name,team:""}));byName.set(name,id)}return P.get(id)};
   const L=(pl,mm,tname)=>{if(!pl.log.has(mm.id))pl.log.set(mm.id,{mm,team:tname,bat:[],bowl:[],c:0});pl.mids.add(mm.id);pl.teams[tname]=(pl.teams[tname]||0)+1;return pl.log.get(mm.id)};
 
   [...M].reverse().forEach(mm=>mm.s.scorecards.forEach(sc=>{
@@ -1203,11 +1203,11 @@ function model(){
   // slugs
   BySlug=new Map();P.forEach(p=>{let sl=slugify(p.full_name||p.name)||"player-"+p.id;if(RESERVED.has(sl)||BySlug.has(sl)||/^match-/.test(sl))sl+="-"+p.id;p.slug=sl;BySlug.set(sl,p.id)});
   // old links by scorecard name (#mazhar) still open the player
-  P.forEach(p=>{const al=slugify(p.name);if(al&&!BySlug.has(al)&&!RESERVED.has(al))BySlug.set(al,p.id)});
+  P.forEach(p=>{const al=slugify(p.src||p.name);if(al&&!BySlug.has(al)&&!RESERVED.has(al))BySlug.set(al,p.id)});
 
   // head to head from the commentary: batter x bowler, plus fielder catches/drops per batter
   H=new Map();FX=new Map();
-  const up=new Map([...P.values()].map(p=>[p.name.toUpperCase(),p.id]));
+  const up=new Map([...P.values()].map(p=>[(p.src||p.name).toUpperCase(),p.id]));
   const h2h=(bt,bw)=>{const k=bt+"|"+bw;if(!H.has(k))H.set(k,{bat:bt,bowl:bw,b:0,r:0,f:0,s:0,dots:0,outs:0,ro:0,wd:0,nb:0,how:{}});return H.get(k)};
   const fx=(bt,fl,kind)=>{const k=bt+"|"+fl;if(!FX.has(k))FX.set(k,{bat:bt,fld:fl,c:0,d:0});FX.get(k)[kind]++};
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>(sc.commentary||[]).forEach(c=>{
@@ -1422,7 +1422,7 @@ function render(){
     const name=ps[0]?.team||"";const wins=key==="t"?tWins:fWins;
     return `<div class="${key}"><div class="sheet-head">${crest(name)}<h3>${esc(name)}</h3><span class="label">${ps.length} players<br>${wins} wins</span></div>
     <div class="roster">${ps.map(p=>`<a class="pcard ${p.tm.key}" href="${purl(p.id)}">${photo(p)}
-      <div><h4>${esc(p.full_name||p.name)}</h4>${p.full_name&&!p.full_name.startsWith(p.name)?`<div class="job">“${esc(p.name)}”</div>`:""}<p class="pbadges sm">${p.title?`<span class="pb cric">${esc(p.title)}</span>`:""}${p.job?`<span class="pb pjob">${esc(p.job)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
+      <div><h4>${esc(p.full_name||p.name)}</h4><p class="pbadges sm">${p.title?`<span class="pb cric">${esc(p.title)}</span>`:""}${p.job?`<span class="pb pjob">${esc(p.job)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
       <div class="line">${p.matches?`${p.bat.r} runs · ${p.bowl.w} wkts · ${p.fld.c} ct`:"Yet to play"}</div></a>`).join("")}</div></div>`};
   $("#sheets").innerHTML=sheet("t")+sheet("f");
 
@@ -1734,7 +1734,7 @@ let RECS=null,DROPS=[];const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi",fld:"ctm"}}
 try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv,{cat:{...REC.cat,...sv.cat}})}catch(e){}
 const runVal=t=>t.kind==="six"?6:t.kind==="four"?4:/^\d+$/.test(String(t.mark))?+t.mark:0;
 function buildRecords(){
-  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map(),fInn=[],mFld=new Map(),hat=[],cnb=new Map(),UP=new Map([...P.values()].map(p=>[p.name.toUpperCase(),p.id]));
+  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map(),fInn=[],mFld=new Map(),hat=[],cnb=new Map(),UP=new Map([...P.values()].map(p=>[(p.src||p.name).toUpperCase(),p.id]));
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
     const ino=sc.innings_no,last=sc===mm.s.scorecards.at(-1),won=mm.win?.name===sc.batting_team,lost=!!mm.win&&!won;
     sc.batting.forEach(x=>{let c=0,f50=null,f100=null;
@@ -2051,7 +2051,7 @@ function dropsBlock(p){
 const PHASES=[["Overs 1–2",o=>o<=2],["Overs 3–5",o=>o>=3&&o<=5],["Overs 6+",o=>o>=6]],STARTS=[["Balls 1–6",n=>n<=6],["Balls 7–15",n=>n>=7&&n<=15],["Ball 16 on",n=>n>=16]];
 function scoutData(p){
   if(p._sd)return p._sd;
-  const up=new Map([...P.values()].map(q=>[q.name.toUpperCase(),q.id]));
+  const up=new Map([...P.values()].map(q=>[(q.src||q.name).toUpperCase(),q.id]));
   const z=()=>({r:0,b:0,o:0,w:0}),bat={ph:PHASES.map(z),st:STARTS.map(z),outs:[],after4:0},bowl={ph:PHASES.map(z),wk:[],after4:0};
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
     const balls=(sc.commentary||[]).filter(c=>c.type==="ball").reverse();let faced=0,lastBoundary=false,bowlLastHit=false;   // oldest first

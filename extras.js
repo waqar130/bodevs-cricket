@@ -158,7 +158,7 @@ function renderStory() {
 
 /* ---------------- 3. Partnerships ---------------- */
 function buildPartnerships() {
-  P.forEach(p => upName.set(p.name.toUpperCase(), p.id));
+  P.forEach(p => upName.set((p.src || p.name).toUpperCase(), p.id));
   const stands = [];
   M.forEach(mm => mm.s.scorecards.forEach(sc => {
     const bl = (sc.commentary || []).filter(c => c.type === "ball").slice().reverse(), fow = [...(sc.fow || [])].sort((a, b) => a.wicket - b.wicket);
@@ -220,7 +220,7 @@ function renderTactics() {
 /* ---------------- 5. Phases of play ---------------- */
 function renderPhases() {
   const el = $("#phasesBody"); if (!el) return;
-  P.forEach(p => upName.set(p.name.toUpperCase(), p.id));
+  P.forEach(p => upName.set((p.src || p.name).toUpperCase(), p.id));
   const ph = (o, Lm) => { const k = Math.max(1, Math.round(Lm / 3)); return o <= k ? "pp" : o > Lm - k ? "death" : "mid"; };
   const TR = { t: { pp: { r: 0, b: 0 }, mid: { r: 0, b: 0 }, death: { r: 0, b: 0 } }, f: { pp: { r: 0, b: 0 }, mid: { r: 0, b: 0 }, death: { r: 0, b: 0 } } };
   const bat = new Map(), bowl = new Map(); const g = (m, id, z) => { const k = id + "|" + z; if (!m.has(k)) m.set(k, { id, z, r: 0, b: 0, w: 0 }); return m.get(k); };
@@ -539,7 +539,7 @@ function clutchOf(p) {
 const XR = { built: null };
 function buildXR() {
   if (XR.built) return XR.built;
-  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id]));
+  const up = new Map([...P.values()].map(q => [(q.src || q.name).toUpperCase(), q.id]));
   const top = (a, by, n = 5) => [...a].sort(by).slice(0, n);
   // streaks, in match order (each player's log is oldest first)
   const st = { s30: [], wk: [], noduck: [], sixes: [] };
@@ -905,7 +905,7 @@ const matchLink = mm => `<a href="#match-${mm.id}">#${mm.id} · ${dShort(mm.date
 // order each batter came in, by his first ball faced in the commentary
 function battingOrder(sc) {
   if (sc._order) return sc._order;
-  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id])), seen = [];
+  const up = new Map([...P.values()].map(q => [(q.src || q.name).toUpperCase(), q.id])), seen = [];
   (sc.commentary || []).filter(c => c.type === "ball").reverse().forEach(c => { const t = String(c.text).match(/^.+? TO (.+?), /); const id = t && up.get(t[1]); if (id && !seen.includes(id)) seen.push(id); });
   sc.batting.forEach(x => { if (!seen.includes(x.id)) seen.push(x.id); });
   return sc._order = seen;
@@ -1280,7 +1280,7 @@ function matchExtras(mm) {
 
 /* ---------------- Stats page: matchup heatmap, pressure, chase odds ---------------- */
 function pressureData() {
-  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id])), bat = new Map(), bowl = new Map();
+  const up = new Map([...P.values()].map(q => [(q.src || q.name).toUpperCase(), q.id])), bat = new Map(), bowl = new Map();
   const e = (m, id) => { if (!m.has(id)) m.set(id, { id, n: 0, r: 0, o: 0 }); return m.get(id); };
   M.forEach(mm => mm.s.scorecards.forEach(sc => { const dots = new Map(), hit = new Map();
     (sc.commentary || []).filter(c => c.type === "ball").reverse().forEach(c => { const t = String(c.text).match(/^(.+?) TO (.+?), (.*)$/); if (!t) return;
@@ -1582,3 +1582,29 @@ if (typeof D !== "undefined" && D && M) window.renderExtras();
 
 // the comparison redraws through drawCompare; add the share card each time
 if (typeof drawCompare === "function" && !window._cmpWrapped) { window._cmpWrapped = 1; const _dc = drawCompare; drawCompare = function () { _dc(); compareShare(P.get(CMP.a), P.get(CMP.b)); }; }
+
+/* ---------------- full names everywhere: the scoring app's nicknames ("Butt Sb", "Qari sb") are swapped for full names in anything rendered ---------------- */
+function nameSwapper() {
+  if (typeof P === "undefined" || !P?.size) return null;
+  const rx = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pairs = [...P.values()].filter(p => p.src && p.name && p.src !== p.name).sort((a, b) => b.src.length - a.src.length).map(p => {
+    const i = p.name.toLowerCase().indexOf(p.src.toLowerCase());
+    // don't touch a nickname that's already part of the full name ("Waqar Ahmed", "M. Asad")
+    const pre = i > 0 ? `(?<!${rx(p.name.slice(0, i))})` : "", post = i >= 0 ? `(?!${rx(p.name.slice(i + p.src.length))})` : "";
+    return { re: new RegExp(`${pre}\\b${rx(p.src)}\\b${i >= 0 && i + p.src.length < p.name.length ? post : ""}`, "gi"), full: p.name };
+  });
+  return node => {
+    const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: t => /^(SCRIPT|STYLE|TEXTAREA)$/.test(t.parentNode?.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    for (let t; (t = w.nextNode());) {
+      let v = t.data; pairs.forEach(({ re, full }) => { v = v.replace(re, m => m === m.toUpperCase() && m !== m.toLowerCase() ? full.toUpperCase() : full); });
+      if (v !== t.data) t.data = v;
+    }
+  };
+}
+(function watchNames() {
+  let swap = null;
+  const run = n => { swap = swap || nameSwapper(); if (swap) swap(n); };
+  const mo = new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) run(n); else if (n.nodeType === 3 && n.parentNode) run(n.parentNode); })));
+  mo.observe(document.body, { childList: true, subtree: true });
+  if (typeof P !== "undefined" && P?.size) run(document.body);
+})();
