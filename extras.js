@@ -492,7 +492,7 @@ function renderWeekAwards() {
     ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
       return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
       : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
-    <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch or run out + 20 for each win he played a part in. The podium on the cover uses the same points.</p>`;
+    <p class="rank-note" style="margin-top:12px">Weekly points: runs + 20 per wicket + 10 per catch or run out + 10 for each win he played a part in. The podium on the cover uses the same points.</p>`;
   el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
 }
 
@@ -867,7 +867,7 @@ function renderSeasonBook() {
     ${[0, .25, .5, .75, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${CW - R}" y1="${ys(mx * g)}" y2="${ys(mx * g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(mx * g) + 4}" text-anchor="end">${Math.round(mx * g)}</text>`).join("")}
     ${wk.map((w, i) => `<text class="ch-ax" x="${xs(i)}" y="${CH - 10}" text-anchor="middle">${w.issue}</text>`).join("")}
     ${top5.map(([id, arr], j) => `<polyline fill="none" stroke="${pal[j]}" stroke-width="3" points="${arr.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ")}"/><text class="ch-end" x="${CW - R + 8}" y="${ys(arr.at(-1)) + 5}" fill="${pal[j]}">${esc(short(id))} ${arr.at(-1)}</text>`).join("")}
-  </svg><p class="rank-note">Weekly MVP points (runs + 20 per wicket + 10 per catch or run out + 20 per win he played a part in), added up issue by issue.</p>`;
+  </svg><p class="rank-note">Weekly MVP points (runs + 20 per wicket + 10 per catch or run out + 10 per win he played a part in), added up issue by issue.</p>`;
   // 5. superlatives
   const ps = [...P.values()].filter(p => p.matches);
   const cv = p => { const s = [...p.log.values()].flatMap(l => l.bat.map(b => b.r)); if (s.length < 10) return null; const mean = s.reduce((a, b) => a + b, 0) / s.length; if (mean < 15) return null;
