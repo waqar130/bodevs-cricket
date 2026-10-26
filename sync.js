@@ -17,18 +17,18 @@ const decode = s => s.replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").rep
 
 // Scorecard name -> BoDevs profile (full name, job, photo on bodevs.com)
 const PROFILES = {
-  "Waqar":        { full: "Waqar Ahmed",       job: "Senior Project Manager",                     photo: "waqar-min.png" },
+  "Waqar":        { full: "Waqar Ahmed",       job: "Senior Project Manager",                     photo: "waqar-min.png", bowl: "fast" },
   "Tassadduq":    { full: "Tassadduq Hussain", job: "Solution Architect & Senior Full-Stack Engineer", photo: "tassadduq-min.png", captain: true },
-  "Abdullah":     { full: "Abdullah Ali",      job: "Senior Full-Stack Engineer",                 photo: "abdullah-min.png" },
-  "Asad":         { full: "M. Asad",           job: "Senior Full-Stack Engineer",                 photo: "asad-min.png" },
-  "Fawad":        { full: "Favad Nafees",      job: "Motion & Animation Designer",                photo: "favad-min.png" },
-  "Farhan":       { full: "Farhan Ghafoor",    job: "Co-Founder & Lead Strategist",               photo: "farhan-min.png", captain: true },
-  "Saad Zubairi": { full: "Saad Zubairi",      job: "Support Specialist",                         photo: "saad-min.png" },
-  "Ahsan":        { full: "Ahsan Sajjad",      job: "Technical Partner & Lead Engineer",          photo: "ahsan-min.png" },
-  "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png", keeper: true },
-  "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png" },
-  "Butt Sb":      { full: "Fahad Naveed Butt", job: "Head of Sales", ownPhoto: "players/10.webp" },
-  "Mazhar":       { full: "Mazhar Saleem", job: "Head of Accounts & Finance", ownPhoto: "players/9.webp", keeper: true },
+  "Abdullah":     { full: "Abdullah Ali",      job: "Senior Full-Stack Engineer",                 photo: "abdullah-min.png", bowl: "spin" },
+  "Asad":         { full: "M. Asad",           job: "Senior Full-Stack Engineer",                 photo: "asad-min.png", bowl: "fast" },
+  "Fawad":        { full: "Favad Nafees",      job: "Motion & Animation Designer",                photo: "favad-min.png", bowl: "spin" },
+  "Farhan":       { full: "Farhan Ghafoor",    job: "Co-Founder & Lead Strategist",               photo: "farhan-min.png", captain: true, bowl: "spin" },
+  "Saad Zubairi": { full: "Saad Zubairi",      job: "Support Specialist",                         photo: "saad-min.png", bowl: "fast" },
+  "Ahsan":        { full: "Ahsan Sajjad",      job: "Technical Partner & Lead Engineer",          photo: "ahsan-min.png", bowl: "spin" },
+  "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png", keeper: true, bowl: "spin" },
+  "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png", bowl: "spin" },
+  "Butt Sb":      { full: "Fahad Naveed Butt", job: "Head of Sales", ownPhoto: "players/10.webp", bowl: "fast" },
+  "Mazhar":       { full: "Mazhar Saleem", job: "Head of Accounts & Finance", ownPhoto: "players/9.webp", keeper: true, bowl: "spin" },
 };
 const BODEVS = "https://bodevs.com/";
 
@@ -81,6 +81,7 @@ async function sync(opts = {}) {
     if (prof.job) p.job = prof.job;
     if (prof.captain) p.captain = true;
     if (prof.keeper) p.keeper = true;
+    if (prof.bowl) p.bowl_style = prof.bowl;   // "fast" or "spin"
     // ownPhoto: a photo kept in assets/ (not on bodevs.com); it is committed to the repo, never downloaded
     if (prof.ownPhoto && fs.existsSync(path.join(ASSET_DIR, prof.ownPhoto))) p.photo = "assets/" + prof.ownPhoto;
     else if (prof.photo) {

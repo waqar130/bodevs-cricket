@@ -541,3 +541,4 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .moms{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
 .mom-b{display:inline-flex;align-items:center;font:700 10.5px/1 var(--f-data);letter-spacing:.06em;text-transform:uppercase;background:#ffd23f;color:#141413;padding:5px 8px;border-left:3px solid var(--ink)}
 .mom-b.t{border-left-color:var(--tiger)}.mom-b.f{border-left-color:var(--falcon)}
+.pb.style.fast{border-color:#a3241b;color:#a3241b}.pb.style.spin{border-color:#5b4bb5;color:#5b4bb5}

@@ -1072,7 +1072,11 @@ function playerExtras(p) {
     const e = pos.get(i + 1) || { n: 0, r: 0, b: 0, o: 0 }; e.n++; e.r += b.runs; e.b += b.balls; if (b.out) e.o++; pos.set(i + 1, e); }));
   const nt = notables(p);
   out.bowling = nt.bowling;
-  out.batting = `${nt.batting}<h2 class="sec-t">Batting partners</h2>${partners.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>With</th><th>Stands</th><th>Runs</th><th>Avg stand</th><th>Run rate</th><th>Best</th></tr></thead><tbody>${partners.map(e => `<tr><td class="nm ${P.get(e.o)?.tm.key || ""}"><span class="chip"></span>${plink(e.o)}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${r1(e.r / e.n)}</td><td>${e.b ? r1(e.r / e.b * 6) : "–"}</td><td>${e.best}</td></tr>`).join("")}</tbody></table></div>` : `<p class="dnb">No partnerships yet.</p>`}
+  // against pace and against spin
+  const ss = styleSplit(p), row = (k, x) => x.b ? `<tr><td class="nm">${STYLE[k]}</td><td>${x.b}</td><td class="hi">${x.r}</td><td>${r1(x.r / x.b * 100)}</td><td>${x.o}</td><td>${x.o ? r1(x.r / x.o) : "–"}</td><td>${x.o ? r1(x.b / x.o) : "–"}</td><td>${x.s}</td><td>${Math.round(x.dots / x.b * 100)}%</td></tr>` : "";
+  const ps = ss.fast.b && ss.spin.b ? (() => { const f = ss.fast.r / ss.fast.b * 100, sp = ss.spin.r / ss.spin.b * 100; return Math.abs(f - sp) < 10 ? "Scores as freely against pace as spin." : `Prefers ${f > sp ? "pace" : "spin"}: strike rate ${r1(Math.max(f, sp))} against ${r1(Math.min(f, sp))}.`; })() : "";
+  const paceSpin = ss.fast.b + ss.spin.b ? `<h2 class="sec-t">Against pace and spin</h2>${ps ? `<p class="ts-verdict">${ps}</p>` : ""}<div class="tbl-wrap"><table class="data"><thead><tr><th>Bowling</th><th>Balls</th><th>Runs</th><th>SR</th><th>Out</th><th>Avg</th><th>Balls/out</th><th>6s</th><th>Dots</th></tr></thead><tbody>${row("fast", ss.fast)}${row("spin", ss.spin)}</tbody></table></div><p class="rank-note" style="margin-top:8px">Fast bowlers: ${[...P.values()].filter(q => q.bowl_style === "fast").map(q => esc(short(q.id))).join(", ")}. Spinners: ${[...P.values()].filter(q => q.bowl_style === "spin").map(q => esc(short(q.id))).join(", ")}.</p>` : "";
+  out.batting = `${nt.batting}${paceSpin}<h2 class="sec-t">Batting partners</h2>${partners.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>With</th><th>Stands</th><th>Runs</th><th>Avg stand</th><th>Run rate</th><th>Best</th></tr></thead><tbody>${partners.map(e => `<tr><td class="nm ${P.get(e.o)?.tm.key || ""}"><span class="chip"></span>${plink(e.o)}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${r1(e.r / e.n)}</td><td>${e.b ? r1(e.r / e.b * 6) : "–"}</td><td>${e.best}</td></tr>`).join("")}</tbody></table></div>` : `<p class="dnb">No partnerships yet.</p>`}
     <h2 class="sec-t">By batting position</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Position</th><th>Inns</th><th>Runs</th><th>Avg</th><th>SR</th></tr></thead><tbody>${[...pos].sort((a, b) => a[0] - b[0]).map(([k, e]) => `<tr><td class="nm">${k === 1 || k === 2 ? `Opener (${k})` : `No. ${k}`}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${e.o ? r1(e.r / e.o) : "–"}</td><td>${e.b ? r1(e.r / e.b * 100) : "–"}</td></tr>`).join("")}</tbody></table></div>
     <p class="rank-note" style="margin-top:8px">Position is the order he faced his first ball in each innings.</p>`;
   // teammates: win rate with each player on his side
@@ -1194,7 +1198,13 @@ function renderMatchups() {
     return `<td style="background:${bg}" title="${esc(short(bt.id))} v ${esc(short(bw.id))}: ${x.r} off ${x.b}, out ${x.outs}"><b>${Math.round(sr)}</b>${x.outs ? `<small>${"•".repeat(Math.min(x.outs, 5))}${x.outs > 5 ? "+" : ""}</small>` : ""}</td>`; };
   const pr = pressureData(), psr = x => x.n ? x.r / x.n * 100 : 0;
   const cr = chaseRows();
-  el.innerHTML = `
+  // pace v spin across the club
+  const sty = { fast: { b: 0, r: 0, w: 0, dots: 0, s: 0 }, spin: { b: 0, r: 0, w: 0, dots: 0, s: 0 } };
+  P.forEach(q => { const t = sty[q.bowl_style]; if (!t) return; t.b += q.bowl.b; t.r += q.bowl.r; t.w += q.bowl.w; t.dots += q.bowl.dots; });
+  H.forEach(x => { const t = sty[P.get(x.bowl)?.bowl_style]; if (t) t.s += x.s; });
+  const bestV = k => [...P.values()].map(q => ({ q, x: styleSplit(q)[k] })).filter(o => o.x.b >= 30).sort((a, b) => b.x.r / b.x.b - a.x.r / a.x.b)[0];
+  const pv = `<h3 class="xr-h">Pace v spin</h3><div class="tbl-wrap"><table class="data"><thead><tr><th>Bowling</th><th>Overs</th><th>Wkts</th><th>Econ</th><th>Avg</th><th>Balls/wkt</th><th>Dots</th><th>6s hit off</th><th>Best batter against</th></tr></thead><tbody>${["fast", "spin"].map(k => { const t = sty[k], bv = bestV(k); return `<tr><td class="nm">${STYLE[k]}</td><td>${ovs(t.b)}</td><td>${t.w}</td><td class="hi">${r1(t.r / t.b * 6)}</td><td>${t.w ? r1(t.r / t.w) : "–"}</td><td>${t.w ? r1(t.b / t.w) : "–"}</td><td>${Math.round(t.dots / t.b * 100)}%</td><td>${t.s}</td><td>${bv ? `${plink(bv.q.id, short(bv.q.id))} <small class="label">SR ${Math.round(bv.x.r / bv.x.b * 100)}</small>` : "–"}</td></tr>`; }).join("")}</tbody></table></div>`;
+  el.innerHTML = `${pv}
     <h3 class="xr-h">Every matchup</h3>
     <p class="rank-note">Batters across, bowlers down. The number is the batter's strike rate against that bowler; green means the batter wins the matchup, red the bowler (against a league ${Math.round(lsr)}). Dots are dismissals. Six balls or more.</p>
     <div class="tbl-wrap hm-wrap"><table class="hm"><thead><tr><th></th>${bats.map(p => `<th><a href="${purl(p.id)}">${esc(short(p.id))}</a></th>`).join("")}</tr></thead>
