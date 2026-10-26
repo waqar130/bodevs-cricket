@@ -531,3 +531,15 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .mvx.n3 .mvx-who{grid-column:1/-1}
 .mvx.n3 .mvx-feat{font-size:clamp(26px,2.6vw,34px)}
 @media(max-width:560px){.mvx.n3 .mvx-card{grid-template-columns:1fr}}
+
+/* picker: usual teams, moves; player page: for each team */
+.pk-mode{border:0;display:grid;gap:6px;margin:14px 0 4px}
+.pk-mode label{display:flex;align-items:center;gap:8px;font:500 15px var(--f-body);cursor:pointer}
+.pk-mode input{accent-color:var(--red)}
+.pk-notes{border-left:4px solid var(--red);background:var(--paper-2);padding:12px 14px;margin-bottom:16px}
+.pk-notes p{font:400 14px/1.5 var(--f-body);margin-bottom:6px}
+.pk-moves{list-style:none}
+.pk-moves li{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--rule);font:400 15px var(--f-body)}
+.pk-moves .thumb{width:34px;height:34px;flex:none}
+.pk-moves small{display:block;font:400 12px var(--f-data);color:var(--muted)}
+.ts-verdict{font:400 18px/1.45 var(--f-body);margin:4px 0 12px;max-width:60ch}

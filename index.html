@@ -823,7 +823,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <div class="wrap">
       <div class="dept-head">
         <div><p class="kicker">Sunday night</p><h2 class="hd">Pick the sides</h2></div>
-        <p>Tick who's at SportsX tonight and the page splits them into two even teams using the player ratings. Add guests for challenge matches.</p>
+        <p>Tick who's at SportsX tonight. Keep the usual teams and the page makes the fewest moves to even them up, preferring players who have done well for the other side. Or mix everyone into two fresh sides. Add guests for challenge matches.</p>
       </div>
       <div class="pick-grid">
         <div>
@@ -835,6 +835,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
               <select id="guestLevel" aria-label="Guest level"><option value="250">New to the ball</option><option value="450" selected>Regular player</option><option value="650">Strong player</option></select>
               <button class="btn small solid" type="submit">Add</button></div>
           </form>
+          <fieldset class="pk-mode"><legend class="label">How to pick</legend><label><input type="radio" name="pickMode" value="usual" checked> Keep the usual teams, fewest moves</label><label><input type="radio" name="pickMode" value="mix"> Mix everyone evenly</label></fieldset>
           <label class="opt"><input type="checkbox" id="capsApart" checked> Keep the captains on opposite sides</label>
         </div>
         <div class="pick-out" id="pickOut" aria-live="polite"></div>
@@ -1755,10 +1756,22 @@ const saveRec=()=>{try{localStorage.setItem("bdc-rec",JSON.stringify(REC))}catch
 document.querySelector(".rec-top").addEventListener("click",e=>{const b=e.target.closest("[data-rt]");if(!b||!RECS)return;REC.tab=b.dataset.rt;saveRec();renderRecords()});
 $("#recCats").addEventListener("click",e=>{const b=e.target.closest("[data-rc]");if(!b)return;REC.cat[REC.tab]=b.dataset.rc;saveRec();renderRecords()});
 
+/* ---------- a player's record for each team he has played for ---------- */
+function teamSplit(p){
+  const out={};
+  [...p.log.values()].forEach(l=>{const k=team(l.team).key;if(!k)return;const e=out[k]=out[k]||{k,name:l.team,m:0,won:0,i:0,r:0,b:0,o:0,s:0,w:0,rc:0,bb:0,c:0,pts:0};
+    e.m++;if(l.mm.win&&l.mm.win.name===l.team)e.won++;
+    l.bat.forEach(x=>{e.i++;e.r+=x.r;e.b+=x.b;e.s+=x.s;if(!x.no)e.o++});
+    l.bowl.forEach(x=>{e.w+=x.w;e.rc+=x.r;e.bb+=x.b});e.c+=l.c;
+    e.pts+=l.bat.reduce((a,x)=>a+x.r,0)+20*l.bowl.reduce((a,x)=>a+x.w,0)+10*l.c});
+  Object.values(out).forEach(e=>e.per=e.m?e.pts/e.m:0);
+  return out;
+}
+
 /* ---------- team picker ---------- */
-const PICK={sel:new Set(),guests:[],opts:[],cur:0};
-try{const sv=JSON.parse(localStorage.getItem("bdc-pick")||"null");if(sv){PICK.sel=new Set(sv.sel||[]);PICK.guests=sv.guests||[]}}catch(e){}
-const savePick=()=>{try{localStorage.setItem("bdc-pick",JSON.stringify({sel:[...PICK.sel],guests:PICK.guests}))}catch(e){}};
+const PICK={sel:new Set(),guests:[],opts:[],cur:0,mode:"usual"};
+try{const sv=JSON.parse(localStorage.getItem("bdc-pick")||"null");if(sv){PICK.sel=new Set(sv.sel||[]);PICK.guests=sv.guests||[];PICK.mode=sv.mode||"usual"}}catch(e){}
+const savePick=()=>{try{localStorage.setItem("bdc-pick",JSON.stringify({sel:[...PICK.sel],guests:PICK.guests,mode:PICK.mode}))}catch(e){}};
 const strength=p=>({bat:Math.max(p.rBat||0,p.matches?120:300),bowl:Math.max(p.rBowl||0,p.matches?120:300)});
 function renderPicker(){
   if(!PICK.sel.size&&!PICK.guests.length)[...P.values()].filter(p=>p.matches).forEach(p=>PICK.sel.add("p"+p.id));
@@ -1774,15 +1787,19 @@ function splitTeams(){
   PICK.opts=[];PICK.cur=0;
   if(pool.length<2){$("#pickOut").innerHTML=`<p class="dnb">Select at least 2 players to make two sides.</p>`;return}
   if(pool.length>16){$("#pickOut").innerHTML=`<p class="dnb">That's more than 16 players. Untick a few so the sides fit in the box.</p>`;return}
-  const n=pool.length,k=Math.floor(n/2),caps=pool.map((x,i)=>x.cap?i:-1).filter(i=>i>=0),apart=$("#capsApart").checked&&caps.length===2;
+  const n=pool.length,k=Math.floor(n/2),caps=pool.map((x,i)=>x.cap?i:-1).filter(i=>i>=0),apart=$("#capsApart").checked&&caps.length===2,usual=PICK.mode==="usual";
+  // keeping the usual teams: each move off a player's regular side costs, less if he has done well for the other side
+  const MOVE=450,moveCost=x=>{if(!x.p||!x.tm)return 0;if(x.cap)return 5000; // captains stay with their side
+    const ts=teamSplit(x.p),other=ts[x.tm==="t"?"f":"t"],own=ts[x.tm];return Math.max(150,MOVE-(other&&other.m>=1?Math.min(250,Math.max(0,other.per-(own?.per||0))+80):0))};
   const opts=[];
-  const rec=(start,chosen)=>{if(chosen.length===k){
-      if(n%2===0&&!chosen.includes(0))return; // mirror split already counted
+  const rec=(start,chosen,size)=>{if(chosen.length===size){
+      if(!usual&&n%2===0&&!chosen.includes(0))return; // mirror split already counted
       const A=new Set(chosen);if(apart&&A.has(caps[0])===A.has(caps[1]))return;
-      let ab=0,aw=0,bb=0,bw=0;pool.forEach((x,i)=>{if(A.has(i)){ab+=x.bat;aw+=x.bowl}else{bb+=x.bat;bw+=x.bowl}});
-      opts.push({A:[...A],cost:Math.abs(ab+aw-bb-bw)+0.5*(Math.abs(ab-bb)+Math.abs(aw-bw))});return}
-    for(let i=start;i<n;i++){chosen.push(i);rec(i+1,chosen);chosen.pop()}};
-  rec(0,[]);
+      let ab=0,aw=0,bb=0,bw=0,mv=0;pool.forEach((x,i)=>{if(A.has(i)){ab+=x.bat;aw+=x.bowl;if(usual&&x.tm==="f")mv+=moveCost(x)}else{bb+=x.bat;bw+=x.bowl;if(usual&&x.tm==="t")mv+=moveCost(x)}});
+      opts.push({A:[...A],cost:Math.abs(ab+aw-bb-bw)+0.5*(Math.abs(ab-bb)+Math.abs(aw-bw))+mv});return}
+    for(let i=start;i<n;i++){chosen.push(i);rec(i+1,chosen,size);chosen.pop()}};
+  // in usual mode the first side is always the Tigers, so both sizes are tried when the numbers are odd
+  rec(0,[],k);if(usual&&n%2)rec(0,[],n-k);
   opts.sort((a,b)=>a.cost-b.cost);PICK.opts=opts.slice(0,8);PICK.pool=pool;showSplit();
 }
 // Next Sunday preview: a win chance from total strength, plus the key batter-v-bowler battles
@@ -1803,16 +1820,22 @@ function matchPreview(A,B,ta,tb){
 function showSplit(){
   const pool=PICK.pool,o=PICK.opts[PICK.cur];if(!o){$("#pickOut").innerHTML=`<p class="dnb">No split possible with these settings.</p>`;return}
   let A=pool.filter((x,i)=>o.A.includes(i)),B=pool.filter((x,i)=>!o.A.includes(i));
-  // Tassadduq's side plays as Tigers, Farhan's as Falcons
-  if(B.some(x=>x.cap&&x.tm==="t")||A.some(x=>x.cap&&x.tm==="f"))[A,B]=[B,A];
+  // mixing: Tassadduq's side plays as Tigers, Farhan's as Falcons (keeping the usual teams, A is already the Tigers)
+  if(PICK.mode!=="usual"&&(B.some(x=>x.cap&&x.tm==="t")||A.some(x=>x.cap&&x.tm==="f")))[A,B]=[B,A];
+  // who is missing, and who moves this week
+  const here=new Set(pool.filter(x=>x.p).map(x=>x.p.id)),miss=key=>[...P.values()].filter(p=>p.matches>=3&&p.tm.key===key&&!here.has(p.id));
+  const movers=[...A.filter(x=>x.p&&x.tm==="f").map(x=>({x,to:"t"})),...B.filter(x=>x.p&&x.tm==="t").map(x=>({x,to:"f"}))];
+  const mvLine=({x,to})=>{const o=teamSplit(x.p)[to];return `<li>${miniThumb(x.p)}<span><b>${esc(x.short)}</b> plays for the ${to==="t"?"Tigers":"Falcons"} <small>usually ${to==="t"?"Falcons":"Tigers"} · ${o?`${o.m} match${o.m>1?"es":""} for them before, ${Math.round(o.per)} pts a match`:"first time for them"}</small></span></li>`};
   const tot=L=>L.reduce((a,x)=>a+x.bat+x.bowl,0),ta=tot(A),tb=tot(B),bal=Math.round((1-Math.abs(ta-tb)/(ta+tb))*100);
   const col=(L,key,name,crestSrc)=>`<div class="side-out ${key}"><div class="so-head"><img src="${crestSrc}" alt=""><div><h3>${name}</h3><span class="label">${L.length} players · strength ${tot(L).toLocaleString()}</span></div></div>
     <ol>${L.sort((a,b)=>(b.bat+b.bowl)-(a.bat+a.bowl)).map(x=>`<li>${x.p?miniThumb(x.p):'<span class="thumb x"><b>G</b></span>'}<span><b>${esc(x.name)}</b>${x.cap?' <span class="label">(c)</span>':""}<small>Bat ${x.bat} · Bowl ${x.bowl}${x.guest?" · guest":""}</small></span></li>`).join("")}</ol></div>`;
-  $("#pickOut").innerHTML=`<div class="balance"><span class="label">Balance</span><b>${bal}%</b><div class="bal-bar"><i class="t" style="width:${ta/(ta+tb)*100}%"></i><i class="f"></i></div><span class="label">Option ${PICK.cur+1} of ${PICK.opts.length}</span></div>
+  const notes=PICK.mode==="usual"?`<div class="pk-notes">${miss("t").length||miss("f").length?`<p><span class="label">Not here</span> ${[["t","Tigers"],["f","Falcons"]].filter(([k])=>miss(k).length).map(([k,l])=>`${l}: ${miss(k).map(p=>esc(p.name)).join(", ")}`).join(" · ")}</p>`:""}<p class="label">${movers.length?"Moves this week":"No moves needed: everyone plays for his usual side"}</p>${movers.length?`<ul class="pk-moves">${movers.map(mvLine).join("")}</ul>`:""}</div>`:"";
+  $("#pickOut").innerHTML=notes+`<div class="balance"><span class="label">Balance</span><b>${bal}%</b><div class="bal-bar"><i class="t" style="width:${ta/(ta+tb)*100}%"></i><i class="f"></i></div><span class="label">Option ${PICK.cur+1} of ${PICK.opts.length}</span></div>
     <div class="sides-out">${col(A,"t","Tigers","tigers.svg")}${col(B,"f","Falcons","falcons.svg")}</div>
     <div class="pick-actions"><button type="button" class="btn" id="reshuffle">Show another split</button><button type="button" class="btn solid" id="copySides">Copy for WhatsApp</button><a class="btn" id="waSides" target="_blank" rel="noopener">Send on WhatsApp ↗</a></div>
     <p class="label" id="pickMsg"></p>${matchPreview(A,B,ta,tb)}`;
-  const txt=`BoDevs Cricket · Sunday sides\n\nTIGERS (${ta})\n${A.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nFALCONS (${tb})\n${B.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nBalance ${bal}% · SportsX, G-12`;
+  const mvTxt=movers.length?`\n\nMoves: ${movers.map(({x,to})=>`${x.short} → ${to==="t"?"Tigers":"Falcons"}`).join(", ")}`:"";
+  const txt=`BoDevs Cricket · Sunday sides${mvTxt}\n\nTIGERS (${ta})\n${A.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nFALCONS (${tb})\n${B.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nBalance ${bal}% · SportsX, G-12`;
   PICK.text=txt;$("#waSides").href="https://wa.me/?text="+encodeURIComponent(txt);
 }
 $("#pickList").addEventListener("click",e=>{const rm=e.target.closest("[data-rm]");
@@ -1822,6 +1845,7 @@ $("#pickList").addEventListener("click",e=>{const rm=e.target.closest("[data-rm]
 $("#pickAll").onclick=()=>{[...P.values()].forEach(p=>PICK.sel.add("p"+p.id));PICK.guests.forEach((g,i)=>PICK.sel.add("g"+i));savePick();renderPicker()};
 $("#pickNone").onclick=()=>{PICK.sel.clear();savePick();renderPicker()};
 $("#capsApart").onchange=splitTeams;
+document.querySelectorAll("[name=pickMode]").forEach(r=>{r.checked=r.value===PICK.mode;r.onchange=()=>{PICK.mode=r.value;savePick();splitTeams()}});
 $("#guestForm").addEventListener("submit",e=>{e.preventDefault();const n=$("#guestName").value.trim();if(!n)return;
   PICK.guests.push({name:n,lvl:+$("#guestLevel").value});PICK.sel.add("g"+(PICK.guests.length-1));$("#guestName").value="";savePick();renderPicker()});
 $("#pickOut").addEventListener("click",e=>{
