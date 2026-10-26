@@ -683,6 +683,10 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept season-cover" id="seasonhero">
+    <div class="wrap" id="seasonHeroBody"></div>
+  </section>
+
   <section class="dept" id="rivalry">
     <div class="wrap">
       <div class="dept-head">
@@ -1111,7 +1115,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one
@@ -1681,11 +1685,15 @@ function drawCompare(){
 /* ---------- hall of shame ---------- */
 function renderShame(){
   const ps=[...P.values()].filter(p=>p.matches);
-  const golden=new Map(),spells=[],slow=[];
+  const golden=new Map(),spells=[],slow=[],ranOut=new Map(),timber=new Map(),sixHit=new Map(),overs=[];
+  const bump=(m,id,n=1)=>m.set(id,(m.get(id)||0)+n);
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
+    (sc.commentary||[]).filter(c=>c.type==="over").forEach(c=>{const id=byName.get(String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/,""));if(id)overs.push({id,mm,r:parseInt(c.text)||0,ov:c.over_no})});
+    sc.batting.forEach(x=>{if(x.out==="run_out")bump(ranOut,x.id);if(x.out==="bowled")bump(timber,x.id);});
+    sc.bowling.forEach(x=>{if(x.sixes)bump(sixHit,x.id,x.sixes)});
     sc.batting.forEach(x=>{if(x.out&&x.runs===0&&x.balls<=1)golden.set(x.id,(golden.get(x.id)||0)+1);
       if(x.balls>=10)slow.push({id:x.id,mm,r:x.runs,b:x.balls,no:!x.out})});
-    sc.bowling.forEach(x=>spells.push({id:x.id,mm,w:x.wickets,r:x.runs,ov:x.overs}))}));
+    sc.bowling.forEach(x=>spells.push({id:x.id,mm,w:x.wickets,r:x.runs,ov:x.overs,wd:x.wides}))}));
   const top=(list,val,ok=()=>true)=>list.filter(ok).sort((a,b)=>val(b)-val(a)).slice(0,3);
   const C=[
     {k:"The Duck Club",line:"Out without scoring.",rows:top(ps,p=>p.bat.ducks,p=>p.bat.ducks>0).map(p=>({p,v:p.bat.ducks,u:"ducks"}))},
@@ -1698,6 +1706,13 @@ function renderShame(){
     {k:"Slowest innings",line:"Lowest strike rate, 10 balls or more.",rows:top(slow,x=>-x.r/x.b).map(x=>({p:P.get(x.id),v:Math.round(x.r/x.b*100),u:`SR · ${x.r}${x.no?"*":""} off ${x.b}`,mm:x.mm}))},
     {k:"Dot-ball magnet",line:"Highest share of dot balls faced, 60 balls or more.",rows:top(ps,p=>p.bat.dots/p.bat.b,p=>p.bat.b>=60).map(p=>({p,v:Math.round(p.bat.dots/p.bat.b*100)+"%",u:`of ${p.bat.b} balls`}))},
     {k:"Leakiest bowler",line:"Highest economy, 10 overs or more.",rows:top(ps,p=>p.bowl.econ,p=>p.bowl.b>=60).map(p=>({p,v:r1(p.bowl.econ),u:"runs an over"}))},
+    {k:"Run-out victim",line:"Run out the most. Running between the wickets is a team sport.",rows:top([...ranOut].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"run outs"}))},
+    {k:"Timber!",line:"Bowled the most. The stumps keep finding a way.",rows:top([...timber].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"times bowled"}))},
+    {k:"Six-hit sufferer",line:"Most sixes conceded.",rows:top([...sixHit].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"sixes conceded"}))},
+    {k:"Over from hell",line:"Most runs conceded in one over.",rows:top(overs,x=>x.r).map(x=>({p:P.get(x.id),v:x.r,u:`runs in over ${x.ov}`,mm:x.mm}))},
+    {k:"Wayward spell",line:"Most wides in one spell.",rows:top(spells,x=>x.wd||0,x=>x.wd>0).map(x=>({p:P.get(x.id),v:x.wd,u:`wides · ${x.w}/${x.r} in ${x.ov} ov`,mm:x.mm}))},
+    {k:"Costliest drop",line:"The dropped catch that hurt most.",rows:top(DROPS.filter(d=>d.fl),d=>d.r).map(d=>({p:P.get(d.fl),v:d.r,u:`runs after dropping ${esc(short(d.bt))}`,mm:d.mm}))},
+    {k:"Own goal",line:"Catches dropped off his own bowling.",rows:top([...(()=>{const m=new Map();DROPS.filter(d=>d.fl&&d.fl===d.bw).forEach(d=>m.set(d.fl,(m.get(d.fl)||0)+1));return m})()].map(([id,n])=>({p:P.get(id),n})),x=>x.n).map(x=>({p:x.p,v:x.n,u:"own-bowling drops"}))},
   ].filter(c=>c.rows.length&&c.rows[0].p);
   $("#shameGrid").innerHTML=C.map(c=>{const w=c.rows[0];return `<article class="shame ${w.p.tm.key}">
     <p class="kicker">${c.k}</p><p class="shame-line">${c.line}</p>

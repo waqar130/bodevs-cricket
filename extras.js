@@ -371,7 +371,7 @@ const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], 
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
-  rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
+  seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
 function tagPages() {
@@ -791,6 +791,30 @@ function renderWeekNumbers() {
     ${wm.more.replace('<h3 class="xr-h">More from the week</h3>', H3(4, "More from the week"))}`;
 
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
+}
+
+/* ---------------- season cover: the headline, the numbers and the three big award holders ---------------- */
+function renderSeasonHero() {
+  const el = $("#seasonHeroBody"); if (!el || !M?.length) return;
+  if (typeof addUniqueAwards === "function") addUniqueAwards();
+  const ms = chrono(), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
+  const inns = M.flatMap(m => m.s.scorecards), runs = inns.reduce((a, sc) => a + sc.runs, 0), sixes = inns.reduce((a, sc) => a + sc.batting.reduce((x, b) => x + b.sixes, 0), 0), wk = inns.reduce((a, sc) => a + sc.wickets, 0);
+  const hi = [...inns].sort((a, b) => b.runs - a.runs)[0], rr = runs / inns.reduce((a, sc) => a + balls(sc.overs), 0) * 6;
+  const name = (typeof SEASON !== "undefined" && SEASON === "all") ? "All-time" : ((typeof SEASONS !== "undefined" && SEASONS.find(s => s.id === SEASON)?.name) || "The season");
+  const head = t === f ? `All square at ${t}–${f}.` : `${t > f ? "Tigers" : "Falcons"} lead ${Math.max(t, f)}–${Math.min(t, f)}.`;
+  // three different faces: go down the headline awards, taking a holder (or joint holder) not already shown
+  const used = new Set(), picks = [];
+  ["MVP of the season", "Golden Bat", "Golden Ball", "Six King", "Man of the Match", "Safest Hands", "Golden Gloves", "Mr Economy", "Strike Rate King", "Clutch King", "Partnership King", "Run-out King"].some(k => {
+    const a = AWARDS.find(x => x.k === k); if (!a?.list.length) return false; const top = a.n(a.list[0]);
+    const p = a.list.find(q => a.n(q) === top && !used.has(q.id)); if (p) { used.add(p.id); picks.push([a, p]); } return picks.length === 3; });
+  const starOf = ([a, p]) => p ? `<a class="sh-star ${p.tm.key}" href="${purl(p.id)}"><span class="sh-ph">${p.photo ? `<img src="${p.photo}" alt="" loading="lazy">` : ""}</span><small>${esc(a.k)}${a.list.length > 1 && a.n(a.list[1]) === a.n(a.list[0]) ? " (joint)" : ""}</small><b>${esc(pname(p.id))}</b><em>${a.v(p)} <i>${esc(a.n(p) === 1 && a.u1 ? a.u1 : a.u)}</i></em></a>` : "";
+  el.innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">${esc(name)} · ${fmtD(ms[0].date, { day: "numeric", month: "short" })} – ${fmtD(ms.at(-1).date, { day: "numeric", month: "short", year: "numeric" })}</p>
+      <h2 class="sh-head">${head}</h2>
+      <p class="sh-dek">${M.length} matches at SportsX, G-12: ${runs.toLocaleString()} runs, ${sixes.toLocaleString()} sixes and ${wk} wickets with the Tilde ball.</p>
+      <div class="sh-stats"><div><b>${M.length}</b><span>matches</span></div><div><b>${runs.toLocaleString()}</b><span>runs</span></div><div><b>${sixes}</b><span>sixes</span></div><div><b>${wk}</b><span>wickets</span></div><div><b>${r1(rr)}</b><span>runs an over</span></div><div><b>${hi.runs}/${hi.wickets}</b><span>top total · ${esc(team(hi.batting_team).short)}</span></div></div>
+    </div>
+    <div class="sh-stars">${picks.map(starOf).join("")}</div></div>`;
 }
 
 /* ---------------- season awards: every award with its holder and the race behind ---------------- */
@@ -1509,7 +1533,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
