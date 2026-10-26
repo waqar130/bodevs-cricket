@@ -754,3 +754,17 @@ main{counter-reset:spage tpage ppage cpage kpage}
 /* three record tabs fit a phone */
 @media(max-width:600px){.rec-top button{font-size:clamp(24px,7.4vw,34px);padding-right:12px}.rec-top button+button{padding-left:12px}}
 .rec-top{max-width:100%;overflow-x:auto;scrollbar-width:none}
+
+/* install banner on phones */
+.install-bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:60;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;background:#0d0d0c;color:#f3efe6;border-top:4px solid var(--red);box-shadow:0 10px 30px rgba(0,0,0,.35);transform:translateY(140%);transition:transform .3s ease}
+.install-bar.on{transform:none}
+.install-bar img{flex:none;border-radius:10px}
+.install-bar>div{flex:1;min-width:0;display:grid;gap:2px}
+.install-bar>div>b{font:800 17px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+.install-bar span{font:400 14px/1.35 var(--f-body);color:#d8d3c7}
+.install-bar span b{color:#fff}
+.ib-share{font-style:normal;display:inline-block;border:1px solid #a9a49a;border-radius:4px;padding:0 4px;font-size:12px}
+.install-bar .btn{flex:none}
+.ib-x{flex:none;background:none;border:0;color:#a9a49a;font:400 26px/1 var(--f-body);padding:4px 6px;cursor:pointer}
+@media print{.install-bar{display:none}}
+.install-bar .btn.solid,.install-bar .btn.solid:hover{background:var(--red);border-color:var(--red);color:#fff}

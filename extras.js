@@ -1595,7 +1595,28 @@ function renderLiveCentre(j) {
 
 /* ---------------- install as an app ---------------- */
 let INSTALL = null;
-addEventListener("beforeinstallprompt", e => { e.preventDefault(); INSTALL = e; renderGetApp(); });
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); INSTALL = e; renderGetApp(); installBanner(); });
+addEventListener("appinstalled", () => { INSTALL = null; $("#installBar")?.remove(); renderGetApp(); });
+/* a small banner on phones: Install on Android/Chrome, "Add to Home Screen" steps on iPhone. Closing it hides it for two weeks. */
+function installBanner() {
+  const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent), phone = matchMedia("(max-width: 900px)").matches;
+  let snoozed = 0; try { snoozed = +localStorage.getItem("bdc-install-snooze") || 0; } catch (x) {}
+  if (installed || !phone || Date.now() < snoozed || $("#installBar") || (!INSTALL && !ios)) return;
+  setTimeout(() => {
+    if ($("#installBar") || (!INSTALL && !ios)) return;
+    document.body.insertAdjacentHTML("beforeend", `<div class="install-bar" id="installBar" role="dialog" aria-label="Install the app">
+      <img src="assets/icons/icon-192.png" alt="" width="44" height="44">
+      <div><b>Get BoDevs Cricket on your phone</b><span>${INSTALL ? "Full screen, one tap away, scores readable offline." : "Tap <i class=\"ib-share\" aria-label=\"Share\">⇧</i> Share, then <b>Add to Home Screen</b>."}</span></div>
+      ${INSTALL ? `<button type="button" class="btn solid small" id="ibGo">Install</button>` : ""}
+      <button type="button" class="ib-x" id="ibX" aria-label="Not now">×</button></div>`);
+    setTimeout(() => $("#installBar")?.classList.add("on"), 30);
+    const close = snooze => { if (snooze) try { localStorage.setItem("bdc-install-snooze", Date.now() + 14 * 864e5); } catch (x) {} const b = $("#installBar"); if (b) { b.classList.remove("on"); setTimeout(() => b.remove(), 300); } };
+    $("#ibX").onclick = () => close(true);
+    const go = $("#ibGo"); if (go) go.onclick = async () => { const p = INSTALL; if (!p) return close(false); p.prompt(); const r = await p.userChoice.catch(() => ({})); INSTALL = null; close(r.outcome !== "accepted"); renderGetApp(); };
+  }, 6000);
+}
+installBanner();
 function renderGetApp() {
   const el = $("#getappBody"); if (!el) return;
   const installed = matchMedia("(display-mode: standalone)").matches, ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
