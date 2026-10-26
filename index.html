@@ -1389,7 +1389,7 @@ function render(){
     const name=ps[0]?.team||"";const wins=key==="t"?tWins:fWins;
     return `<div class="${key}"><div class="sheet-head">${crest(name)}<h3>${esc(name)}</h3><span class="label">${ps.length} players<br>${wins} wins</span></div>
     <div class="roster">${ps.map(p=>`<a class="pcard ${p.tm.key}" href="${purl(p.id)}">${photo(p)}
-      <div><span class="desig">${esc(p.title)}</span><h4>${esc(p.full_name||p.name)}</h4><div class="job">${[p.full_name&&!p.full_name.startsWith(p.name)?`“${esc(p.name)}”`:"",p.job?`Day job: ${esc(p.job)}`:""].filter(Boolean).join(" · ")}</div></div>
+      <div><h4>${esc(p.full_name||p.name)}</h4>${p.full_name&&!p.full_name.startsWith(p.name)?`<div class="job">“${esc(p.name)}”</div>`:""}<p class="pbadges sm">${p.title?`<span class="pb cric">${esc(p.title)}</span>`:""}${p.job?`<span class="pb job">${esc(p.job)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
       <div class="line">${p.matches?`${p.bat.r} runs · ${p.bowl.w} wkts · ${p.fld.c} ct`:"Yet to play"}</div></a>`).join("")}</div></div>`};
   $("#sheets").innerHTML=sheet("t")+sheet("f");
 
@@ -2124,9 +2124,10 @@ function playerPage(id,tab){
   // match points, to colour each game against his own average
   const lp=l=>l.bat.reduce((a,x)=>a+x.r,0)+20*l.bowl.reduce((a,x)=>a+x.w,0)+10*l.c,avgP=log.reduce((a,l)=>a+lp(l),0)/Math.max(1,log.length);
   let h=`<header class="art-head ${p.tm.key}"><div class="prof-top">${photo(p)}<div>
-    <p class="kicker">${esc(p.title)} · ${esc(p.team)}${p.captain?" · Captain":""}${p.keeper?" · Wicket-keeper":""}</p><h1 class="hd">${esc(p.full_name||p.name)}</h1>${typeof formTag==="function"?formTag(p):""}
+    <h1 class="hd">${esc(p.full_name||p.name)}</h1>
+    <p class="pbadges">${p.title?`<span class="pb cric" title="Cricketing title">${esc(p.title)}</span>`:""}${p.job?`<span class="pb job" title="Job at BoDevs">${esc(p.job)}</span>`:""}<span class="pb team ${p.tm.key}">${esc(p.team)}</span>${p.captain?`<span class="pb role">Captain</span>`:""}${p.keeper?`<span class="pb role wk">Wicket-keeper</span>`:""}${typeof formTag==="function"?formTag(p):""}</p>
     <p class="why">${esc(p.why)}</p>
-    <p class="dek">${[p.job?`${esc(p.job)} at BoDevs.`:"",p.full_name&&!p.full_name.startsWith(p.name)?`Known on the scorecard as “${esc(p.name)}”.`:""].join(" ")}</p>
+    ${p.full_name&&!p.full_name.startsWith(p.name)?`<p class="dek">Known on the scorecard as “${esc(p.name)}”.</p>`:""}
     <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} pts</small></a>`:"").join("")}</div>
     <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;

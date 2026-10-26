@@ -1224,9 +1224,8 @@ function formTag(p) {
   if (!p.matches) return "";
   const f = formData().find(x => x.p.id === p.id), tags = [];
   if (WEEK?.isMvp(p.id)) tags.push(["mvp", "Reigning MVP"]);
-  if (p.keeper) tags.push(["wk", "Wicket-keeper"]);
   if (f) tags.push(f.trend === "hot" ? ["hot", "On fire"] : f.trend === "cold" ? ["cold", "Searching for form"] : f.trend === "new" ? ["new", "New face"] : ["steady", "Steady form"]);
-  return `<p class="ftags">${tags.map(([c, t]) => `<span class="ftag ${c}">${t}</span>`).join("")}</p>`;
+  return tags.map(([c, t]) => `<span class="pb ftag ${c}">${t}</span>`).join("");
 }
 async function compareShare(A, B) {
   const host = $("#cmpBody"); if (!host) return; host.querySelector(".cmp-share")?.remove(); if (!A || !B || A.id === B.id) return;
