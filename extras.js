@@ -49,7 +49,7 @@ async function drawPhoto(x, p, X, Y, S) {
 function shareUI(id, canvas, fname, waText, msgId) {
   const msg = document.getElementById(msgId);
   document.getElementById(id + "Copy").onclick = () => copyCanvas(canvas, msg);
-  document.getElementById(id + "Text").onclick = () => copyText(waText, msg);
+  const tb = document.getElementById(id + "Text"); if (tb) tb.onclick = () => copyText(waText, msg);
   const dl = document.getElementById(id + "Dl");
   if (IS_LOCAL || !window.claude?.use) { dl.hidden = false; dl.onclick = () => downloadCanvas(canvas, fname); }
   else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false;
@@ -113,8 +113,8 @@ async function renderDigest() {
   const W = selW(), tok = ++dgTok, txt = digestText(W);
   $("#digest h2").textContent = W === WEEK ? "This week" : `Issue ${W.issue}`;
   el.innerHTML = `<div class="dg-grid"><div class="dg-copy">
-      <p class="label">Ready to paste into the team group</p><pre class="dg-text" id="dgText"></pre>
-      <div class="pick-actions"><button type="button" class="btn solid" id="dgText2">Copy text</button><a class="btn" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download image</button></div>
+      <p class="label">The week in one message</p><pre class="dg-text" id="dgText"></pre>
+      <div class="pick-actions"><a class="btn" id="dgWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="dgCopy">Copy image</button><button type="button" class="btn" id="dgDl" hidden>Download image</button></div>
       <p class="label" id="dgMsg"></p></div>
     <img class="card-img dg-img" id="dgImg" alt="Monday digest card for the week of ${esc(weekRange(W))}"></div>`;
   $("#dgText").textContent = txt;
@@ -124,7 +124,7 @@ async function renderDigest() {
   const c = await drawDigest(W); if (tok !== dgTok) return; $("#dgImg").src = c.toDataURL("image/png");
   // reuse shareUI with this section's ids
   const msg = $("#dgMsg");
-  $("#dgText2").onclick = () => copyText(txt, msg); $("#dgCopy").onclick = () => copyCanvas(c, msg); $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
+  $("#dgCopy").onclick = () => copyCanvas(c, msg); $("#dgWa").href = "https://wa.me/?text=" + encodeURIComponent(txt);
   const dl = $("#dgDl"); const fname = `bodevs-cricket-digest-issue-${W.issue}.png`;
   if (IS_LOCAL || !window.claude?.use) { dl.hidden = false; dl.onclick = () => downloadCanvas(c, fname); }
   else Promise.resolve(window.claude.use("downloads")).then(d => { if (!d) return; dl.hidden = false; dl.onclick = async () => { try { await d.save({ filename: fname, data: await new Promise(r => c.toBlob(r, "image/png")) }); msg.textContent = "Saved."; } catch {} }; }).catch(() => {});
@@ -1238,7 +1238,7 @@ function formTag(p) {
 async function compareShare(A, B) {
   const host = $("#cmpBody"); if (!host) return; host.querySelector(".cmp-share")?.remove(); if (!A || !B || A.id === B.id) return;
   const sc = [...host.querySelectorAll(".cmp-score b")].map(b => b.textContent), rows = [["Runs", p => p.bat.r], ["Average", p => r1(p.bat.avg)], ["Strike rate", p => Math.round(p.bat.sr)], ["Sixes", p => p.bat.s], ["Wickets", p => p.bowl.w], ["Economy", p => r1(p.bowl.econ)], ["Catches", p => p.fld.c], ["MVP awards", p => p.mvpN]];
-  host.insertAdjacentHTML("beforeend", `<div class="cmp-share"><h3 class="tbl-title" style="margin-top:30px">Share this comparison</h3><div class="pick-actions"><button type="button" class="btn solid" id="hhCopy">Copy image</button><button type="button" class="btn" id="hhText">Copy text</button><a class="btn" id="hhWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="hhDl" hidden>Download</button></div><p class="label" id="hhMsg"></p><img class="card-img" id="hhImg" alt="Head to head card"></div>`);
+  host.insertAdjacentHTML("beforeend", `<div class="cmp-share"><h3 class="tbl-title" style="margin-top:30px">Share this comparison</h3><div class="pick-actions"><button type="button" class="btn solid" id="hhCopy">Copy image</button><a class="btn" id="hhWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="hhDl" hidden>Download</button></div><p class="label" id="hhMsg"></p><img class="card-img" id="hhImg" alt="Head to head card"></div>`);
   const { c, x } = await canvasBase("Head to head");
   await drawPhoto(x, A, 60, 200, 300); await drawPhoto(x, B, 720, 200, 300);
   x.textAlign = "center"; x.fillStyle = CC.ink; x.font = `900 120px ${DISP}`; x.fillText(`${sc[0] || 0}–${sc[1] || 0}`, 540, 360); x.font = `600 22px ${MONO}`; x.fillStyle = CC.muted; x.fillText("CATEGORIES WON", 540, 400);
@@ -1260,8 +1260,7 @@ function weekQuiz(W, now) {
   const ob = X.overBat.filter(x => ids.has(x.mm.id)).sort((a, b) => b.r - a.r)[0]; if (ob) q.push([`What was the most runs one batter took off a single over?`, `${ob.r}, by ${pname(ob.id)} in over ${ob.ov} of match #${ob.mm.id}.`]);
   if (W.knock) q.push([`What was the top score, and how many balls did it take?`, `${W.knock.r}${W.knock.no ? "*" : ""} off ${W.knock.b} by ${pname(W.knock.id)}.`]);
   const qs = q.slice(0, 3), txt = `BoDevs Cricket quiz, issue ${W.issue}\n` + qs.map((x, i) => `${i + 1}. ${x[0]}`).join("\n") + `\nAnswers: ${SITE_BASE}/#weeknumbers`;
-  return qs.length ? `<div class="xr-card"><h3 class="tbl-title">Quiz of the week</h3><ol class="qz">${qs.map(x => `<li><p>${esc(x[0])}</p><details><summary>Show answer</summary>${esc(x[1])}</details></li>`).join("")}</ol>
-    <button type="button" class="btn small" data-copy="${esc(txt)}">Copy the questions for the group</button><p class="label"></p></div>` : "";
+  return qs.length ? `<div class="xr-card"><h3 class="tbl-title">Quiz of the week</h3><ol class="qz">${qs.map(x => `<li><p>${esc(x[0])}</p><details><summary>Show answer</summary>${esc(x[1])}</details></li>`).join("")}</ol></div>` : "";
 }
 function onThisDay(W) {
   const i = WEEKS.indexOf(W), back = [[1, "One week ago"], [4, "Four weeks ago"], [8, "Eight weeks ago"]].map(([n, l]) => [l, WEEKS[i + n]]).filter(x => x[1]);
@@ -1269,7 +1268,6 @@ function onThisDay(W) {
   return `<div class="xr-card"><h3 class="tbl-title">On this day</h3><ul class="otd">${back.map(([l, w]) => { const tw = Object.entries(w.tw);
     return `<li><span class="tp-d">${l} · issue ${w.issue}</span><p>${w.mvps.map(x => plink(x.id)).join(" & ")} ${w.joint ? "shared" : "was"} MVP${tw.length === 2 ? `; the week went ${esc(team(tw[0][0]).short)} ${tw[0][1].w}–${tw[1][1].w} ${esc(team(tw[1][0]).short)}` : ""}${w.knock ? `; top score ${w.knock.r}${w.knock.no ? "*" : ""} by ${plink(w.knock.id)}` : ""}.</p></li>`; }).join("")}</ul></div>`;
 }
-document.addEventListener("click", e => { const b = e.target.closest("[data-copy]"); if (!b) return; copyText(b.dataset.copy, b.nextElementSibling); });
 // photo cropped to fill a rectangle (portraits sit high in the frame)
 async function drawFill(x, p, X, Y, Wd, Ht) {
   const ph = p?.photo ? await loadImg(p.photo) : null;
@@ -1346,7 +1344,7 @@ async function renderPoster() {
   el.innerHTML = `<div class="pst"><div class="pst-copy"><p class="kicker">MVP poster · Issue ${W.issue}</p><h3 class="pst-h">${W.joint ? "Joint MVPs" : "MVP of the week"}, ready to post</h3>
       <p class="pst-dek">${W.mvps.map(z => `<b>${esc(pname(z.id))}</b>`).join(" & ")}${W.joint ? " share" : " takes"} the week with ${W.pow.pts} points. Pick a size, then copy, download or send it.</p>
       <div class="pst-fmt" role="radiogroup" aria-label="Poster size">${[["story", "Story · 9:16", "WhatsApp status, Instagram stories"], ["square", "Square · 1:1", "Chats and posts"]].map(([k, l, s]) => `<button type="button" role="radio" aria-checked="${k === POSTER_FMT}" data-fmt="${k}"><b>${l}</b><small>${s}</small></button>`).join("")}</div>
-      <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppText">Copy caption</button><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
+      <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
       <p class="label" id="mvppMsg"></p></div>
     <div class="pst-frame ${POSTER_FMT}"><img id="mvppImg" alt="MVP poster for issue ${W.issue}"><span class="pst-load">Drawing the poster…</span></div></div>`;
   el.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => { POSTER_FMT = b.dataset.fmt; renderPoster(); });

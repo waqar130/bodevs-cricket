@@ -823,7 +823,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <div class="wrap">
       <div class="dept-head">
         <div><p class="kicker">Sunday night</p><h2 class="hd">Pick the sides</h2></div>
-        <p>Tick who's at SportsX tonight. Keep the usual teams and the page makes the fewest moves to even them up, preferring players who have done well for the other side. Or mix everyone into two fresh sides. Add guests for challenge matches.</p>
+        <p>Tick who's here tonight and get two even sides by rating points. Not happy with it? Show another split.</p>
       </div>
       <div class="pick-grid">
         <div>
@@ -835,7 +835,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
               <select id="guestLevel" aria-label="Guest level"><option value="250">New to the ball</option><option value="450" selected>Regular player</option><option value="650">Strong player</option></select>
               <button class="btn small solid" type="submit">Add</button></div>
           </form>
-          <fieldset class="pk-mode"><legend class="label">How to pick</legend><label><input type="radio" name="pickMode" value="usual" checked> Keep the usual teams, fewest moves</label><label><input type="radio" name="pickMode" value="mix"> Mix everyone evenly</label></fieldset>
           <label class="opt"><input type="checkbox" id="capsApart" checked> Keep the captains on opposite sides</label>
         </div>
         <div class="pick-out" id="pickOut" aria-live="polite"></div>
@@ -1769,9 +1768,9 @@ function teamSplit(p){
 }
 
 /* ---------- team picker ---------- */
-const PICK={sel:new Set(),guests:[],opts:[],cur:0,mode:"usual"};
-try{const sv=JSON.parse(localStorage.getItem("bdc-pick")||"null");if(sv){PICK.sel=new Set(sv.sel||[]);PICK.guests=sv.guests||[];PICK.mode=sv.mode||"usual"}}catch(e){}
-const savePick=()=>{try{localStorage.setItem("bdc-pick",JSON.stringify({sel:[...PICK.sel],guests:PICK.guests,mode:PICK.mode}))}catch(e){}};
+const PICK={sel:new Set(),guests:[],opts:[],cur:0};
+try{const sv=JSON.parse(localStorage.getItem("bdc-pick")||"null");if(sv){PICK.sel=new Set(sv.sel||[]);PICK.guests=sv.guests||[]}}catch(e){}
+const savePick=()=>{try{localStorage.setItem("bdc-pick",JSON.stringify({sel:[...PICK.sel],guests:PICK.guests}))}catch(e){}};
 const strength=p=>({bat:Math.max(p.rBat||0,p.matches?120:300),bowl:Math.max(p.rBowl||0,p.matches?120:300)});
 function renderPicker(){
   if(!PICK.sel.size&&!PICK.guests.length)[...P.values()].filter(p=>p.matches).forEach(p=>PICK.sel.add("p"+p.id));
@@ -1787,56 +1786,28 @@ function splitTeams(){
   PICK.opts=[];PICK.cur=0;
   if(pool.length<2){$("#pickOut").innerHTML=`<p class="dnb">Select at least 2 players to make two sides.</p>`;return}
   if(pool.length>16){$("#pickOut").innerHTML=`<p class="dnb">That's more than 16 players. Untick a few so the sides fit in the box.</p>`;return}
-  const n=pool.length,k=Math.floor(n/2),caps=pool.map((x,i)=>x.cap?i:-1).filter(i=>i>=0),apart=$("#capsApart").checked&&caps.length===2,usual=PICK.mode==="usual";
-  // keeping the usual teams: each move off a player's regular side costs, less if he has done well for the other side
-  const MOVE=450,moveCost=x=>{if(!x.p||!x.tm)return 0;if(x.cap)return 5000; // captains stay with their side
-    const ts=teamSplit(x.p),other=ts[x.tm==="t"?"f":"t"],own=ts[x.tm];return Math.max(150,MOVE-(other&&other.m>=1?Math.min(250,Math.max(0,other.per-(own?.per||0))+80):0))};
+  const n=pool.length,k=Math.floor(n/2),caps=pool.map((x,i)=>x.cap?i:-1).filter(i=>i>=0),apart=$("#capsApart").checked&&caps.length===2;
   const opts=[];
-  const rec=(start,chosen,size)=>{if(chosen.length===size){
-      if(!usual&&n%2===0&&!chosen.includes(0))return; // mirror split already counted
+  const rec=(start,chosen)=>{if(chosen.length===k){
+      if(n%2===0&&!chosen.includes(0))return; // mirror split already counted
       const A=new Set(chosen);if(apart&&A.has(caps[0])===A.has(caps[1]))return;
-      let ab=0,aw=0,bb=0,bw=0,mv=0;pool.forEach((x,i)=>{if(A.has(i)){ab+=x.bat;aw+=x.bowl;if(usual&&x.tm==="f")mv+=moveCost(x)}else{bb+=x.bat;bw+=x.bowl;if(usual&&x.tm==="t")mv+=moveCost(x)}});
-      opts.push({A:[...A],cost:Math.abs(ab+aw-bb-bw)+0.5*(Math.abs(ab-bb)+Math.abs(aw-bw))+mv});return}
-    for(let i=start;i<n;i++){chosen.push(i);rec(i+1,chosen,size);chosen.pop()}};
-  // in usual mode the first side is always the Tigers, so both sizes are tried when the numbers are odd
-  rec(0,[],k);if(usual&&n%2)rec(0,[],n-k);
+      let ab=0,aw=0,bb=0,bw=0;pool.forEach((x,i)=>{if(A.has(i)){ab+=x.bat;aw+=x.bowl}else{bb+=x.bat;bw+=x.bowl}});
+      opts.push({A:[...A],cost:Math.abs(ab+aw-bb-bw)+0.5*(Math.abs(ab-bb)+Math.abs(aw-bw))});return}
+    for(let i=start;i<n;i++){chosen.push(i);rec(i+1,chosen);chosen.pop()}};
+  rec(0,[]);
   opts.sort((a,b)=>a.cost-b.cost);PICK.opts=opts.slice(0,8);PICK.pool=pool;showSplit();
-}
-// Next Sunday preview: a win chance from total strength, plus the key batter-v-bowler battles
-function matchPreview(A,B,ta,tb){
-  const pa=1/(1+Math.exp(-(ta-tb)/600)),pct=Math.round(pa*100);
-  const real=L=>L.filter(x=>x.p);
-  const bestBat=L=>real(L).sort((a,b)=>(b.p.rBat||0)-(a.p.rBat||0))[0],bestBowl=L=>real(L).sort((a,b)=>(b.p.rBowl||0)-(a.p.rBowl||0))[0];
-  const battle=(bat,bowl)=>{if(!bat||!bowl)return"";const x=H.get(bat.p.id+"|"+bowl.p.id);
-    return `<div class="battle"><span><b>${esc(bat.short)}</b><small>bat ${bat.p.rBat||"–"}</small></span><em>v</em><span><b>${esc(bowl.short)}</b><small>bowl ${bowl.p.rBowl||"–"}</small></span>
-      <p>${x&&x.b?`${x.r} off ${x.b} balls, out ${x.outs} time${x.outs===1?"":"s"}${x.outs?` (once every ${r1(x.b/x.outs)} balls)`:""}.`:"First time they meet."}</p></div>`};
-  const fav=pct===50?"Too close to call":pct>50?`Tigers favoured`:`Falcons favoured`;
-  return `<div class="preview"><p class="kicker">Next Sunday preview</p>
-    <div class="pv-odds"><span class="t">Tigers ${pct}%</span><div class="bal-bar"><i class="t" style="width:${pct}%"></i><i class="f"></i></div><span class="f">Falcons ${100-pct}%</span></div>
-    <p class="pv-fav">${fav}, based on these line-ups' ratings.</p>
-    <p class="label" style="margin-top:14px">Key battles</p>
-    ${battle(bestBat(A),bestBowl(B))}${battle(bestBat(B),bestBowl(A))}</div>`;
 }
 function showSplit(){
   const pool=PICK.pool,o=PICK.opts[PICK.cur];if(!o){$("#pickOut").innerHTML=`<p class="dnb">No split possible with these settings.</p>`;return}
   let A=pool.filter((x,i)=>o.A.includes(i)),B=pool.filter((x,i)=>!o.A.includes(i));
-  // mixing: Tassadduq's side plays as Tigers, Farhan's as Falcons (keeping the usual teams, A is already the Tigers)
-  if(PICK.mode!=="usual"&&(B.some(x=>x.cap&&x.tm==="t")||A.some(x=>x.cap&&x.tm==="f")))[A,B]=[B,A];
-  // who is missing, and who moves this week
-  const here=new Set(pool.filter(x=>x.p).map(x=>x.p.id)),miss=key=>[...P.values()].filter(p=>p.matches>=3&&p.tm.key===key&&!here.has(p.id));
-  const movers=[...A.filter(x=>x.p&&x.tm==="f").map(x=>({x,to:"t"})),...B.filter(x=>x.p&&x.tm==="t").map(x=>({x,to:"f"}))];
-  const mvLine=({x,to})=>{const o=teamSplit(x.p)[to];return `<li>${miniThumb(x.p)}<span><b>${esc(x.short)}</b> plays for the ${to==="t"?"Tigers":"Falcons"} <small>usually ${to==="t"?"Falcons":"Tigers"} · ${o?`${o.m} match${o.m>1?"es":""} for them before, ${Math.round(o.per)} pts a match`:"first time for them"}</small></span></li>`};
+  // Tassadduq's side plays as Tigers, Farhan's as Falcons
+  if(B.some(x=>x.cap&&x.tm==="t")||A.some(x=>x.cap&&x.tm==="f"))[A,B]=[B,A];
   const tot=L=>L.reduce((a,x)=>a+x.bat+x.bowl,0),ta=tot(A),tb=tot(B),bal=Math.round((1-Math.abs(ta-tb)/(ta+tb))*100);
   const col=(L,key,name,crestSrc)=>`<div class="side-out ${key}"><div class="so-head"><img src="${crestSrc}" alt=""><div><h3>${name}</h3><span class="label">${L.length} players · strength ${tot(L).toLocaleString()}</span></div></div>
     <ol>${L.sort((a,b)=>(b.bat+b.bowl)-(a.bat+a.bowl)).map(x=>`<li>${x.p?miniThumb(x.p):'<span class="thumb x"><b>G</b></span>'}<span><b>${esc(x.name)}</b>${x.cap?' <span class="label">(c)</span>':""}<small>Bat ${x.bat} · Bowl ${x.bowl}${x.guest?" · guest":""}</small></span></li>`).join("")}</ol></div>`;
-  const notes=PICK.mode==="usual"?`<div class="pk-notes">${miss("t").length||miss("f").length?`<p><span class="label">Not here</span> ${[["t","Tigers"],["f","Falcons"]].filter(([k])=>miss(k).length).map(([k,l])=>`${l}: ${miss(k).map(p=>esc(p.name)).join(", ")}`).join(" · ")}</p>`:""}<p class="label">${movers.length?"Moves this week":"No moves needed: everyone plays for his usual side"}</p>${movers.length?`<ul class="pk-moves">${movers.map(mvLine).join("")}</ul>`:""}</div>`:"";
-  $("#pickOut").innerHTML=notes+`<div class="balance"><span class="label">Balance</span><b>${bal}%</b><div class="bal-bar"><i class="t" style="width:${ta/(ta+tb)*100}%"></i><i class="f"></i></div><span class="label">Option ${PICK.cur+1} of ${PICK.opts.length}</span></div>
+  $("#pickOut").innerHTML=`<div class="balance"><span class="label">Balance</span><b>${bal}%</b><div class="bal-bar"><i class="t" style="width:${ta/(ta+tb)*100}%"></i><i class="f"></i></div><span class="label">Option ${PICK.cur+1} of ${PICK.opts.length}</span></div>
     <div class="sides-out">${col(A,"t","Tigers","tigers.svg")}${col(B,"f","Falcons","falcons.svg")}</div>
-    <div class="pick-actions"><button type="button" class="btn" id="reshuffle">Show another split</button><button type="button" class="btn solid" id="copySides">Copy for WhatsApp</button><a class="btn" id="waSides" target="_blank" rel="noopener">Send on WhatsApp ↗</a></div>
-    <p class="label" id="pickMsg"></p>${matchPreview(A,B,ta,tb)}`;
-  const mvTxt=movers.length?`\n\nMoves: ${movers.map(({x,to})=>`${x.short} → ${to==="t"?"Tigers":"Falcons"}`).join(", ")}`:"";
-  const txt=`BoDevs Cricket · Sunday sides${mvTxt}\n\nTIGERS (${ta})\n${A.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nFALCONS (${tb})\n${B.map(x=>"• "+x.short+(x.cap?" (c)":"")).join("\n")}\n\nBalance ${bal}% · SportsX, G-12`;
-  PICK.text=txt;$("#waSides").href="https://wa.me/?text="+encodeURIComponent(txt);
+    <div class="pick-actions"><button type="button" class="btn solid" id="reshuffle">Show another split</button></div>`;
 }
 $("#pickList").addEventListener("click",e=>{const rm=e.target.closest("[data-rm]");
   if(rm){e.stopPropagation();const i=+rm.dataset.rm;PICK.guests.splice(i,1);
@@ -1845,15 +1816,10 @@ $("#pickList").addEventListener("click",e=>{const rm=e.target.closest("[data-rm]
 $("#pickAll").onclick=()=>{[...P.values()].forEach(p=>PICK.sel.add("p"+p.id));PICK.guests.forEach((g,i)=>PICK.sel.add("g"+i));savePick();renderPicker()};
 $("#pickNone").onclick=()=>{PICK.sel.clear();savePick();renderPicker()};
 $("#capsApart").onchange=splitTeams;
-document.querySelectorAll("[name=pickMode]").forEach(r=>{r.checked=r.value===PICK.mode;r.onchange=()=>{PICK.mode=r.value;savePick();splitTeams()}});
 $("#guestForm").addEventListener("submit",e=>{e.preventDefault();const n=$("#guestName").value.trim();if(!n)return;
   PICK.guests.push({name:n,lvl:+$("#guestLevel").value});PICK.sel.add("g"+(PICK.guests.length-1));$("#guestName").value="";savePick();renderPicker()});
 $("#pickOut").addEventListener("click",e=>{
-  if(e.target.id==="reshuffle"&&PICK.opts.length>1){PICK.cur=(PICK.cur+1)%PICK.opts.length;showSplit()}
-  if(e.target.id==="copySides"){const msg=$("#pickMsg");
-    navigator.clipboard?.writeText(PICK.text).then(()=>msg.textContent="Copied. Paste it into the team WhatsApp group.")
-      .catch(()=>{msg.innerHTML=`Copy isn't available here. Select the text below and copy it.<textarea class="copybox" readonly rows="8">${esc(PICK.text)}</textarea>`;msg.querySelector("textarea").select()})
-    ||(msg.textContent="Copy isn't available in this browser.")}});
+  if(e.target.id==="reshuffle"&&PICK.opts.length>1){PICK.cur=(PICK.cur+1)%PICK.opts.length;showSplit()}});
 
 /* ---------- result card (canvas) ---------- */
 const IS_LOCAL=/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
