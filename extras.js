@@ -1263,31 +1263,90 @@ function onThisDay(W) {
     return `<li><span class="tp-d">${l} · issue ${w.issue}</span><p>${w.mvps.map(x => plink(x.id)).join(" & ")} ${w.joint ? "shared" : "was"} MVP${tw.length === 2 ? `; the week went ${esc(team(tw[0][0]).short)} ${tw[0][1].w}–${tw[1][1].w} ${esc(team(tw[1][0]).short)}` : ""}${w.knock ? `; top score ${w.knock.r}${w.knock.no ? "*" : ""} by ${plink(w.knock.id)}` : ""}.</p></li>`; }).join("")}</ul></div>`;
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-copy]"); if (!b) return; copyText(b.dataset.copy, b.nextElementSibling); });
-async function drawPoster(W) {
-  await Promise.all(['900 160px "Big Shoulders Display"', '600 28px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
-  const c = document.createElement("canvas"); c.width = 1080; c.height = 1920; const x = c.getContext("2d");
-  x.fillStyle = "#0d0d0c"; x.fillRect(0, 0, 1080, 1920);
-  const logo = await loadImg("assets/logo.png"); if (logo) x.drawImage(logo, 60, 70, logo.width * 70 / logo.height, 70);
-  x.fillStyle = CC.gold; x.font = `600 30px ${MONO}`; x.fillText(`${W.joint ? "JOINT MVP" : "MVP"} OF THE WEEK · ISSUE ${W.issue}`, 60, 220);
-  x.fillStyle = "#bdb7aa"; x.font = `500 26px ${MONO}`; x.fillText(weekRange(W).toUpperCase(), 60, 262);
-  const p = P.get(W.pow.id); await drawPhoto(x, p, 60, 310, 960);
-  x.fillStyle = "#fff"; x.font = `900 120px ${DISP}`; const nm = (p.full_name || p.name).toUpperCase(); let fs = 120; while (x.measureText(nm).width > 960 && fs > 60) { fs -= 6; x.font = `900 ${fs}px ${DISP}`; } x.fillText(nm, 60, 1400);
-  x.fillStyle = CC.red; x.font = `600 30px ${MONO}`; x.fillText((p.title || "").toUpperCase(), 60, 1450);
-  const e = W.pow; [[e.r, "RUNS"], [e.w, "WKTS"], [e.c, "CT"], [e.pts, "PTS"]].forEach(([v, l], i) => { x.fillStyle = CC.gold; x.font = `900 110px ${DISP}`; x.fillText(String(v), 60 + i * 250, 1590); x.fillStyle = "#bdb7aa"; x.font = `600 26px ${MONO}`; x.fillText(l, 60 + i * 250, 1630); });
-  W.podium.filter(z => z.id !== W.pow.id).slice(0, 2).forEach((z, i) => { x.fillStyle = "#fff"; x.font = `800 44px ${DISP}`; x.fillText(`${z.role.toUpperCase()}: ${(pname(z.id)).toUpperCase()} · ${z.pts}`, 60, 1720 + i * 56); });
-  x.fillStyle = CC.red; x.fillRect(0, 1840, 1080, 80); x.fillStyle = "#fff"; x.font = `800 40px ${DISP}`; x.fillText("CRICKET.WAQARAHMED.NET", 60, 1894);
+// photo cropped to fill a rectangle (portraits sit high in the frame)
+async function drawFill(x, p, X, Y, Wd, Ht) {
+  const ph = p?.photo ? await loadImg(p.photo) : null;
+  x.fillStyle = p?.tm.key === "f" ? "#1d3f86" : "#8a3a10"; x.fillRect(X, Y, Wd, Ht);
+  if (ph) { const s = Math.max(Wd / ph.width, Ht / ph.height) * 1.08, w = ph.width * s, h = ph.height * s; x.save(); x.beginPath(); x.rect(X, Y, Wd, Ht); x.clip(); x.drawImage(ph, X + (Wd - w) / 2, Y - h * 0.04, w, h); x.restore(); }
+  else { x.fillStyle = "rgba(255,255,255,.85)"; x.font = `900 ${Math.round(Math.min(Wd, Ht) * .35)}px ${DISP}`; x.textAlign = "center"; x.fillText((p?.full_name || p?.name || "?").split(" ").map(w => w[0]).join("").slice(0, 2), X + Wd / 2, Y + Ht / 2 + Math.min(Wd, Ht) * .12); x.textAlign = "left"; }
+}
+async function drawRound(x, p, cx, cy, r) {
+  const ph = p?.photo ? await loadImg(p.photo) : null; x.save(); x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.clip();
+  x.fillStyle = p?.tm.key === "f" ? CC.f : CC.t; x.fillRect(cx - r, cy - r, r * 2, r * 2);
+  if (ph) { const cw = ph.width * 0.8; x.drawImage(ph, ph.width * 0.1, ph.height * 0.04, cw, cw, cx - r, cy - r, r * 2, r * 2); }
+  x.restore(); x.lineWidth = 6; x.strokeStyle = p?.tm.key === "f" ? CC.f : CC.t; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.stroke();
+}
+const fitText = (x, t, maxW, size, weight, fam) => { let s = size; x.font = `${weight} ${s}px ${fam}`; while (x.measureText(t).width > maxW && s > 18) { s -= 4; x.font = `${weight} ${s}px ${fam}`; } return s; };
+async function drawPoster(W, fmt = "story") {
+  await Promise.all(['900 160px "Big Shoulders Display"', '800 60px "Big Shoulders Display"', '600 28px "IBM Plex Mono"', '500 28px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  const story = fmt === "story", CWd = 1080, CHt = story ? 1920 : 1080, c = document.createElement("canvas"); c.width = CWd; c.height = CHt; const x = c.getContext("2d");
+  const mv = W.mvps.map(z => ({ z, p: P.get(z.id) })).filter(o => o.p), rest = W.podium.filter(z => z.n > 1).slice(0, 2), tw = Object.entries(W.tw);
+  x.fillStyle = "#0d0d0c"; x.fillRect(0, 0, CWd, CHt);
+  // header: logo, issue
+  const logo = await loadImg("assets/logo.png"); if (logo) x.drawImage(logo, 60, 56, logo.width * 60 / logo.height, 60);
+  x.textAlign = "right"; x.fillStyle = CC.gold; x.font = `900 64px ${DISP}`; x.fillText(`ISSUE ${W.issue}`, CWd - 60, 108); x.textAlign = "left";
+  if (story) {
+    x.fillStyle = CC.gold; x.font = `900 120px ${DISP}`; x.fillText(W.joint ? "JOINT MVPS" : "MVP OF THE WEEK", 60, 270);
+    x.fillStyle = "#bdb7aa"; x.font = `500 28px ${MONO}`; x.fillText(`${weekRange(W).toUpperCase()} · SPORTSX, G-12`, 60, 318);
+    // photos
+    const PY = 360, PH = 860, gap = 12, pw = (CWd - 120 - gap * (mv.length - 1)) / mv.length;
+    for (let i = 0; i < mv.length; i++) { const X = 60 + i * (pw + gap); await drawFill(x, mv[i].p, X, PY, pw, PH);
+      const g = x.createLinearGradient(0, PY + PH * .55, 0, PY + PH); g.addColorStop(0, "rgba(13,13,12,0)"); g.addColorStop(1, "rgba(13,13,12,.92)"); x.fillStyle = g; x.fillRect(X, PY + PH * .55, pw, PH * .45);
+      x.fillStyle = mv[i].p.tm.key === "f" ? CC.f : CC.t; x.fillRect(X, PY + PH - 12, pw, 12);
+      const nm = (mv[i].p.full_name || mv[i].p.name).toUpperCase(), parts = mv.length > 1 ? nm.split(" ") : [nm];
+      x.fillStyle = "#fff"; let y = PY + PH - 60 - (parts.length - 1) * 70;
+      parts.slice(0, 3).forEach(t => { fitText(x, t, pw - 40, mv.length > 1 ? 76 : 110, 900, DISP); x.fillText(t, X + 24, y); y += 70; });
+      x.fillStyle = CC.gold; fitText(x, (mv[i].p.title || "").toUpperCase(), pw - 40, 26, 600, MONO); x.fillText((mv[i].p.title || "").toUpperCase(), X + 24, PY + PH - 60 - (parts.length - 1) * 70 - (mv.length > 1 ? 82 : 116));
+    }
+    // stats, one strip per MVP
+    let SY = PY + PH + 60;
+    mv.forEach(({ z, p }) => { const cells = [[z.r, "RUNS"], [z.w, "WKTS"], [z.c + (z.ro || 0), "CT+RO"], [z.pts, "PTS"]];
+      if (mv.length > 1) { x.fillStyle = p.tm.key === "f" ? "#7fa6ff" : "#ff9b5e"; x.font = `800 30px ${DISP}`; x.fillText(short(p.id).toUpperCase(), 60, SY - 8); }
+      cells.forEach(([v, l], i) => { const X = 60 + i * 245; x.fillStyle = i === 3 ? CC.gold : "#fff"; x.font = `900 ${mv.length > 1 ? 84 : 120}px ${DISP}`; x.fillText(String(v), X, SY + (mv.length > 1 ? 78 : 110));
+        x.fillStyle = "#8f8a7f"; x.font = `600 22px ${MONO}`; x.fillText(l, X, SY + (mv.length > 1 ? 108 : 146)); });
+      SY += mv.length > 1 ? 150 : 200; });
+    // podium
+    SY += 10; x.fillStyle = "#2a2926"; x.fillRect(60, SY, CWd - 120, 2); SY += 50;
+    for (let i = 0; i < rest.length; i++) { const z = rest[i], p = P.get(z.id); if (!p) continue; const X = 60 + i * 490;
+      await drawRound(x, p, X + 56, SY + 56, 56);
+      x.fillStyle = CC.red; x.font = `600 22px ${MONO}`; x.fillText(z.role.toUpperCase(), X + 132, SY + 34);
+      x.fillStyle = "#fff"; fitText(x, short(p.id).toUpperCase(), 330, 52, 800, DISP); x.fillText(short(p.id).toUpperCase(), X + 132, SY + 84);
+      x.fillStyle = "#bdb7aa"; x.font = `500 22px ${MONO}`; x.fillText(`${z.pts} PTS`, X + 132, SY + 114); }
+  } else {
+    // square: photos left, words right
+    const PX = 60, PY = 160, PH = 760, PW = 470, gap = 10, pw = (PW - gap * (mv.length - 1)) / mv.length;
+    for (let i = 0; i < mv.length; i++) { const X = PX + i * (pw + gap); await drawFill(x, mv[i].p, X, PY, pw, PH); x.fillStyle = mv[i].p.tm.key === "f" ? CC.f : CC.t; x.fillRect(X, PY + PH - 10, pw, 10); }
+    const TX = 580, TW = CWd - TX - 60;
+    x.fillStyle = CC.gold; x.font = `900 76px ${DISP}`; x.fillText(W.joint ? "JOINT MVPS" : "MVP OF", TX, 250); if (!W.joint) x.fillText("THE WEEK", TX, 326);
+    x.fillStyle = "#bdb7aa"; x.font = `500 22px ${MONO}`; x.fillText(weekRange(W).toUpperCase(), TX, W.joint ? 296 : 370);
+    let y = W.joint ? 380 : 470;
+    mv.forEach(({ z, p }) => { x.fillStyle = "#fff"; fitText(x, (p.full_name || p.name).toUpperCase(), TW, mv.length > 1 ? 56 : 72, 900, DISP); x.fillText((p.full_name || p.name).toUpperCase(), TX, y);
+      x.fillStyle = CC.gold; x.font = `600 22px ${MONO}`; x.fillText(`${z.r} RUNS · ${z.w} WKTS · ${z.pts} PTS`, TX, y + 40); y += mv.length > 1 ? 120 : 140; });
+    rest.forEach((z, i) => { x.fillStyle = CC.red; x.font = `600 20px ${MONO}`; x.fillText(z.role.toUpperCase(), TX, y + i * 76); x.fillStyle = "#fff"; x.font = `800 38px ${DISP}`; x.fillText(`${short(z.id).toUpperCase()} · ${z.pts}`, TX, y + 40 + i * 76); });
+  }
+  // result line and footer
+  const res = tw.length === 2 ? `${team(tw[0][0]).short} ${tw[0][1].w}–${tw[1][1].w} ${team(tw[1][0]).short}`.toUpperCase() : "";
+  x.fillStyle = "#bdb7aa"; x.font = `600 24px ${MONO}`; x.fillText([res, `${W.sixes} SIXES`, `${W.runs} RUNS`].filter(Boolean).join(" · "), 60, CHt - 120);
+  x.fillStyle = CC.red; x.fillRect(0, CHt - 84, CWd, 84); x.fillStyle = "#fff"; x.font = `800 40px ${DISP}`; x.fillText("CRICKET.WAQARAHMED.NET", 60, CHt - 30);
+  x.textAlign = "right"; x.font = `600 22px ${MONO}`; x.fillText("BODEVS CRICKET", CWd - 60, CHt - 36); x.textAlign = "left";
   return c;
 }
+let POSTER_FMT = "story", posterTok = 0;
 async function renderPoster() {
   const host = $("#digestBody"); if (!host || !WEEK) return;
   let el = $("#posterBox"); if (!el) { el = document.createElement("div"); el.id = "posterBox"; host.after(el); }
-  const W = selW();
-  el.innerHTML = `<h3 class="tbl-title" style="margin-top:34px">MVP poster</h3><p class="rank-note">Sized for WhatsApp status and stories.</p>
-    <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><button type="button" class="btn" id="mvppText">Copy text</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
-    <p class="label" id="mvppMsg"></p><img class="card-img poster-img" id="mvppImg" alt="MVP poster for issue ${W.issue}">`;
-  await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#mvppImg")); });
-  const c = await drawPoster(W); if (!$("#mvppImg")) return; $("#mvppImg").src = c.toDataURL("image/png");
-  shareUI("mvpp", c, `bodevs-mvp-issue-${W.issue}.png`, `${W.joint ? "Joint MVPs" : "MVP"} of the week, issue ${W.issue}: ${W.mvps.map(z => pname(z.id)).join(" & ")}.\n${SITE_BASE}`, "mvppMsg");
+  const W = selW(), tok = ++posterTok;
+  el.innerHTML = `<div class="pst"><div class="pst-copy"><p class="kicker">MVP poster · Issue ${W.issue}</p><h3 class="pst-h">${W.joint ? "Joint MVPs" : "MVP of the week"}, ready to post</h3>
+      <p class="pst-dek">${W.mvps.map(z => `<b>${esc(pname(z.id))}</b>`).join(" & ")}${W.joint ? " share" : " takes"} the week with ${W.pow.pts} points. Pick a size, then copy, download or send it.</p>
+      <div class="pst-fmt" role="radiogroup" aria-label="Poster size">${[["story", "Story · 9:16", "WhatsApp status, Instagram stories"], ["square", "Square · 1:1", "Chats and posts"]].map(([k, l, s]) => `<button type="button" role="radio" aria-checked="${k === POSTER_FMT}" data-fmt="${k}"><b>${l}</b><small>${s}</small></button>`).join("")}</div>
+      <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppText">Copy caption</button><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
+      <p class="label" id="mvppMsg"></p></div>
+    <div class="pst-frame ${POSTER_FMT}"><img id="mvppImg" alt="MVP poster for issue ${W.issue}"><span class="pst-load">Drawing the poster…</span></div></div>`;
+  el.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => { POSTER_FMT = b.dataset.fmt; renderPoster(); });
+  await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "300px" }); io.observe(el); });
+  const c = await drawPoster(W, POSTER_FMT); if (tok !== posterTok || !$("#mvppImg")) return;
+  $("#mvppImg").src = c.toDataURL("image/png"); el.querySelector(".pst-load")?.remove();
+  shareUI("mvpp", c, `bodevs-mvp-issue-${W.issue}-${POSTER_FMT}.png`, `${W.joint ? "Joint MVPs" : "MVP"} of the week, issue ${W.issue}: ${W.mvps.map(z => `${pname(z.id)} (${z.pts} pts)`).join(" & ")}.\n${SITE_BASE}`, "mvppMsg");
 }
 
 /* ---------------- search: players, matches and sections ("/" opens it) ---------------- */
