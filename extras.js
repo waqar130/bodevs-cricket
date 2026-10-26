@@ -366,6 +366,7 @@ let liveTimer = null;
 async function checkLive() {
   if (!ON_SITE || document.hidden) return;
   let j; try { j = await (await fetch("/api/live", { cache: "no-store" })).json(); } catch { return; }
+  renderLiveCentre(j);
   const bar = $("#liveBar"), live = (j.matches || []).filter(m => m.state);
   if (!live.length) { bar.hidden = true; clearInterval(liveTimer); liveTimer = null; return; }
   bar.hidden = false;
@@ -383,10 +384,10 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
-  records: "stats", streaks: "stats", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
+  records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
@@ -781,7 +782,9 @@ function renderWeekNumbers() {
   const sc = list => ({ t: list.filter(m => m.win.key === "t").length, f: list.filter(m => m.win.key === "f").length });
   const b0 = sc(before), b1 = sc(upTo), wk = sc(W.WM.filter(m => m.win));
   const rd = Object.entries(W.tw).map(([n, v]) => ({ k: team(n).key, d: v.for - v.against }));
+  const wm = weekMore(W, now);
   el.innerHTML = `
+    <h3 class="xr-h">The week's matches</h3><div class="wn-recaps">${wm.recaps}</div>
     <h3 class="xr-h">Team of the week</h3>
     <div class="wn-xi">${xi.map((x, i) => `<a class="wn-pl ${x.p.tm.key}" href="${purl(x.p.id)}"><span class="wn-n">${i + 1}</span>${miniThumb(x.p)}<b>${esc(pname(x.p.id))}</b><span class="wn-role">${role(x.e)}</span><small>${x.e.r} runs · ${x.e.w} wkt${x.e.w === 1 ? "" : "s"} · ${x.e.c} ct</small><span class="wn-pts">${x.e.pts} pts</span></a>`).join("")}</div>
     <div class="xr-grid" style="margin-top:30px">
@@ -797,7 +800,7 @@ function renderWeekNumbers() {
       ${card("Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
       ${card("Rivalry swing", `<p class="wn-big">${b0.t}–${b0.f} <span class="wn-arrow">→</span> ${b1.t}–${b1.f}<small>Tigers–Falcons, before and after the week</small></p>
         <p class="wn-line">${wk.t + wk.f ? `The week went ${wk.t > wk.f ? `Tigers ${wk.t}–${wk.f}` : wk.f > wk.t ? `Falcons ${wk.f}–${wk.t}` : `${wk.t}–${wk.f}, honours even`}` : "No results that week"}${rd.length ? `, with a run difference of ${rd.map(x => `${x.d > 0 ? "+" : ""}${x.d} for the ${x.k === "t" ? "Tigers" : "Falcons"}`).find((_, i) => rd[i].d > 0) || "level"}` : ""}.</p>`)}
-    </div>${weekMore(W, now)}`;
+    </div>${wm.more}`;
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
 }
 
@@ -935,7 +938,85 @@ function weekMore(W, now) {
   if (prev) { const a = stat(W), b = stat(prev), rows = [["Matches", "m"], ["Runs", "runs"], ["Average innings", "avg"], ["Sixes", "sixes"], ["Wickets", "wkts"], ["Extras", "extras"], ["Drops", "drops"]];
     vs = `<div class="xr-card"><h3 class="tbl-title">${now ? "This week" : `Issue ${W.issue}`} v issue ${prev.issue}</h3><ul class="wvw">${rows.map(([l, k]) => { const d = a[k] - b[k];
       return `<li><span>${l}</span><b>${a[k]}</b><small class="${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "▲" : d < 0 ? "▼" : "="} ${Math.abs(d) || ""}</small><i>${b[k]}</i></li>`; }).join("")}</ul></div>`; }
-  return `<h3 class="xr-h">More from the week</h3><div class="xr-grid">${movers}${msHtml}${recaps}${vs}</div>`;
+  return { recaps, more: `<h3 class="xr-h">More from the week</h3><div class="xr-grid">${movers}${msHtml}${vs}${weekQuiz(W, now)}${onThisDay(W)}</div>` };
+}
+
+/* ---------------- player notables: batting, bowling and fielding ---------------- */
+function notables(p) {
+  const log = [...p.log.values()], X = buildXR().raw, out = { bat: [], bowl: [], fld: [] };
+  const tile = (k, big, sub, mm) => `<div class="nt"><span class="label">${k}</span><b>${big}</b><small>${sub}${mm ? ` · ${matchLink(mm)}` : ""}</small></div>`;
+  const asBat = [...H.values()].filter(x => x.bat === p.id && P.has(x.bowl)), asBowl = [...H.values()].filter(x => x.bowl === p.id && P.has(x.bat));
+  const sr = x => x.b ? x.r / x.b * 100 : 0, ec = x => x.b ? x.r / x.b * 6 : 0;
+  // batting: from his scorecard innings (with ball-by-ball timelines)
+  const inns = []; log.forEach(l => l.mm.s.scorecards.forEach(sc => { const b = sc.batting.find(x => x.id === p.id); if (!b) return;
+    let c = 0, f30 = null, f50 = null; (b.timeline || []).forEach((t, i) => { const r = t.kind === "six" ? 6 : t.kind === "four" ? 4 : /^\d+$/.test(String(t.mark)) ? +t.mark : 0, pr = c; c += r; if (pr < 30 && c >= 30) f30 = i + 1; if (pr < 50 && c >= 50) f50 = i + 1; });
+    inns.push({ mm: l.mm, r: b.runs, b: b.balls, no: !b.out, s: b.sixes, f: b.fours, f30, f50 }); }));
+  const by = (a, f) => [...a].sort(f)[0], st = x => `${x.r}${x.no ? "*" : ""} (${x.b})`;
+  const hs = by(inns, (a, b) => b.r - a.r || a.b - b.b); if (hs) out.bat.push(tile("Highest score", `${hs.r}${hs.no ? "*" : ""}`, `off ${hs.b} balls, ${hs.s} sixes`, hs.mm));
+  const fifty = by(inns.filter(x => x.f50), (a, b) => a.f50 - b.f50); if (fifty) out.bat.push(tile("Fastest fifty", `${fifty.f50} balls`, `went on to ${st(fifty)}`, fifty.mm));
+  else { const thirty = by(inns.filter(x => x.f30), (a, b) => a.f30 - b.f30); if (thirty) out.bat.push(tile("Fastest thirty", `${thirty.f30} balls`, `went on to ${st(thirty)}`, thirty.mm)); }
+  const quick = by(inns.filter(x => x.b >= 10), (a, b) => b.r / b.b - a.r / a.b); if (quick) out.bat.push(tile("Fastest innings", `SR ${Math.round(quick.r / quick.b * 100)}`, `${st(quick)}, 10 balls or more`, quick.mm));
+  const sx = by(inns.filter(x => x.s), (a, b) => b.s - a.s || b.r - a.r); if (sx) out.bat.push(tile("Most sixes in an innings", sx.s, st(sx), sx.mm));
+  const bo = X.overBat.filter(x => x.id === p.id).sort((a, b) => b.r - a.r)[0]; if (bo) out.bat.push(tile("Biggest over", `${bo.r} runs`, `over ${bo.ov}${bo.bw ? ` off ${esc(short(bo.bw))}` : ""}`, bo.mm));
+  const mr = by(log.filter(l => l.bat.length), (a, b) => b.bat.reduce((s, x) => s + x.r, 0) - a.bat.reduce((s, x) => s + x.r, 0));
+  if (mr && mr.bat.length > 1) out.bat.push(tile("Most runs in a match", mr.bat.reduce((s, x) => s + x.r, 0), mr.bat.map(x => `${x.r}${x.no ? "*" : ""}`).join(" & "), mr.mm));
+  const fav = by(asBat.filter(x => x.b >= MINB), (a, b) => sr(b) - sr(a)); if (fav) out.bat.push(tile("Favourite bowler", esc(short(fav.bowl)), `${fav.r} off ${fav.b}, SR ${Math.round(sr(fav))}`));
+  const most = by(asBat, (a, b) => b.r - a.r); if (most && most !== fav) out.bat.push(tile("Most runs against", esc(short(most.bowl)), `${most.r} off ${most.b}`));
+  const nem = by(asBat.filter(x => x.outs), (a, b) => b.outs - a.outs || a.r - b.r); if (nem) out.bat.push(tile("Nemesis", esc(short(nem.bowl)), `out ${nem.outs} time${nem.outs > 1 ? "s" : ""} for ${nem.r}`));
+  const ducks = inns.filter(x => x.r === 0 && !x.no).length; out.bat.push(tile("Ducks", ducks, ducks ? `${inns.filter(x => x.r === 0 && !x.no && x.b <= 1).length} golden` : "never out for nought"));
+  // bowling
+  const spells = []; log.forEach(l => l.mm.s.scorecards.forEach(sc => { const b = sc.bowling.find(x => x.id === p.id); if (b) spells.push({ mm: l.mm, w: b.wickets, r: b.runs, b: balls(b.overs), ov: b.overs, d: b.dots, s: b.sixes }); }));
+  if (spells.length) {
+    const bb = by(spells, (a, b) => b.w - a.w || a.r - b.r); out.bowl.push(tile("Best bowling", `${bb.w}/${bb.r}`, `in ${bb.ov} overs`, bb.mm));
+    const bm = by(log.filter(l => l.bowl.length), (a, b) => b.bowl.reduce((s, x) => s + x.w, 0) - a.bowl.reduce((s, x) => s + x.w, 0) || a.bowl.reduce((s, x) => s + x.r, 0) - b.bowl.reduce((s, x) => s + x.r, 0));
+    if (bm && bm.bowl.length > 1) out.bowl.push(tile("Best match figures", `${bm.bowl.reduce((s, x) => s + x.w, 0)}/${bm.bowl.reduce((s, x) => s + x.r, 0)}`, bm.bowl.map(x => `${x.w}/${x.r}`).join(" & "), bm.mm));
+    const eco = by(spells.filter(x => x.b >= 12), (a, b) => a.r / a.b - b.r / b.b); if (eco) out.bowl.push(tile("Tightest spell", `${r1(eco.r / eco.b * 6)} an over`, `${eco.w}/${eco.r} in ${eco.ov} overs`, eco.mm));
+    const dots = by(spells, (a, b) => b.d - a.d); if (dots?.d) out.bowl.push(tile("Most dots in a spell", dots.d, `of ${dots.b} balls, ${dots.w}/${dots.r}`, dots.mm));
+    const bo2 = X.overBowl.filter(x => x.id === p.id && x.w).sort((a, b) => b.w - a.w || a.r - b.r)[0]; if (bo2) out.bowl.push(tile("Best over", `${bo2.w}/${bo2.r}`, `over ${bo2.ov}`, bo2.mm));
+    const wo = X.overBowl.filter(x => x.id === p.id).sort((a, b) => b.r - a.r)[0]; if (wo) out.bowl.push(tile("Most expensive over", `${wo.r} runs`, `over ${wo.ov}`, wo.mm));
+    const bun = by(asBowl.filter(x => x.outs), (a, b) => b.outs - a.outs || a.r - b.r); if (bun) out.bowl.push(tile("Bunny", esc(short(bun.bat)), `${bun.outs} wickets for ${bun.r}`));
+    const tight = by(asBowl.filter(x => x.b >= MINB), (a, b) => ec(a) - ec(b)); if (tight) out.bowl.push(tile("Hardest to score off for", esc(short(tight.bat)), `${r1(ec(tight))} an over, ${tight.r} off ${tight.b}`));
+    const haul = spells.filter(x => x.w >= 3).length; out.bowl.push(tile("3-wicket hauls", haul, haul ? "spells of three or more" : "best is " + `${bb.w}/${bb.r}`));
+  }
+  // fielding
+  const fx = [...FX.values()].filter(x => x.fld === p.id), cm = by(log, (a, b) => b.c - a.c);
+  out.fld.push(tile(p.keeper ? "Catches behind the stumps" : "Catches", p.fld.c, `${r1(p.fld.c / p.matches)} a match`));
+  if (cm?.c) out.fld.push(tile("Most catches in a match", cm.c, "", cm.mm));
+  out.fld.push(tile("Run outs", p.fld.ro, p.fld.ro ? `${r1(p.fld.ro / p.matches)} a match` : "none yet"));
+  const fav2 = by(fx.filter(x => x.c), (a, b) => b.c - a.c); if (fav2) out.fld.push(tile("Catches most often", esc(short(fav2.bat)), `${fav2.c} catch${fav2.c > 1 ? "es" : ""}`));
+  const tot = p.fld.c + p.fld.drop; if (tot) out.fld.push(tile("Catch success", `${Math.round(p.fld.c / tot * 100)}%`, `${p.fld.c} taken, ${p.fld.drop} dropped`));
+  if (p.drp?.made) out.fld.push(tile("Drops cost", `${p.drp.madeR} runs`, `from ${p.drp.made} dropped catch${p.drp.made > 1 ? "es" : ""}`));
+  const grid = a => `<div class="nt-grid">${a.join("")}</div>`;
+  return { batting: out.bat.length ? `<h2 class="sec-t">Batting notables</h2>${grid(out.bat)}` : "",
+    bowling: `${out.bowl.length ? `<h2 class="sec-t">Bowling notables</h2>${grid(out.bowl)}` : ""}<h2 class="sec-t">Fielding notables</h2>${grid(out.fld)}` };
+}
+
+/* ---------------- career tables, by format (batting and bowling) ---------------- */
+function careerTables(p) {
+  const log = [...p.log.values()]; if (!log.length) return "";
+  const fmts = [...new Set(log.map(l => l.mm.fmt))], rows = [...fmts.map(f => [f, log.filter(l => l.mm.fmt === f)]), ["Career", log]];
+  const bat = ls => { const e = { m: ls.length, i: 0, no: 0, r: 0, b: 0, hs: null, h: 0, f: 0, t: 0, x4: 0, x6: 0, d0: 0, dnb: 0 };
+    ls.forEach(l => l.mm.s.scorecards.forEach(sc => { if (sc.batting_team !== l.team) return; const x = sc.batting.find(y => y.id === p.id); if (!x) { e.dnb++; return; }
+      e.i++; if (!x.out) e.no++; e.r += x.runs; e.b += x.balls; e.x4 += x.fours; e.x6 += x.sixes; if (x.runs === 0 && x.out) e.d0++;
+      if (x.runs >= 100) e.h++; else if (x.runs >= 50) e.f++; else if (x.runs >= 30) e.t++;
+      if (!e.hs || x.runs > e.hs.r || (x.runs === e.hs.r && x.balls < e.hs.b)) e.hs = { r: x.runs, b: x.balls, no: !x.out }; })); return e; };
+  const bowl = ls => { const e = { m: ls.length, i: 0, b: 0, r: 0, w: 0, md: 0, d: 0, wd: 0, nb: 0, h3: 0, bbi: null, bbm: null };
+    ls.forEach(l => { let mw = 0, mr = 0, any = false; l.mm.s.scorecards.forEach(sc => { const x = sc.bowling.find(y => y.id === p.id); if (!x) return; any = true;
+      e.i++; e.b += balls(x.overs); e.r += x.runs; e.w += x.wickets; e.md += x.maidens; e.d += x.dots; e.wd += x.wides; e.nb += x.noballs; if (x.wickets >= 3) e.h3++; mw += x.wickets; mr += x.runs;
+      if (!e.bbi || x.wickets > e.bbi.w || (x.wickets === e.bbi.w && x.runs < e.bbi.r)) e.bbi = { w: x.wickets, r: x.runs }; });
+      if (any && (!e.bbm || mw > e.bbm.w || (mw === e.bbm.w && mr < e.bbm.r))) e.bbm = { w: mw, r: mr }; }); return e; };
+  const d = (a, b, k = 1) => b ? r1(a / b * k) : "–";
+  const bt = rows.map(([f, ls]) => { const e = bat(ls); return `<tr class="${f === "Career" ? "tot" : ""}"><td class="nm">${esc(f)}</td><td>${e.m}</td><td>${e.i}</td><td>${e.no}</td><td class="hi">${e.r.toLocaleString()}</td><td>${e.hs ? `${e.hs.r}${e.hs.no ? "*" : ""}` : "–"}</td><td>${d(e.r, e.i - e.no)}</td><td>${e.b}</td><td>${d(e.r, e.b, 100)}</td><td>${e.h}</td><td>${e.f}</td><td>${e.t}</td><td>${e.x4}</td><td>${e.x6}</td><td>${e.d0}</td><td>${e.dnb}</td></tr>`; });
+  const bw = rows.map(([f, ls]) => { const e = bowl(ls); return `<tr class="${f === "Career" ? "tot" : ""}"><td class="nm">${esc(f)}</td><td>${e.m}</td><td>${e.i}</td><td>${ovs(e.b)}</td><td>${e.r}</td><td class="hi">${e.w}</td><td>${e.bbi ? `${e.bbi.w}/${e.bbi.r}` : "–"}</td><td>${e.bbm ? `${e.bbm.w}/${e.bbm.r}` : "–"}</td><td>${d(e.r, e.w)}</td><td>${d(e.r, e.b, 6)}</td><td>${d(e.b, e.w)}</td><td>${e.h3}</td><td>${e.md}</td><td>${e.b ? Math.round(e.d / e.b * 100) + "%" : "–"}</td><td>${e.wd}/${e.nb}</td></tr>`; });
+  const fl = rows.map(([f, ls]) => { const c = ls.reduce((a, l) => a + l.c, 0), ro = ls.reduce((a, l) => a + l.mm.s.scorecards.reduce((s, sc) => s + (sc.bowling_team === l.team ? (sc.fielding?.runouts || []).filter(x => x.id === p.id).reduce((t, x) => t + (x.count || 1), 0) : 0), 0), 0);
+    const dr = ls.reduce((a, l) => a + l.mm.s.scorecards.reduce((s, sc) => s + (sc.bowling_team === l.team ? (sc.fielding?.drops || []).filter(x => x.id === p.id).reduce((t, x) => t + (x.count || 1), 0) : 0), 0), 0);
+    return `<tr class="${f === "Career" ? "tot" : ""}"><td class="nm">${esc(f)}</td><td>${ls.length}</td><td class="hi">${c}</td><td>${ro}</td><td>${dr}</td><td>${c + dr ? Math.round(c / (c + dr) * 100) + "%" : "–"}</td><td>${r1(c / ls.length)}</td></tr>`; });
+  const tbl = (cols, body) => `<div class="tbl-wrap"><table class="data career"><thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body.join("")}</tbody></table></div>`;
+  return `<h2 class="sec-t">Career statistics</h2>
+    <h3 class="tbl-title">Batting</h3>${tbl(["Format", "M", "Inns", "NO", "Runs", "HS", "Avg", "BF", "SR", "100", "50", "30", "4s", "6s", "0", "DNB"], bt)}
+    <h3 class="tbl-title" style="margin-top:22px">Bowling</h3>${tbl(["Format", "M", "Inns", "Overs", "Runs", "Wkts", "BBI", "BBM", "Avg", "Econ", "SR", "3w", "Mdns", "Dots", "Wd/Nb"], bw)}
+    <h3 class="tbl-title" style="margin-top:22px">Fielding</h3>${tbl(["Format", "M", p.keeper ? "Ct (wk)" : "Ct", "RO", "Drops", "Catch %", "Ct/match"], fl)}
+    <p class="rank-note" style="margin-top:8px">30 counts scores of 30 to 49. BBI: best figures in an innings; BBM: best in a match.</p>`;
 }
 
 /* ---------------- player extras: timeline, best and worst, partners, position, teammates, achievements ---------------- */
@@ -971,7 +1052,8 @@ function playerExtras(p) {
     <line x1="20" x2="${CW - 20}" y1="110" y2="110" class="fc-base"/></svg>
     <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w" style="border-radius:0"></i>Wickets</span><span>by issue</span></p></div>
     ${ms.length ? `<ul class="tl-ms">${ms.map(x => `<li><b>${esc(x.what)}</b> <span>Issue ${x.w.issue}</span></li>`).join("")}</ul>` : ""}`;
-  out.overview = ach + tl;
+  out.overview = ach + dnaRadar(p) + tl;
+  out.overviewEnd = careerTables(p);
   // best and worst
   const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));
   const topI = [...inns].sort((a, b) => b.b.r - a.b.r || a.b.b - b.b.b).slice(0, 5), topS = [...spells].filter(x => x.b.w).sort((a, b) => b.b.w - a.b.w || a.b.r - b.b.r).slice(0, 5);
@@ -988,7 +1070,9 @@ function playerExtras(p) {
   // batting position
   const pos = new Map(); log.forEach(l => l.mm.s.scorecards.forEach(sc => { if (sc.batting_team !== l.team) return; const i = battingOrder(sc).indexOf(p.id); const b = sc.batting.find(x => x.id === p.id); if (i < 0 || !b) return;
     const e = pos.get(i + 1) || { n: 0, r: 0, b: 0, o: 0 }; e.n++; e.r += b.runs; e.b += b.balls; if (b.out) e.o++; pos.set(i + 1, e); }));
-  out.batting = `<h2 class="sec-t">Batting partners</h2>${partners.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>With</th><th>Stands</th><th>Runs</th><th>Avg stand</th><th>Run rate</th><th>Best</th></tr></thead><tbody>${partners.map(e => `<tr><td class="nm ${P.get(e.o)?.tm.key || ""}"><span class="chip"></span>${plink(e.o)}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${r1(e.r / e.n)}</td><td>${e.b ? r1(e.r / e.b * 6) : "–"}</td><td>${e.best}</td></tr>`).join("")}</tbody></table></div>` : `<p class="dnb">No partnerships yet.</p>`}
+  const nt = notables(p);
+  out.bowling = nt.bowling;
+  out.batting = `${nt.batting}<h2 class="sec-t">Batting partners</h2>${partners.length ? `<div class="tbl-wrap"><table class="data"><thead><tr><th>With</th><th>Stands</th><th>Runs</th><th>Avg stand</th><th>Run rate</th><th>Best</th></tr></thead><tbody>${partners.map(e => `<tr><td class="nm ${P.get(e.o)?.tm.key || ""}"><span class="chip"></span>${plink(e.o)}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${r1(e.r / e.n)}</td><td>${e.b ? r1(e.r / e.b * 6) : "–"}</td><td>${e.best}</td></tr>`).join("")}</tbody></table></div>` : `<p class="dnb">No partnerships yet.</p>`}
     <h2 class="sec-t">By batting position</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Position</th><th>Inns</th><th>Runs</th><th>Avg</th><th>SR</th></tr></thead><tbody>${[...pos].sort((a, b) => a[0] - b[0]).map(([k, e]) => `<tr><td class="nm">${k === 1 || k === 2 ? `Opener (${k})` : `No. ${k}`}</td><td>${e.n}</td><td class="hi">${e.r}</td><td>${e.o ? r1(e.r / e.o) : "–"}</td><td>${e.b ? r1(e.r / e.b * 100) : "–"}</td></tr>`).join("")}</tbody></table></div>
     <p class="rank-note" style="margin-top:8px">Position is the order he faced his first ball in each innings.</p>`;
   // teammates: win rate with each player on his side
@@ -999,17 +1083,334 @@ function playerExtras(p) {
   return out;
 }
 
+/* ---------------- unique awards for the trophy cabinet ---------------- */
+function addUniqueAwards() {
+  if (typeof AWARDS === "undefined" || !AWARDS.length || AWARDS.some(a => a.unique)) return;
+  const ps = [...P.values()].filter(p => p.matches), X = buildXR().raw;
+  const rank = (score, ok = () => true) => ps.filter(ok).sort((a, b) => score(b) - score(a));
+  const stand = new Map(); buildPartnerships().filter(s => s.ids.length > 1).forEach(s => s.ids.forEach(id => stand.set(id, (stand.get(id) || 0) + s.runs)));
+  const bigOver = new Map(); X.overBat.forEach(x => bigOver.set(x.id, Math.max(bigOver.get(x.id) || 0, x.r)));
+  const finish = p => [...p.log.values()].filter(l => { const sc = l.mm.s.scorecards.at(-1); return l.mm.win && l.mm.win.name === l.team && sc.batting_team === l.team && sc.batting.some(x => x.id === p.id && !x.out); }).length;
+  const s30 = p => p.bat.inns ? [...p.log.values()].reduce((a, l) => a + l.bat.filter(b => b.r >= 30).length, 0) / p.bat.inns * 100 : 0;
+  const pp = p => scoutData(p).bat.ph[0], death = p => scoutData(p).bowl.ph[2];
+  const n = (k, o) => ({ unique: true, k, ...o });
+  AWARDS.push(
+    ...(ps.some(p => p.keeper) ? [n("Golden Gloves", { note: "wicket-keepers", only: p => p.keeper, list: rank(p => p.fld.c + p.fld.ro, p => p.keeper), n: p => p.fld.c + p.fld.ro, v: p => p.fld.c + p.fld.ro, u: "dismissals behind the stumps", unit: "dismissals" })] : []),
+    n("Clutch King", { note: "2+ close matches", need: p => `${clutchOf(p).n} of 2 close matches played`, ok: p => clutchOf(p).n >= 2, list: rank(p => clutchOf(p).per, p => clutchOf(p).n >= 2), n: p => clutchOf(p).per, v: p => Math.round(clutchOf(p).per), u: "points a close match", unit: "points" }),
+    n("The Finisher", { list: rank(p => finish(p) * 1000 + p.bat.no, p => finish(p) > 0), n: finish, v: finish, u: "not out in winning chases", u1: "not out in a winning chase", unit: "finishes" }),
+    n("Powerplay Punisher", { note: "30+ balls in overs 1–2", need: p => `${pp(p).b} of 30 balls faced in overs 1–2`, ok: p => pp(p).b >= 30, list: rank(p => pp(p).r / pp(p).b, p => pp(p).b >= 30), n: p => pp(p).r / pp(p).b * 100, dec: 1, v: p => Math.round(pp(p).r / pp(p).b * 100), u: "strike rate in overs 1–2", unit: "points" }),
+    n("Death-over Specialist", { note: "4+ overs from over 6", need: p => `${ovs(death(p).b)} of 4 overs bowled from over 6`, ok: p => death(p).b >= 24, list: rank(p => -death(p).r / death(p).b, p => death(p).b >= 24), n: p => death(p).r / death(p).b * 6, low: 1, dec: 1, v: p => r1(death(p).r / death(p).b * 6), u: "runs an over from over 6", unit: "runs an over" }),
+    n("The Wall", { note: "8+ innings", need: p => `${p.bat.inns} of 8 innings`, ok: p => p.bat.inns >= 8, list: rank(p => p.bat.b / Math.max(1, p.bat.inns - p.bat.no), p => p.bat.inns >= 8), n: p => p.bat.b / Math.max(1, p.bat.inns - p.bat.no), dec: 1, v: p => r1(p.bat.b / Math.max(1, p.bat.inns - p.bat.no)), u: "balls faced per dismissal", unit: "balls" }),
+    n("Mr Consistent", { note: "8+ innings", need: p => `${p.bat.inns} of 8 innings`, ok: p => p.bat.inns >= 8, list: rank(s30, p => p.bat.inns >= 8), n: s30, dec: 1, v: p => Math.round(s30(p)) + "%", u: "of innings 30 or more", unit: "points" }),
+    n("Dot-ball Machine", { note: "10+ overs", need: p => `${ovs(p.bowl.b)} of 10 overs`, ok: p => p.bowl.b >= 60, list: rank(p => p.bowl.dots / p.bowl.b, p => p.bowl.b >= 60), n: p => p.bowl.dots / p.bowl.b * 100, dec: 1, v: p => Math.round(p.bowl.dots / p.bowl.b * 100) + "%", u: "dot balls bowled", unit: "points" }),
+    n("Comeback Kid", { list: rank(p => scoutData(p).bowl.after4 * 100 + p.bowl.w, p => scoutData(p).bowl.after4 > 0), n: p => scoutData(p).bowl.after4, v: p => scoutData(p).bowl.after4, u: "wickets the ball after a boundary", u1: "wicket the ball after a boundary", unit: "wickets" }),
+    n("Partnership King", { list: rank(p => stand.get(p.id) || 0, p => stand.get(p.id) > 0), n: p => stand.get(p.id) || 0, v: p => (stand.get(p.id) || 0).toLocaleString(), u: "runs in partnerships", unit: "runs" }),
+    n("Over Destroyer", { list: rank(p => bigOver.get(p.id) || 0, p => bigOver.get(p.id) > 0), n: p => bigOver.get(p.id) || 0, v: p => bigOver.get(p.id) || 0, u: "runs in a single over", unit: "runs" }),
+    n("Most Valuable per Ball", { note: "60+ balls", need: p => `${oppOf(p).involved} of 60 balls faced or bowled`, ok: p => oppOf(p).involved >= 60, list: rank(p => oppOf(p).value, p => oppOf(p).involved >= 60), n: p => oppOf(p).value, dec: 1, v: p => r1(oppOf(p).value), u: "points per 10 balls", unit: "points" }),
+    n("Run-out King", { list: rank(p => p.fld.ro * 100 + p.fld.c, p => p.fld.ro > 0), n: p => p.fld.ro, v: p => p.fld.ro, u: "run outs", u1: "run out", unit: "run outs" }),
+    n("Iron Man", { list: rank(p => p.matches * 10000 + p.bat.b + p.bowl.b), n: p => p.matches, v: p => p.matches, u: "matches played", unit: "matches" }),
+    n("The Survivor", { list: rank(p => p.drp.lives * 1000 + p.drp.livesR, p => p.drp.lives > 0), n: p => p.drp.lives, v: p => p.drp.lives, u: "lives when dropped", u1: "life when dropped", unit: "lives" }),
+  );
+}
+
+/* ---------------- scorecard extras: match report, run worm, chase odds ---------------- */
+let CHASE = null;
+function chaseRows() {
+  if (CHASE) return CHASE;
+  CHASE = [];
+  M.forEach(mm => { if (!mm.win) return; const sc = mm.s.scorecards.at(-1); if (!sc?.target) return; const maxB = (mm.m.overs || 0) * 6, won = mm.win.name === sc.batting_team;
+    (sc.commentary || []).filter(c => c.type === "over").forEach(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return;
+      const need = sc.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return; CHASE.push({ need, left, rr: need / left * 6, won, mm }); }); });
+  return CHASE;
+}
+const RRB = [[0, 10, "under 10"], [10, 14, "10–14"], [14, 18, "14–18"], [18, 24, "18–24"], [24, 1e9, "24+"]], LB = [[25, 1e9, "25+ balls left"], [13, 24, "13–24 left"], [1, 12, "1–12 left"]];
+function oddsAt(need, left) {
+  const rr = need / left * 6, a = RRB.find(b => rr >= b[0] && rr < b[1]), b = LB.find(x => left >= x[0] && left <= x[1]);
+  const set = chaseRows().filter(x => x.rr >= a[0] && x.rr < a[1] && x.left >= b[0] && x.left <= b[1]);
+  return { n: set.length, w: set.filter(x => x.won).length };
+}
+function worm(mm) {
+  const inns = mm.s.scorecards.map(sc => ({ sc, k: team(sc.batting_team).key, pts: [[0, 0], ...(sc.commentary || []).filter(c => c.type === "over").map(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); return m ? [c.over_no, +m[1]] : null; }).filter(Boolean).sort((a, b) => a[0] - b[0])] }));
+  if (!inns.some(i => i.pts.length > 1)) return "";
+  const mo = Math.max(mm.m.overs || 1, ...inns.map(i => i.pts.at(-1)[0])), mr = Math.max(20, ...inns.map(i => Math.max(i.sc.runs, i.pts.at(-1)[1])));
+  const W = 640, H = 220, L = 36, R = 16, T = 12, B = 28, xs = o => L + o / mo * (W - L - R), ys = r => T + (H - T - B) * (1 - r / mr);
+  const seen = {};
+  return `<div class="fc-wrap"><svg class="fc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Runs over by over in each innings">
+    ${[0, .5, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${ys(mr * g)}" y2="${ys(mr * g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(mr * g) + 4}" text-anchor="end">${Math.round(mr * g)}</text>`).join("")}
+    ${Array.from({ length: mo + 1 }, (_, o) => `<text class="ch-ax" x="${xs(o)}" y="${H - 8}" text-anchor="middle">${o}</text>`).join("")}
+    ${inns.map(i => { const second = seen[i.k]; seen[i.k] = 1; return `<polyline fill="none" stroke="var(--${i.k === "t" ? "tiger" : "falcon"})" stroke-width="3"${second ? ` stroke-dasharray="7 5"` : ""} points="${i.pts.map(([o, r]) => `${xs(o).toFixed(1)},${ys(r).toFixed(1)}`).join(" ")}"/>`; }).join("")}
+  </svg><p class="fc-key">${inns.map((i, j) => `<span><i style="background:var(--${i.k === "t" ? "tiger" : "falcon"})${j >= 2 ? ";opacity:.6" : ""}"></i>${esc(team(i.sc.batting_team).short)} ${esc(i.sc.label)} · ${i.sc.runs}/${i.sc.wickets}</span>`).join("")}<span>Runs by over</span></p></div>`;
+}
+function matchExtras(mm) {
+  const perf = mm.perf || [], X = buildXR().raw, nm = id => esc(short(id));
+  const side = n => perf.filter(e => e.tm === n), topBat = l => [...l].sort((a, b) => b.r - a.r)[0], topBowl = l => [...l].filter(e => e.w).sort((a, b) => b.w - a.w || a.rc - b.rc)[0];
+  const lines = [];
+  [mm.m.team_a.name, mm.m.team_b.name].forEach(n => { const b = topBat(side(n)), w = topBowl(side(n));
+    if (b || w) lines.push(`For the ${esc(team(n).short)}, ${b ? `${nm(b.id)} made ${b.r}${b.b ? ` off ${b.b}` : ""}` : ""}${b && w ? " and " : ""}${w ? `${b && b.id === w.id ? "" : nm(w.id) + " "}took ${w.w}/${w.rc}` : ""}.`); });
+  const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0];
+  if (ob && ob.r >= 18) lines.push(`The over of the match: ${nm(ob.id)} took ${ob.r} off over ${ob.ov}${ob.bw ? ` from ${nm(ob.bw)}` : ""}.`);
+  const dr = DROPS.filter(d => d.mm === mm); if (dr.length) { const c = [...dr].sort((a, b) => b.r - a.r)[0]; lines.push(`${dr.length} catch${dr.length > 1 ? "es" : ""} went down${c.r >= 10 ? `; the costliest let ${nm(c.bt)} add ${c.r} more` : ""}.`); }
+  const last = mm.s.scorecards.at(-1);
+  if (last?.target && mm.win) { const won = mm.win.name === last.batting_team, maxB = (mm.m.overs || 0) * 6, used = balls(last.overs);
+    lines.push(won ? `Chasing ${last.target}, the ${esc(team(last.batting_team).short)} got there with ${Math.max(0, maxB - used)} ball${maxB - used === 1 ? "" : "s"} to spare.` : `Chasing ${last.target}, the ${esc(team(last.batting_team).short)} fell ${last.target - 1 - last.runs} short.`); }
+  if (mm.poms?.length) lines.push(`${mm.poms.length > 1 ? "Joint players" : "Player"} of the match: ${mm.poms.map(x => nm(x.id)).join(" and ")}.`);
+  // chase odds after each over
+  let odds = "";
+  if (last?.target) { const maxB = (mm.m.overs || 0) * 6;
+    const rows = (last.commentary || []).filter(c => c.type === "over").map(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return null; const need = last.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return null; return { o: c.over_no, need, left, ...oddsAt(need, left) }; }).filter(Boolean).sort((a, b) => a.o - b.o);
+    if (rows.length) odds = `<h3 class="tbl-title" style="margin-top:22px">Chase odds</h3><div class="tbl-wrap"><table class="data"><thead><tr><th>After over</th><th>Needed</th><th>Req. rate</th><th>Teams in this spot won</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.o}</td><td>${r.need} off ${r.left}</td><td>${r1(r.need / r.left * 6)}</td><td class="hi">${r.n ? `${Math.round(r.w / r.n * 100)}% <small class="label">(${r.w} of ${r.n})</small>` : "–"}</td></tr>`).join("")}</tbody></table></div>`; }
+  return `<section class="mx"><h2 class="sec-t">Match report</h2><div class="mx-grid"><div class="mx-rep">${lines.map(l => `<p>${l}</p>`).join("")}</div><div>${worm(mm)}</div></div>${odds}</section>`;
+}
+
+/* ---------------- Stats page: matchup heatmap, pressure, chase odds ---------------- */
+function pressureData() {
+  const up = new Map([...P.values()].map(q => [q.name.toUpperCase(), q.id])), bat = new Map(), bowl = new Map();
+  const e = (m, id) => { if (!m.has(id)) m.set(id, { id, n: 0, r: 0, o: 0 }); return m.get(id); };
+  M.forEach(mm => mm.s.scorecards.forEach(sc => { const dots = new Map(), hit = new Map();
+    (sc.commentary || []).filter(c => c.type === "ball").reverse().forEach(c => { const t = String(c.text).match(/^(.+?) TO (.+?), (.*)$/); if (!t) return;
+      const bw = up.get(t[1]), bt = up.get(t[2]), k = c.badge.kind, mk = String(c.badge.mark); if (k === "wide" || /^WIDE/.test(t[3])) return;
+      const r = k === "six" ? 6 : k === "four" ? 4 : /^\d+$/.test(mk) ? +mk : 0, out = k === "wicket" && !/RUN OUT/.test(t[3]);
+      if (bt && (dots.get(bt) || 0) >= 2) { const x = e(bat, bt); x.n++; x.r += r; if (out) x.o++; }
+      if (bw && hit.get(bw)) { const x = e(bowl, bw); x.n++; x.r += r; if (out) x.o++; }
+      if (bt) dots.set(bt, r === 0 && !out ? (dots.get(bt) || 0) + 1 : 0);
+      if (bw) hit.set(bw, k === "six" || k === "four"); }); }));
+  return { bat: [...bat.values()].filter(x => x.n >= 10), bowl: [...bowl.values()].filter(x => x.n >= 10) };
+}
+function renderMatchups() {
+  const el = $("#matchupsBody"); if (!el || !M?.length) return;
+  const bats = [...P.values()].filter(p => p.bat.b >= 30).sort((a, b) => b.bat.r - a.bat.r), bowls = [...P.values()].filter(p => p.bowl.b >= 36).sort((a, b) => b.bowl.w - a.bowl.w);
+  const tot = [...P.values()].reduce((a, p) => ({ r: a.r + p.bat.r, b: a.b + p.bat.b }), { r: 0, b: 0 }), lsr = tot.r / tot.b * 100;
+  const cell = (bt, bw) => { if (bt.id === bw.id) return `<td class="hm-x"></td>`; const x = H.get(bt.id + "|" + bw.id);
+    if (!x || x.b < 6) return `<td class="hm-n" title="${esc(short(bt.id))} v ${esc(short(bw.id))}: ${x ? x.b : 0} balls">${x ? x.b + "b" : ""}</td>`;
+    const sr = x.r / x.b * 100, t = Math.max(-1, Math.min(1, (sr / lsr - 1) / 0.6)), bg = t >= 0 ? `rgba(31,138,76,${(t * .6).toFixed(2)})` : `rgba(212,42,31,${(-t * .6).toFixed(2)})`;
+    return `<td style="background:${bg}" title="${esc(short(bt.id))} v ${esc(short(bw.id))}: ${x.r} off ${x.b}, out ${x.outs}"><b>${Math.round(sr)}</b>${x.outs ? `<small>${"•".repeat(Math.min(x.outs, 5))}${x.outs > 5 ? "+" : ""}</small>` : ""}</td>`; };
+  const pr = pressureData(), psr = x => x.n ? x.r / x.n * 100 : 0;
+  const cr = chaseRows();
+  el.innerHTML = `
+    <h3 class="xr-h">Every matchup</h3>
+    <p class="rank-note">Batters across, bowlers down. The number is the batter's strike rate against that bowler; green means the batter wins the matchup, red the bowler (against a league ${Math.round(lsr)}). Dots are dismissals. Six balls or more.</p>
+    <div class="tbl-wrap hm-wrap"><table class="hm"><thead><tr><th></th>${bats.map(p => `<th><a href="${purl(p.id)}">${esc(short(p.id))}</a></th>`).join("")}</tr></thead>
+    <tbody>${bowls.map(bw => `<tr><th><a href="${purl(bw.id)}">${esc(short(bw.id))}</a></th>${bats.map(bt => cell(bt, bw)).join("")}</tr>`).join("")}</tbody></table></div>
+    <h3 class="xr-h">Under pressure</h3>
+    <div class="xr-grid">
+      <div class="xr-card"><h3 class="tbl-title">After two dots in a row</h3><p class="rank-note">How batters respond on the next ball. Ten balls or more.</p>
+        <div class="tbl-wrap"><table class="data"><thead><tr><th>Batter</th><th>Balls</th><th>SR</th><th>Usual SR</th><th>Out</th></tr></thead><tbody>${pr.bat.sort((a, b) => psr(b) - psr(a)).map(x => `<tr><td class="nm">${plink(x.id, short(x.id))}</td><td>${x.n}</td><td class="hi">${Math.round(psr(x))}</td><td>${Math.round(P.get(x.id).bat.sr)}</td><td>${x.o}</td></tr>`).join("")}</tbody></table></div></div>
+      <div class="xr-card"><h3 class="tbl-title">After being hit for four or six</h3><p class="rank-note">How bowlers respond on the next ball. Ten balls or more.</p>
+        <div class="tbl-wrap"><table class="data"><thead><tr><th>Bowler</th><th>Balls</th><th>Wkts</th><th>Wkt %</th><th>Runs/ball</th></tr></thead><tbody>${pr.bowl.sort((a, b) => b.o / b.n - a.o / a.n || a.r / a.n - b.r / b.n).map(x => `<tr><td class="nm">${plink(x.id, short(x.id))}</td><td>${x.n}</td><td>${x.o}</td><td class="hi">${Math.round(x.o / x.n * 100)}%</td><td>${r1(x.r / x.n)}</td></tr>`).join("")}</tbody></table></div></div>
+    </div>
+    <h3 class="xr-h">Chase odds</h3>
+    <p class="rank-note">How often the chasing side won from each spot, taken at the end of every over of every finished chase (${cr.length} spots in ${new Set(cr.map(x => x.mm.id)).size} chases). Scorecards show the odds over by over.</p>
+    <div class="tbl-wrap"><table class="data"><thead><tr><th>Required rate</th>${LB.map(b => `<th>${b[2]}</th>`).join("")}</tr></thead><tbody>${RRB.map(a => `<tr><td class="nm">${a[2]} an over</td>${LB.map(b => { const s = cr.filter(x => x.rr >= a[0] && x.rr < a[1] && x.left >= b[0] && x.left <= b[1]); return `<td>${s.length ? `<b>${Math.round(s.filter(x => x.won).length / s.length * 100)}%</b> <small class="label">${s.filter(x => x.won).length}/${s.length}</small>` : "–"}</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+/* ---------------- player DNA radar, form tags, comparison share card ---------------- */
+function dnaRadar(p) {
+  const ps = [...P.values()].filter(q => q.matches >= 5), s30 = q => q.bat.inns ? [...q.log.values()].reduce((a, l) => a + l.bat.filter(b => b.r >= 30).length, 0) / q.bat.inns : 0;
+  const axes = [["Power", q => q.bat.b >= 30 ? q.bat.sr : null], ["Six hitting", q => q.bat.b >= 30 ? q.bat.s / q.bat.b : null], ["Consistency", q => q.bat.inns >= 6 ? s30(q) : null],
+    ["Control", q => q.bowl.b >= 36 ? -q.bowl.econ : null], ["Wicket taking", q => q.bowl.b >= 36 && q.bowl.w ? -q.bowl.sr : null], ["Fielding", q => (q.fld.c + q.fld.ro) / q.matches], ["Impact", q => oppOf(q).value]];
+  const pct = (f) => { const v = f(p); if (v === null) return null; const all = ps.map(f).filter(x => x !== null); if (all.length < 2) return 50; return Math.round(all.filter(x => x < v).length / (all.length - 1) * 100); };
+  const vals = axes.map(([l, f]) => ({ l, v: pct(f) })), N = vals.length, C = 150, Rr = 110;
+  const pt = (i, r) => { const a = -Math.PI / 2 + i / N * Math.PI * 2; return [C + Math.cos(a) * r, C + Math.sin(a) * r]; };
+  const poly = f => vals.map((x, i) => pt(i, Rr * f(x) / 100).map(n => n.toFixed(1)).join(",")).join(" ");
+  return `<h2 class="sec-t">Player DNA</h2><div class="dna"><svg class="dna-svg" viewBox="0 0 300 300" role="img" aria-label="Percentile against the club on seven skills">
+    ${[25, 50, 75, 100].map(g => `<polygon class="dna-g" points="${vals.map((_, i) => pt(i, Rr * g / 100).map(n => n.toFixed(1)).join(",")).join(" ")}"/>`).join("")}
+    ${vals.map((_, i) => { const [x, y] = pt(i, Rr); return `<line class="dna-g" x1="${C}" y1="${C}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join("")}
+    <polygon class="dna-club" points="${poly(() => 50)}"/><polygon class="dna-me ${p.tm.key}" points="${poly(x => x.v || 0)}"/>
+    ${vals.map((x, i) => { const [lx, ly] = pt(i, Rr + 24); return `<text class="dna-l" x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle">${x.l}</text>`; }).join("")}
+  </svg><ul class="dna-list">${vals.map(x => `<li><span>${x.l}</span><b>${x.v === null ? "–" : x.v}</b><i style="width:${x.v || 0}%"></i></li>`).join("")}</ul></div>
+  <p class="rank-note">Percentile against everyone with five matches or more: 100 is the best in the club, 50 (the dashed shape) is the middle. A dash means not enough balls yet.</p>`;
+}
+function formTag(p) {
+  if (!p.matches) return "";
+  const f = formData().find(x => x.p.id === p.id), tags = [];
+  if (WEEK?.isMvp(p.id)) tags.push(["mvp", "Reigning MVP"]);
+  if (p.keeper) tags.push(["wk", "Wicket-keeper"]);
+  if (f) tags.push(f.trend === "hot" ? ["hot", "On fire"] : f.trend === "cold" ? ["cold", "Searching for form"] : f.trend === "new" ? ["new", "New face"] : ["steady", "Steady form"]);
+  return `<p class="ftags">${tags.map(([c, t]) => `<span class="ftag ${c}">${t}</span>`).join("")}</p>`;
+}
+async function compareShare(A, B) {
+  const host = $("#cmpBody"); if (!host) return; host.querySelector(".cmp-share")?.remove(); if (!A || !B || A.id === B.id) return;
+  const sc = [...host.querySelectorAll(".cmp-score b")].map(b => b.textContent), rows = [["Runs", p => p.bat.r], ["Average", p => r1(p.bat.avg)], ["Strike rate", p => Math.round(p.bat.sr)], ["Sixes", p => p.bat.s], ["Wickets", p => p.bowl.w], ["Economy", p => r1(p.bowl.econ)], ["Catches", p => p.fld.c], ["MVP awards", p => p.mvpN]];
+  host.insertAdjacentHTML("beforeend", `<div class="cmp-share"><h3 class="tbl-title" style="margin-top:30px">Share this comparison</h3><div class="pick-actions"><button type="button" class="btn solid" id="hhCopy">Copy image</button><button type="button" class="btn" id="hhText">Copy text</button><a class="btn" id="hhWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="hhDl" hidden>Download</button></div><p class="label" id="hhMsg"></p><img class="card-img" id="hhImg" alt="Head to head card"></div>`);
+  const { c, x } = await canvasBase("Head to head");
+  await drawPhoto(x, A, 60, 200, 300); await drawPhoto(x, B, 720, 200, 300);
+  x.textAlign = "center"; x.fillStyle = CC.ink; x.font = `900 120px ${DISP}`; x.fillText(`${sc[0] || 0}–${sc[1] || 0}`, 540, 360); x.font = `600 22px ${MONO}`; x.fillStyle = CC.muted; x.fillText("CATEGORIES WON", 540, 400);
+  x.font = `800 44px ${DISP}`; x.fillStyle = A.tm.key === "f" ? CC.f : CC.t; x.fillText((A.full_name || A.name).toUpperCase().slice(0, 18), 210, 560); x.fillStyle = B.tm.key === "f" ? CC.f : CC.t; x.fillText((B.full_name || B.name).toUpperCase().slice(0, 18), 870, 560);
+  rows.forEach(([l, f], i) => { const y = 640 + i * 68, a = f(A), b = f(B), na = parseFloat(a), nb = parseFloat(b), low = l === "Economy", aw = na !== nb && ((na > nb) !== low), bw = na !== nb && !aw;
+    x.fillStyle = i % 2 ? CC.paper : "#ecebe4"; x.fillRect(60, y - 46, 960, 64);
+    x.font = `900 46px ${DISP}`; x.fillStyle = aw ? CC.red : CC.ink; x.fillText(String(a), 210, y); x.fillStyle = bw ? CC.red : CC.ink; x.fillText(String(b), 870, y);
+    x.font = `600 24px ${MONO}`; x.fillStyle = CC.muted; x.fillText(l.toUpperCase(), 540, y - 6); });
+  x.textAlign = "left";
+  $("#hhImg").src = c.toDataURL("image/png");
+  shareUI("hh", c, `bodevs-${A.slug}-v-${B.slug}.png`, `${pname(A.id)} v ${pname(B.id)}: ${sc[0]}–${sc[1]} across the categories.\n${SITE_BASE}/#compare`, "hhMsg");
+}
+
+/* ---------------- weekly: quiz, on this day, MVP poster ---------------- */
+function weekQuiz(W, now) {
+  const X = buildXR().raw, ids = new Set(W.WM.map(m => m.id)), q = [];
+  const six = [...W.ranked].sort((a, b) => b.s - a.s)[0]; if (six?.s) q.push([`Who hit the most sixes ${now ? "this" : "that"} week?`, `${pname(six.id)}, with ${six.s}.`]);
+  if (W.spell) q.push([`Who had the best bowling figures in a single spell?`, `${pname(W.spell.id)}: ${W.spell.w}/${W.spell.r} in ${W.spell.ov} overs.`]);
+  const ob = X.overBat.filter(x => ids.has(x.mm.id)).sort((a, b) => b.r - a.r)[0]; if (ob) q.push([`What was the most runs one batter took off a single over?`, `${ob.r}, by ${pname(ob.id)} in over ${ob.ov} of match #${ob.mm.id}.`]);
+  if (W.knock) q.push([`What was the top score, and how many balls did it take?`, `${W.knock.r}${W.knock.no ? "*" : ""} off ${W.knock.b} by ${pname(W.knock.id)}.`]);
+  const qs = q.slice(0, 3), txt = `BoDevs Cricket quiz, issue ${W.issue}\n` + qs.map((x, i) => `${i + 1}. ${x[0]}`).join("\n") + `\nAnswers: ${SITE_BASE}/#weeknumbers`;
+  return qs.length ? `<div class="xr-card"><h3 class="tbl-title">Quiz of the week</h3><ol class="qz">${qs.map(x => `<li><p>${esc(x[0])}</p><details><summary>Show answer</summary>${esc(x[1])}</details></li>`).join("")}</ol>
+    <button type="button" class="btn small" data-copy="${esc(txt)}">Copy the questions for the group</button><p class="label"></p></div>` : "";
+}
+function onThisDay(W) {
+  const i = WEEKS.indexOf(W), back = [[1, "One week ago"], [4, "Four weeks ago"], [8, "Eight weeks ago"]].map(([n, l]) => [l, WEEKS[i + n]]).filter(x => x[1]);
+  if (!back.length) return "";
+  return `<div class="xr-card"><h3 class="tbl-title">On this day</h3><ul class="otd">${back.map(([l, w]) => { const tw = Object.entries(w.tw);
+    return `<li><span class="tp-d">${l} · issue ${w.issue}</span><p>${w.mvps.map(x => plink(x.id)).join(" & ")} ${w.joint ? "shared" : "was"} MVP${tw.length === 2 ? `; the week went ${esc(team(tw[0][0]).short)} ${tw[0][1].w}–${tw[1][1].w} ${esc(team(tw[1][0]).short)}` : ""}${w.knock ? `; top score ${w.knock.r}${w.knock.no ? "*" : ""} by ${plink(w.knock.id)}` : ""}.</p></li>`; }).join("")}</ul></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-copy]"); if (!b) return; copyText(b.dataset.copy, b.nextElementSibling); });
+async function drawPoster(W) {
+  await Promise.all(['900 160px "Big Shoulders Display"', '600 28px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  const c = document.createElement("canvas"); c.width = 1080; c.height = 1920; const x = c.getContext("2d");
+  x.fillStyle = "#0d0d0c"; x.fillRect(0, 0, 1080, 1920);
+  const logo = await loadImg("assets/logo.png"); if (logo) x.drawImage(logo, 60, 70, logo.width * 70 / logo.height, 70);
+  x.fillStyle = CC.gold; x.font = `600 30px ${MONO}`; x.fillText(`${W.joint ? "JOINT MVP" : "MVP"} OF THE WEEK · ISSUE ${W.issue}`, 60, 220);
+  x.fillStyle = "#bdb7aa"; x.font = `500 26px ${MONO}`; x.fillText(weekRange(W).toUpperCase(), 60, 262);
+  const p = P.get(W.pow.id); await drawPhoto(x, p, 60, 310, 960);
+  x.fillStyle = "#fff"; x.font = `900 120px ${DISP}`; const nm = (p.full_name || p.name).toUpperCase(); let fs = 120; while (x.measureText(nm).width > 960 && fs > 60) { fs -= 6; x.font = `900 ${fs}px ${DISP}`; } x.fillText(nm, 60, 1400);
+  x.fillStyle = CC.red; x.font = `600 30px ${MONO}`; x.fillText((p.title || "").toUpperCase(), 60, 1450);
+  const e = W.pow; [[e.r, "RUNS"], [e.w, "WKTS"], [e.c, "CT"], [e.pts, "PTS"]].forEach(([v, l], i) => { x.fillStyle = CC.gold; x.font = `900 110px ${DISP}`; x.fillText(String(v), 60 + i * 250, 1590); x.fillStyle = "#bdb7aa"; x.font = `600 26px ${MONO}`; x.fillText(l, 60 + i * 250, 1630); });
+  W.podium.filter(z => z.id !== W.pow.id).slice(0, 2).forEach((z, i) => { x.fillStyle = "#fff"; x.font = `800 44px ${DISP}`; x.fillText(`${z.role.toUpperCase()}: ${(pname(z.id)).toUpperCase()} · ${z.pts}`, 60, 1720 + i * 56); });
+  x.fillStyle = CC.red; x.fillRect(0, 1840, 1080, 80); x.fillStyle = "#fff"; x.font = `800 40px ${DISP}`; x.fillText("CRICKET.WAQARAHMED.NET", 60, 1894);
+  return c;
+}
+async function renderPoster() {
+  const host = $("#digestBody"); if (!host || !WEEK) return;
+  let el = $("#posterBox"); if (!el) { el = document.createElement("div"); el.id = "posterBox"; host.after(el); }
+  const W = selW();
+  el.innerHTML = `<h3 class="tbl-title" style="margin-top:34px">MVP poster</h3><p class="rank-note">Sized for WhatsApp status and stories.</p>
+    <div class="pick-actions"><button type="button" class="btn solid" id="mvppCopy">Copy image</button><button type="button" class="btn" id="mvppText">Copy text</button><a class="btn" id="mvppWa" target="_blank" rel="noopener">Send on WhatsApp ↗</a><button type="button" class="btn" id="mvppDl" hidden>Download</button></div>
+    <p class="label" id="mvppMsg"></p><img class="card-img poster-img" id="mvppImg" alt="MVP poster for issue ${W.issue}">`;
+  await new Promise(res => { const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: "200px" }); io.observe($("#mvppImg")); });
+  const c = await drawPoster(W); if (!$("#mvppImg")) return; $("#mvppImg").src = c.toDataURL("image/png");
+  shareUI("mvpp", c, `bodevs-mvp-issue-${W.issue}.png`, `${W.joint ? "Joint MVPs" : "MVP"} of the week, issue ${W.issue}: ${W.mvps.map(z => pname(z.id)).join(" & ")}.\n${SITE_BASE}`, "mvppMsg");
+}
+
+/* ---------------- search: players, matches and sections ("/" opens it) ---------------- */
+function initSearch() {
+  if ($("#srch")) return;
+  const menu = document.querySelector(".mast .navmenu"); if (!menu) return;
+  menu.insertAdjacentHTML("beforebegin", `<button type="button" class="srch-btn" id="srchBtn" aria-label="Search players and matches"><span class="srch-i" aria-hidden="true">⌕</span><span class="srch-t">Search</span></button>`);
+  document.body.insertAdjacentHTML("beforeend", `<div class="srch" id="srch" hidden role="dialog" aria-label="Search"><div class="srch-box"><input id="srchIn" type="search" placeholder="Player, match #, team or section" autocomplete="off" aria-label="Search"><ul id="srchList"></ul><p class="rank-note">Press / to search from anywhere, Enter to open the first result.</p></div></div>`);
+  let all = null; const box = $("#srch"), inp = $("#srchIn"), list = $("#srchList");
+  const items = () => [
+    ...[...P.values()].filter(p => p.matches).sort((a, b) => b.matches - a.matches).map(p => ({ t: pname(p.id), s: `${p.title || ""} · ${p.tm.short}${p.keeper ? " · keeper" : ""}`, h: purl(p.id), k: `${p.name} ${p.full_name || ""} ${p.title || ""} ${p.tm.short}`.toLowerCase() })),
+    ...M.map(m => ({ t: `Match #${m.id}`, s: `${dShort(m.date)} · ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label} · ${m.fmt}`, h: `#match-${m.id}`, k: `#${m.id} match ${m.id} ${m.fmt} ${dShort(m.date)} ${m.m.team_a.name} ${m.m.team_b.name}`.toLowerCase() })),
+    ...[...document.querySelectorAll(".navmenu .nm-panel a")].map(a => ({ t: a.textContent, s: "Section", h: a.getAttribute("href"), k: a.textContent.toLowerCase() })),
+  ];
+  const show = () => { all = all || items(); const q = inp.value.trim().toLowerCase();
+    const r = (q ? all.filter(x => q.split(/\s+/).every(w => x.k.includes(w))) : all.slice(0, 8)).slice(0, 12);
+    list.innerHTML = r.map(x => `<li><a href="${x.h}"><b>${esc(x.t)}</b><small>${esc(x.s)}</small></a></li>`).join("") || `<li class="dnb">Nothing matches “${esc(inp.value)}”.</li>`; };
+  const open = () => { box.hidden = false; inp.value = ""; show(); inp.focus(); }, close = () => { box.hidden = true; };
+  $("#srchBtn").onclick = open; inp.oninput = show;
+  box.addEventListener("click", e => { if (e.target === box || e.target.closest("a")) close(); });
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") { const a = list.querySelector("a"); if (a) { location.hash = a.getAttribute("href"); close(); } } if (e.key === "Escape") close(); });
+  document.addEventListener("keydown", e => { if (e.key === "/" && !/input|textarea|select/i.test(document.activeElement?.tagName || "") && box.hidden) { e.preventDefault(); open(); } });
+}
+
+/* ---------------- season archive and switcher ---------------- */
+function renderArchive() {
+  const el = $("#archiveBody"); if (!el) return;
+  const list = typeof SEASONS !== "undefined" ? SEASONS : [], cur = typeof SEASON !== "undefined" ? SEASON : null;
+  const link = id => `${location.pathname}?season=${id}${location.hash}`;
+  if (list.length > 1 && !$("#seasonSel")) {
+    document.querySelector(".mast .navmenu")?.insertAdjacentHTML("beforebegin", `<select id="seasonSel" class="season-sel" aria-label="Season">${list.slice().reverse().map(s => `<option value="${s.id}"${s.id === cur ? " selected" : ""}>${esc(s.name)}</option>`).join("")}<option value="all"${cur === "all" ? " selected" : ""}>All-time</option></select>`);
+    $("#seasonSel").onchange = e => { try { localStorage.setItem("bdc-season", e.target.value); } catch {} location.href = link(e.target.value); };
+  }
+  const name = cur === "all" ? "All-time" : list.find(s => s.id === cur)?.name;
+  if (name && WEEK && $("#issueNo") && !$("#issueNo").dataset.season) { $("#issueNo").dataset.season = 1; $("#issueNo").textContent = `${name} · ${$("#issueNo").textContent}`; }
+  el.innerHTML = list.length ? `<div class="ar-grid">${list.slice().reverse().map((s, i) => `<article class="ar-card ${s.id === cur ? "on" : ""}"><p class="kicker">${s.id === cur ? "Showing now" : i ? "Archive" : "Current season"}</p><h3>${esc(s.name)}</h3><p>${esc(s.note || `From match #${s.from}${s.started ? `, ${s.started}` : ""}`)}</p>${s.id === cur ? "" : `<a class="btn small" href="${link(s.id)}">Open ${esc(s.name)}</a>`}</article>`).join("")}
+    <article class="ar-card ${cur === "all" ? "on" : ""}"><p class="kicker">Every season</p><h3>All-time</h3><p>Records, rankings and players across every season together.</p>${cur === "all" ? "" : `<a class="btn small" href="${link("all")}">Open all-time</a>`}</article></div>
+    <p class="rank-note" style="margin-top:12px">Each season keeps its own MVPs, awards, records and player pages. A new season starts from the first match of the new year's fixtures.</p>` : `<p class="dnb">Season archive will appear here.</p>`;
+}
+
+/* ---------------- live centre (#live) ---------------- */
+function renderLiveCentre(j) {
+  const el = $("#liveBody"); if (!el) return;
+  const live = (j?.matches || []).filter(m => m.state), tab = $("#liveTab"); if (tab) tab.hidden = !live.length;
+  if (!live.length) { const last = M[0];
+    el.innerHTML = `<div class="lc-off"><p class="kicker">No match on right now</p><p class="lc-big">Match night is Sunday at SportsX, G-12.</p>${last ? `<p class="lc-line">Last result: ${matchLink(last)}: ${last.win ? `${esc(last.win.short)} won by ${esc(last.margin)}` : esc(last.m.status_label)}.</p>` : ""}
+      <p class="rank-note">During a match this page shows the score, the batters, the bowler, the last balls and the run worm, refreshed every 30 seconds. A Live tab appears in the menu when a match starts.</p></div>`; return; }
+  el.innerHTML = live.map(m => { const sc = m.state.scorecards || [], cur = sc.at(-1); if (!cur) return "";
+    const lastFow = (cur.fow || []).at(-1), ps = cur.runs - (lastFow ? lastFow.score : 0), bw = (cur.bowling || []).find(b => b.current);
+    const recent = (cur.commentary || []).filter(c => c.type === "ball").slice(0, 12).reverse();
+    const fake = { s: { scorecards: sc }, m: { overs: m.state.overs || m.overs || 10 } };
+    return `<article class="lc"><p class="kicker"><span class="dot"></span> Live · Match #${m.id}${m.label ? ` · ${esc(m.label)}` : ""}</p>
+      <div class="lc-score ${team(cur.batting_team).key}"><b>${esc(team(cur.batting_team).short)} ${cur.runs}/${cur.wickets}</b><span>${esc(cur.overs)} overs · RR ${esc(cur.crr || "")}</span></div>
+      ${cur.target ? `<p class="lc-need">Need <b>${cur.need}</b> off <b>${cur.balls_left}</b> balls${cur.balls_left ? ` · required rate ${r1(cur.need / cur.balls_left * 6)}` : ""}${cur.balls_left ? (() => { const o = oddsAt(cur.need, cur.balls_left); return o.n ? ` · teams in this spot won ${Math.round(o.w / o.n * 100)}%` : ""; })() : ""}</p>` : ""}
+      <div class="lc-grid"><div><h3 class="tbl-title">At the crease</h3><ul class="lc-list">${(cur.batting || []).filter(b => b.at_crease).map(b => `<li><b>${esc(b.name)}${b.on_strike ? " *" : ""}</b><span>${b.runs} (${b.balls}) · ${b.fours || 0}×4 ${b.sixes || 0}×6</span></li>`).join("")}</ul><p class="lc-line">Partnership: <b>${ps}</b></p></div>
+        <div><h3 class="tbl-title">Bowling</h3>${bw ? `<ul class="lc-list"><li><b>${esc(bw.name)}</b><span>${esc(bw.overs)}-${bw.runs}-${bw.wickets} · econ ${esc(bw.econ || "")}</span></li></ul>` : `<p class="dnb">Between overs.</p>`}
+        <h3 class="tbl-title" style="margin-top:14px">Last balls</h3><div class="balls lc-balls">${recent.map(c => `<span class="b ${c.badge.kind}" title="${esc(c.text)}">${esc(c.badge.mark)}</span>`).join("")}</div></div></div>
+      ${worm(fake)}<p class="lc-line"><a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Full ball-by-ball on the scoring site ↗</a></p></article>`; }).join("");
+}
+
+/* ---------------- install as an app ---------------- */
+let INSTALL = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); INSTALL = e; renderGetApp(); });
+function renderGetApp() {
+  const el = $("#getappBody"); if (!el) return;
+  const installed = matchMedia("(display-mode: standalone)").matches, ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  el.innerHTML = `<div class="ga-grid"><div><p class="ga-big">${installed ? "You're using the app." : "One tap from your home screen."}</p>
+    <p>Opens full screen like an app, and the last synced scores stay readable without a connection.</p>
+    ${INSTALL && !installed ? `<button type="button" class="btn solid" id="installBtn">Install BoDevs Cricket</button>` : ""}</div>
+    <div class="ga-steps"><h3 class="tbl-title">${ios ? "On iPhone" : "On Android"}</h3><ol>${ios ? "<li>Open this site in Safari.</li><li>Tap the Share button.</li><li>Choose <b>Add to Home Screen</b>.</li>" : "<li>Open this site in Chrome.</li><li>Tap the menu (⋮).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li>"}</ol></div></div>`;
+  const b = $("#installBtn"); if (b) b.onclick = async () => { INSTALL.prompt(); await INSTALL.userChoice.catch(() => {}); INSTALL = null; renderGetApp(); };
+}
+
+/* ---------------- invite: a richer Play us section ---------------- */
+function renderInvite() {
+  const box = document.querySelector("#play .wa"); if (!box || $("#invForm")) return;
+  const inns = M.flatMap(m => m.s.scorecards), sixes = inns.reduce((a, sc) => a + sc.batting.reduce((x, b) => x + b.sixes, 0), 0);
+  const fmts = [...new Set(M.map(m => `${m.fmt} · ${m.m.overs} overs`))].slice(0, 4);
+  document.querySelector("#play .back-grid > div").insertAdjacentHTML("beforeend", `<div class="inv-stats">
+    <div><b>${M.length}</b><span>matches this season</span></div><div><b>${Math.round(inns.reduce((a, sc) => a + sc.runs, 0) / Math.max(1, inns.length))}</b><span>average innings</span></div>
+    <div><b>${sixes.toLocaleString()}</b><span>sixes hit</span></div><div><b>3–5</b><span>players a side</span></div></div>
+    <p class="inv-f">Formats we play: ${fmts.map(esc).join(", ")}. Tilde swing balls provided. Sunday nights at SportsX, G-12.</p>`);
+  box.querySelector("pre").insertAdjacentHTML("beforebegin", `<form id="invForm" class="inv-form" onsubmit="return false">
+    <label><span class="label">Team name</span><input id="invTeam" placeholder="Your team"></label>
+    <label><span class="label">Players</span><select id="invN"><option>3</option><option>4</option><option selected>5</option></select></label>
+    <label><span class="label">Preferred Sunday</span><input id="invDate" type="date"></label>
+    <label><span class="label">Format</span><select id="invFmt"><option>Short, 5 overs</option><option>Test, two innings of 10 overs</option><option>Whatever suits</option></select></label></form>`);
+  const upd = () => { const d = $("#invDate").value ? new Date($("#invDate").value + "T12:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : "";
+    const msg = `Hi BoDevs Cricket! We'd like a challenge match at SportsX, G-12.\nTeam name: ${$("#invTeam").value || ""}\nPlayers: ${$("#invN").value}\nPreferred Sunday: ${d}\nFormat: ${$("#invFmt").value}`;
+    $("#waMsg").textContent = msg; $("#challengeBtn").href = "https://wa.me/923135052165?text=" + encodeURIComponent(msg); };
+  $("#invForm").addEventListener("input", upd); upd();
+}
+
+/* ---------------- home: sticky week bar that follows the slider ---------------- */
+function initWeekBar() {
+  if ($("#weekBar") || !$("#top")) return;
+  // sits right under the cover, so it sticks once the cover has scrolled away
+  (document.querySelector(".ticker") || $("#since")).insertAdjacentHTML("afterend", `<div class="weekbar" id="weekBar" data-page="home"><div class="wrap"><button type="button" class="mvp-btn" id="wbPrev">← Newer</button><span id="wbLabel" class="label"></span><button type="button" class="mvp-btn" id="wbNext">Older →</button></div></div>`);
+  $("#wbPrev").onclick = () => $("#mvpPrev")?.click(); $("#wbNext").onclick = () => $("#mvpNext")?.click();
+  updateWeekBar();
+}
+function updateWeekBar() {
+  const W = selW(), l = $("#wbLabel"); if (!l || !W) return; const i = WEEKS.indexOf(W);
+  l.innerHTML = `<b>Issue ${W.issue}</b> · ${esc(weekRange(W))}${W === WEEK ? " · this week" : ""}`;
+  $("#wbPrev").disabled = i <= 0; $("#wbNext").disabled = i >= WEEKS.length - 1;
+}
+
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
-window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); };
+window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); renderPoster(); updateWeekBar(); };
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderSeasonBook(); renderPartnerships(); renderTactics(); renderPhases();
+  addUniqueAwards(); initSearch(); initWeekBar();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
 // show the right page straight away, before the data has loaded
 tagPages();
 if (!/^#(match-\d|player-\d)/.test(location.hash)) window.pageRoute(location.hash);
 if (typeof D !== "undefined" && D && M) window.renderExtras();
+
+// the comparison redraws through drawCompare; add the share card each time
+if (typeof drawCompare === "function" && !window._cmpWrapped) { window._cmpWrapped = 1; const _dc = drawCompare; drawCompare = function () { _dc(); compareShare(P.get(CMP.a), P.get(CMP.b)); }; }

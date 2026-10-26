@@ -616,7 +616,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
         <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
-        <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#seasonbook">Season in detail</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
+        <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#seasonbook">Season in detail</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#matchups">Matchups &amp; pressure</a><a href="#archive">Season archive</a><a href="#getapp">Get the app</a><a href="#play">Play us</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
         <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
@@ -625,7 +625,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
   </div>
 </header>
 <nav class="pagetabs" aria-label="Pages"><div class="wrap">
-  <a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#compare" data-p="compare">Compare</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
+  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#compare" data-p="compare">Compare</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
 </div></nav>
 <div class="livebar" id="liveBar" hidden aria-live="polite"></div>
 
@@ -639,8 +639,28 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 <div class="since" id="since"><div class="wrap" id="sinceBody"></div></div>
 
 <main id="main">
+  <section class="dept" id="live">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Live centre</p><h2 class="hd">Sunday night, live</h2></div>
+        <p>The match as it happens: score, batters, bowler, the last balls and how the innings is shaping up.</p>
+      </div>
+      <div id="liveBody"></div>
+    </div>
+  </section>
+
   <section class="cover"><div class="wrap" id="cover"><p class="label">Loading this week's issue…</p></div></section>
   <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
+
+  <section class="dept" id="weeknumbers">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">The week in numbers</p><h2 class="hd">Inside the week</h2></div>
+        <p>Team of the week, who played above his usual, the overs that mattered, the catches that went down, the best stands and how the week moved the rivalry.</p>
+      </div>
+      <div id="weekNumbersBody"></div>
+    </div>
+  </section>
 
   <section class="dept" id="weekawards">
     <div class="wrap">
@@ -652,15 +672,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
-  <section class="dept" id="weeknumbers">
-    <div class="wrap">
-      <div class="dept-head">
-        <div><p class="kicker">The week in numbers</p><h2 class="hd">Inside the week</h2></div>
-        <p>Team of the week, who played above his usual, the overs that mattered, the catches that went down, the best stands and how the week moved the rivalry.</p>
-      </div>
-      <div id="weekNumbersBody"></div>
-    </div>
-  </section>
 
   <section class="dept" id="digest">
     <div class="wrap">
@@ -686,7 +697,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <div class="wrap">
       <div class="dept-head">
         <div><p class="kicker">Season awards</p><h2 class="hd">The trophy race</h2></div>
-        <p>Eight awards, one holder each, and the chasing pack behind them. MVP and Man of the Match count weekly and match awards; the rest are season totals.</p>
+        <p>Every award, one holder each, and the chasing pack behind them. MVP and Man of the Match count weekly and match awards; the rest are season totals.</p>
       </div>
       <div id="seasonAwardsBody"></div>
     </div>
@@ -791,6 +802,23 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="matches">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Match centre</p><h2 class="hd">Every result</h2></div>
+        <p>Open any match for the full scorecard: batting, bowling, fall of wickets, fielding and over-by-over.</p>
+      </div>
+      <div class="filters" id="filters">
+        <button aria-pressed="true" data-f="all">All</button>
+        <button aria-pressed="false" data-f="t">Tigers wins</button>
+        <button aria-pressed="false" data-f="f">Falcons wins</button>
+        <button aria-pressed="false" data-f="Test">Tests</button>
+        <button aria-pressed="false" data-f="One-day">One-days</button>
+      </div>
+      <div class="mlist" id="mlist"></div>
+    </div>
+  </section>
+
   <section class="dept" id="picker">
     <div class="wrap">
       <div class="dept-head">
@@ -856,6 +884,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="matchups">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Matchups &amp; pressure</p><h2 class="hd">Who has whose number</h2></div>
+        <p>Every batter against every bowler on one grid, how players handle pressure, and the odds of winning a chase from any spot.</p>
+      </div>
+      <div id="matchupsBody"></div>
+    </div>
+  </section>
+
   <section class="dept" id="partners">
     <div class="wrap">
       <div class="dept-head">
@@ -896,22 +934,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
-  <section class="dept" id="matches">
-    <div class="wrap">
-      <div class="dept-head">
-        <div><p class="kicker">Match centre</p><h2 class="hd">Every result</h2></div>
-        <p>Open any match for the full scorecard: batting, bowling, fall of wickets, fielding and over-by-over.</p>
-      </div>
-      <div class="filters" id="filters">
-        <button aria-pressed="true" data-f="all">All</button>
-        <button aria-pressed="false" data-f="t">Tigers wins</button>
-        <button aria-pressed="false" data-f="f">Falcons wins</button>
-        <button aria-pressed="false" data-f="Test">Tests</button>
-        <button aria-pressed="false" data-f="One-day">One-days</button>
-      </div>
-      <div class="mlist" id="mlist"></div>
-    </div>
-  </section>
 
   <section class="dept" id="fixtures">
     <div class="wrap">
@@ -977,6 +999,26 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
           <p style="margin-top:18px"><a class="btn" href="https://www.google.com/maps/search/?api=1&amp;query=SportsX+G-12+Islamabad" target="_blank" rel="noopener">Open in Maps ↗</a></p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="dept" id="archive">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Seasons</p><h2 class="hd">Season archive</h2></div>
+        <p>Every season keeps its own pages. Switch seasons, or see the all-time records across all of them.</p>
+      </div>
+      <div id="archiveBody"></div>
+    </div>
+  </section>
+
+  <section class="dept" id="getapp">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">On your phone</p><h2 class="hd">Get the app</h2></div>
+        <p>Install the site on your home screen for one-tap scores on Sunday nights.</p>
+      </div>
+      <div id="getappBody"></div>
     </div>
   </section>
 
@@ -1065,10 +1107,18 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
-fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{D=d;model();render();route()}).then(watchScores)
+// seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one
+let SEASONS=[],SEASON=null;
+function pickSeason(d,list){SEASONS=Array.isArray(list)?list:[];if(!SEASONS.length)return d;let want=null;
+  try{want=new URLSearchParams(location.search).get("season")||localStorage.getItem("bdc-season")}catch(e){}
+  if(want==="all"){SEASON="all";return d}
+  const cur=SEASONS.find(s=>s.id===want)||SEASONS.at(-1),i=SEASONS.indexOf(cur),to=SEASONS[i+1]?.from??Infinity;SEASON=cur.id;
+  return{...d,matches:d.matches.filter(m=>m.match.id>=cur.from&&m.match.id<to)}}
+Promise.all([fetch("data/cricket.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}),fetch("data/seasons.json").then(r=>r.ok?r.json():[]).catch(()=>[])])
+  .then(([d,s])=>{D=pickSeason(d,s);model();render();route()}).then(watchScores)
   .catch(e=>{$("#cover").innerHTML=`<p class="err">Couldn't load the match data (data/cricket.json). Run "node sync.js" and reload.</p>`});
 
 function sessionDate(when,yr,syncMonth){
@@ -1189,6 +1239,7 @@ function assignTitles(){
   const give=(p,title,why)=>{if(p&&!p.title){p.title=title;p.why=why}};
   const best=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a))[0];
   const played=p=>p.matches>0;
+  free().filter(p=>p.keeper&&p.matches).forEach(p=>give(p,"Head of Glovework",`Keeps wicket for the ${p.tm.short}: ${p.fld.c} catches and ${p.fld.ro} run outs behind the stumps.`));
   const s6=best(free(),p=>p.bat.s,played);give(s6,"Chief Six Officer",`${s6?.bat.s} sixes, more than anyone in the club.`);
   const hs=best(free(),p=>p.bat.hs?p.bat.hs.r*1000-p.bat.hs.b:-1,p=>p.bat.hs);give(hs,"Head of Demolition",`${hs?.bat.hs.r} off ${hs?.bat.hs.b} balls, the season's top score.`);
   free().filter(p=>p.bat.hundred).forEach(p=>give(p,"Director of Centuries",`Made a hundred: ${p.bat.hs.r} off ${p.bat.hs.b}.`));
@@ -1221,7 +1272,7 @@ const ICON_MVP=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentC
 const ICON_MOM=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3.5v2.5A4.5 4.5 0 0 1 16.4 12a5 5 0 0 1-3.4 2.9V18h3.5v3h-9v-3H11v-3.1A5 5 0 0 1 7.6 12 4.5 4.5 0 0 1 3.5 7.5V5H7V3Zm-1.5 4v.5A2.5 2.5 0 0 0 7 9.8V7H5.5Zm11.5 0v2.8a2.5 2.5 0 0 0 1.5-2.3V7H17Z"/></svg>`;
 // count badges, like a cart icon: ★ MVP (player of the week) and trophy MOM (man of the match)
 const honours=(p,cls="")=>p&&(p.mvpN||p.pomN)?`<span class="hon ${cls}">${p.mvpN?`<span class="hb mvp" role="img" aria-label="${p.mvpN} MVP award${p.mvpN>1?"s":""}" title="MVP (player of the week) × ${p.mvpN}">${ICON_MVP}<i>${p.mvpN}</i></span>`:""}${p.pomN?`<span class="hb mom" role="img" aria-label="${p.pomN} man of the match award${p.pomN>1?"s":""}" title="Man of the Match × ${p.pomN}">${ICON_MOM}<i>${p.pomN}</i></span>`:""}</span>`:"";
-const photo=(p,cls="")=>`<div class="ph ${p.tm.key} ${cls}">${honours(p)}${p.photo?`<img src="${p.photo}" alt="${esc(p.full_name||p.name)}" loading="lazy">`:`<span class="mono">${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}${p.captain?'<span class="cap">Captain</span>':""}</div>`;
+const photo=(p,cls="")=>`<div class="ph ${p.tm.key} ${cls}">${honours(p)}${p.photo?`<img src="${p.photo}" alt="${esc(p.full_name||p.name)}" loading="lazy">`:`<span class="mono">${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}${p.captain?'<span class="cap">Captain</span>':""}${p.keeper?'<span class="cap wk">Keeper</span>':""}</div>`;
 
 function render(){
   SEASON_RR=M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.runs,0),0)/M.reduce((a,m)=>a+m.inns.reduce((x,i)=>x+i.b,0),0)*6;assignTitles();rateAll();
@@ -1380,7 +1431,7 @@ function matchPage(id,tab){
     <div class="facts"><span><b>${fmtD(mm.date,{weekday:"long",day:"numeric",month:"long"})}</b></span><span>${esc(m.when)}</span><span><b>${esc(m.format_label)}</b> · ${m.overs} overs</span><span>${esc(mm.side)}</span><span>SportsX, G-12</span></div>
     <div class="scoreline">${teams.map(n=>`<div class="${team(n).key} ${m.winner?.name===n?"won":""}">${crest(n)}<span class="tn">${esc(n)}</span><span class="ts">${agg(n)}</span></div>`).join("")}</div>
     ${toss?`<p class="dek">${esc(toss)}.</p>`:""}</header>`;
-  h+=shareBlock(mm);
+  h+=(typeof matchExtras==="function"?matchExtras(mm):"")+shareBlock(mm);
   const sel=Math.min(Math.max(0,(tab||1)-1),mm.s.scorecards.length-1);
   h+=`<div class="inn-tabs" role="tablist" aria-label="Innings">${mm.s.scorecards.map((sc,i)=>{const t=team(sc.batting_team);
     return `<button role="tab" class="${t.key}" id="itab-${i}" aria-controls="inn-${i}" aria-selected="${i===sel}" data-i="${i}" tabindex="${i===sel?0:-1}">
@@ -1416,16 +1467,17 @@ function buildAwards(){
     {k:"Golden Bat",list:rank(p=>p.bat.r),n:p=>p.bat.r,v:p=>p.bat.r.toLocaleString(),u:"runs",u1:"run",unit:"runs"},
     {k:"Golden Ball",list:rank(p=>p.bowl.w*1000-p.bowl.econ),n:p=>p.bowl.w,v:p=>p.bowl.w,u:"wickets",u1:"wicket",unit:"wickets"},
     {k:"Six King",list:rank(p=>p.bat.s),n:p=>p.bat.s,v:p=>p.bat.s,u:"sixes",u1:"six",unit:"sixes"},
-    {k:"Safest Hands",list:rank(p=>p.fld.c*10-p.fld.drop),n:p=>p.fld.c,v:p=>p.fld.c,u:"catches",u1:"catch",unit:"catches"},
+    {k:"Safest Hands",note:"outfield",only:p=>!p.keeper,list:rank(p=>p.fld.c*10-p.fld.drop,p=>!p.keeper),n:p=>p.fld.c,v:p=>p.fld.c,u:"catches",u1:"catch",unit:"catches"},
     {k:"Mr Economy",note:"20+ overs",need:p=>`${ovs(p.bowl.b)} of 20 overs bowled`,ok:p=>p.bowl.b>=120,list:rank(p=>-p.bowl.econ,p=>p.bowl.b>=120),n:p=>p.bowl.econ,low:1,dec:1,v:p=>r1(p.bowl.econ),u:"runs an over",unit:"runs an over"},
     {k:"Strike Rate King",note:"150+ balls",need:p=>`${p.bat.b} of 150 balls faced`,ok:p=>p.bat.b>=150,list:rank(p=>p.bat.sr,p=>p.bat.b>=150),n:p=>p.bat.sr,dec:1,v:p=>Math.round(p.bat.sr),u:"strike rate",unit:"points"},
     {k:"Man of the Match",list:rank(p=>p.pomN*1000+p.bat.r),n:p=>p.pomN,v:p=>p.pomN,u:"MOM awards",u1:"MOM award",unit:"MOM"},
   ];
 }
 function awardsFor(p){
+  if(typeof addUniqueAwards==="function")addUniqueAwards();
   if(!p.matches||!AWARDS.length)return "";
   const nm=x=>esc(x.full_name||x.name),fmt=(a,v)=>a.dec?r1(v):Math.round(v).toLocaleString();
-  const cards=AWARDS.map(a=>{
+  const cards=AWARDS.filter(a=>!a.only||a.only(p)).map(a=>{
     const i=a.list.findIndex(x=>x.id===p.id);
     if(i<0)return{rank:99,html:`<article class="pa-card na">
       <p class="kicker">${a.k}</p><span class="pa-status">Not eligible yet</span>
@@ -2041,7 +2093,7 @@ const PTABS=[["overview","Overview"],["batting","Batting"],["bowling","Bowling &
 function playerTabs(p,h,tab){
   const parts=h.split(/<!--pane:(\w+)-->/),panes={};
   for(let i=1;i<parts.length;i+=2)panes[parts[i]]=(panes[parts[i]]||"")+parts[i+1];
-  const ex=typeof playerExtras==="function"?playerExtras(p):{};Object.entries(ex).forEach(([k,v])=>panes[k]=(k==="overview"||k==="matches"?v+(panes[k]||""):(panes[k]||"")+v));
+  const ex=typeof playerExtras==="function"?playerExtras(p):{};Object.entries(ex).forEach(([k,v])=>{const key=k==="overviewEnd"?"overview":k;panes[key]=(k==="overview"||k==="matches"?v+(panes[key]||""):(panes[key]||"")+v)});
   const tabs=PTABS.filter(([k])=>panes[k]&&panes[k].trim()),cur=tabs.some(([k])=>k===tab)?tab:"overview";
   return parts[0]+`<span class="pp-anchor"></span><nav class="pp-tabs" role="tablist" aria-label="${esc(pname(p.id))}">${tabs.map(([k,l])=>`<a role="tab" href="${purl(p.id)}/${k}" data-pp="${k}" aria-selected="${k===cur}">${l}</a>`).join("")}</nav>
     ${tabs.map(([k])=>`<div class="pp-pane" id="pp-${k}" role="tabpanel"${k===cur?"":" hidden"}>${panes[k]}</div>`).join("")}`;
@@ -2061,8 +2113,10 @@ function playerPage(id,tab){
   const B=p.bat,W=p.bowl,others=Object.keys(p.teams).filter(t=>t!==p.team);
   const log=[...p.log.values()].sort((a,b)=>b.mm.date-a.mm.date||b.mm.id-a.mm.id);
   const wins=log.filter(l=>l.mm.win&&l.mm.win.name===l.team).length;
+  // match points, to colour each game against his own average
+  const lp=l=>l.bat.reduce((a,x)=>a+x.r,0)+20*l.bowl.reduce((a,x)=>a+x.w,0)+10*l.c,avgP=log.reduce((a,l)=>a+lp(l),0)/Math.max(1,log.length);
   let h=`<header class="art-head ${p.tm.key}"><div class="prof-top">${photo(p)}<div>
-    <p class="kicker">${esc(p.title)} · ${esc(p.team)}${p.captain?" · Captain":""}</p><h1 class="hd">${esc(p.full_name||p.name)}</h1>
+    <p class="kicker">${esc(p.title)} · ${esc(p.team)}${p.captain?" · Captain":""}${p.keeper?" · Wicket-keeper":""}</p><h1 class="hd">${esc(p.full_name||p.name)}</h1>${typeof formTag==="function"?formTag(p):""}
     <p class="why">${esc(p.why)}</p>
     <p class="dek">${[p.job?`${esc(p.job)} at BoDevs.`:"",p.full_name&&!p.full_name.startsWith(p.name)?`Known on the scorecard as “${esc(p.name)}”.`:""].join(" ")}</p>
     <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} pts</small></a>`:"").join("")}</div>
@@ -2091,18 +2145,18 @@ function playerPage(id,tab){
     <div><span class="label">Best</span><b>${W.best?`${W.best.w}/${W.best.r}`:"–"}</b><small>${W.best?`<a href="#match-${W.best.mid}">match #${W.best.mid}</a>`:""}</small></div>
     <div><span class="label">Dot balls</span><b>${W.b?Math.round(W.dots/W.b*100):0}%</b><small>${W.dots} dots</small></div>
     <div><span class="label">Extras</span><b>${W.wd+W.nb}</b><small>${W.wd} wides · ${W.nb} no-balls</small></div>
-    <div><span class="label">Catches</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
+    <div><span class="label">${p.keeper?"Catches (keeping)":"Catches"}</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
   </div>
   ${dropsBlock(p)}
   <!--pane:splits-->${splitsBlock(p)}
   ${rivalries(p)}
   <!--pane:overview--><p class="pl-cmp"><a class="btn" href="#compare" data-cmp="${p.id}">Compare with another player →</a></p>
   ${typeof shareBlockPlayer==="function"?shareBlockPlayer(p):""}
-  <!--pane:matches--><h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Result</th></tr></thead><tbody>
-  ${log.map(l=>{const won=l.mm.win&&l.mm.win.name===l.team;
+  <!--pane:matches--><h2 class="sec-t">Match by match</h2><div class="tbl-wrap"><table class="data"><thead><tr><th>Date</th><th style="text-align:left">Match</th><th>Batting</th><th>Bowling</th><th>Ct</th><th>Pts</th><th>Result</th></tr></thead><tbody>
+  ${log.map(l=>{const won=l.mm.win&&l.mm.win.name===l.team,mp=lp(l),cls=mp>=avgP*1.25?"abv":mp<=avgP*0.75?"blw":"";
     const bat=l.bat.map(x=>`${x.r}${x.no?"*":""} (${x.b})`).join(" & ")||"–";
     const bowl=l.bowl.map(x=>`${x.w}/${x.r} (${ovs(x.b)})`).join(" & ")||"–";
-    return `<tr><td>${fmtD(l.mm.date,{day:"numeric",month:"short"})}</td><td class="nm"><a href="#match-${l.mm.id}">#${l.mm.id} · ${esc(l.mm.fmt)} for ${esc(team(l.team).short)}</a></td><td>${bat}</td><td>${bowl}</td><td>${l.c||"–"}</td><td>${l.mm.win?`<span class="wl ${won?"w":"l"}">${won?"W":"L"}</span>`:"–"}</td></tr>`}).join("")}
+    return `<tr><td>${fmtD(l.mm.date,{day:"numeric",month:"short"})}</td><td class="nm"><a href="#match-${l.mm.id}">#${l.mm.id} · ${esc(l.mm.fmt)} for ${esc(team(l.team).short)}</a></td><td>${bat}</td><td>${bowl}</td><td>${l.c||"–"}</td><td class="mp ${cls}">${mp}</td><td>${l.mm.win?`<span class="wl ${won?"w":"l"}">${won?"W":"L"}</span>`:"–"}</td></tr>`}).join("")}
   </tbody></table></div>`;
   return playerTabs(p,h,tab)+`<p class="src">Source: <a href="https://tassadduq.com/cricket/player?id=${p.id}" target="_blank" rel="noopener">Scorecard, player profile ↗</a></p>`;
 }

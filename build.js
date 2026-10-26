@@ -32,6 +32,10 @@ function page(meta = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0d0d0c">
 <link rel="icon" href="/tigers.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))</script>
 <link rel="canonical" href="${attr(m.url)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BoDevs Cricket">

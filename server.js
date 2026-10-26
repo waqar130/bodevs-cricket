@@ -14,9 +14,9 @@ const PORT = Number(process.env.PORT) || 8765;
 const ROOT = __dirname;
 // Predictions live here. On Railway, mount a volume and point STORAGE_DIR at it so they survive redeploys.
 const STORAGE = process.env.STORAGE_DIR || path.join(ROOT, "storage");
-const TYPES = { ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".json": "application/json; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp", ".json": "application/json; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".webmanifest": "application/manifest+json" };
 // Only these are public; source files stay private.
-const PUBLIC = [/^\/(tigers|falcons)\.svg$/, /^\/extras\.(js|css)$/, /^\/data\/(cricket|fixtures)\.json$/, /^\/assets\/gallery\/gallery\.json$/, /^\/assets\/[\w./-]+\.(png|jpg|webp|svg)$/];
+const PUBLIC = [/^\/(tigers|falcons)\.svg$/, /^\/extras\.(js|css)$/, /^\/data\/(cricket|fixtures|seasons)\.json$/, /^\/(sw\.js|manifest\.webmanifest)$/, /^\/assets\/gallery\/gallery\.json$/, /^\/assets\/[\w./-]+\.(png|jpg|webp|svg)$/];
 
 // ---- score sync: once a week, Monday 2:00 AM Pakistan time (after Sunday night's matches)
 const SYNC = process.env.SYNC !== "off";

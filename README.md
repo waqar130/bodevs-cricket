@@ -19,6 +19,18 @@ Live at **https://cricket.waqarahmed.net**
 - Predictions are saved in `STORAGE_DIR` (default `storage/`; on Railway a volume is mounted at `/app/storage`).
 - The server gzips text and answers 304 for unchanged files, so the 870 KB data file costs about 60 KB on a first visit and nothing on a repeat one.
 
+## Seasons
+
+`data/seasons.json` lists the seasons and the match id each one starts from, e.g. `[{"id":"s1","name":"Season 1","from":1}]`. To start Season 2, add `{"id":"s2","name":"Season 2","from":<first match id of the new season>}`. The site then shows the newest season by default, adds a season switcher to the masthead, and keeps an All-time view (`?season=all`). Everything (MVPs, awards, records, player pages) is worked out per season.
+
+## Players
+
+Profiles in `sync.js` (`PROFILES`) set full names, jobs, photos and roles: `captain: true` for the two captains and `keeper: true` for the wicket-keeper (Mazhar), whose catches count as keeping catches (Golden Gloves, not Safest Hands).
+
+## App
+
+The site installs to a phone's home screen (`manifest.webmanifest`, icons in `assets/icons/`) and `sw.js` keeps the last synced scores readable offline. It fetches from the network first, so scores are never stale when online.
+
 ## Run locally
 
 ```bash

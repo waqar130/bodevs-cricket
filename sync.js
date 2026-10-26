@@ -28,7 +28,7 @@ const PROFILES = {
   "Borni":        { full: "Ali Khan Niazi",    job: "SEO & Content Strategist",                   photo: "ali-niazi-min.png" },
   "Qari sb":      { full: "Abdul Rehman",      job: "Senior React Engineer",                      photo: "qari-min.png" },
   "Butt Sb":      { full: "Fahad Naveed Butt", ownPhoto: "players/10.webp" },
-  "Mazhar":       { ownPhoto: "players/9.webp" },
+  "Mazhar":       { ownPhoto: "players/9.webp", keeper: true },
 };
 const BODEVS = "https://bodevs.com/";
 
@@ -80,6 +80,7 @@ async function sync(opts = {}) {
     if (prof.full) p.full_name = prof.full;
     if (prof.job) p.job = prof.job;
     if (prof.captain) p.captain = true;
+    if (prof.keeper) p.keeper = true;
     // ownPhoto: a photo kept in assets/ (not on bodevs.com); it is committed to the repo, never downloaded
     if (prof.ownPhoto && fs.existsSync(path.join(ASSET_DIR, prof.ownPhoto))) p.photo = "assets/" + prof.ownPhoto;
     else if (prof.photo) {
