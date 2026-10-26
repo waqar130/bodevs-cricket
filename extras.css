@@ -135,8 +135,8 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .race-key i{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:6px}
 .rk-r{background:var(--ink)}.rk-w{background:var(--red)}.rk-c{background:#b9b4a6}.rk-x{background:#1f8a4c}
 .race-list{list-style:none;margin-top:8px}
-.race-list li{display:grid;grid-template-columns:44px minmax(0,1.1fr) minmax(0,2fr) max-content;gap:6px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
-.race-list li.win{background:var(--paper-2);box-shadow:-12px 0 0 var(--paper-2),12px 0 0 var(--paper-2)}
+.race-list li{display:grid;grid-template-columns:44px minmax(0,1.1fr) minmax(0,2fr) 96px;gap:6px 16px;align-items:center;padding:12px 14px 12px 0;border-bottom:1px solid var(--rule)}
+.race-list li.win{background:var(--paper-2);box-shadow:-12px 0 0 var(--paper-2)}
 .race-n{font:900 34px/1 var(--f-display);color:var(--muted)}
 .race-list li.win .race-n{color:var(--red)}
 .race-who{display:flex;align-items:center;gap:10px;text-decoration:none;min-width:0}
@@ -149,7 +149,7 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .race-fill i{display:block;height:100%}
 .race-fill i+i{box-shadow:inset 2px 0 0 var(--paper)}
 .race-sum{font:400 12px var(--f-data);color:var(--muted);margin-top:5px}
-.race-pts{text-align:right;font:500 12px var(--f-data);color:var(--muted);white-space:nowrap;min-width:84px;padding-right:2px}
+.race-pts{text-align:right;font:500 12px var(--f-data);color:var(--muted);white-space:nowrap;min-width:0}
 .race-pts b{display:block;font:900 32px/1 var(--f-display);color:var(--ink)}
 @media(max-width:640px){
   .race-list li{grid-template-columns:34px minmax(0,1fr) auto}
@@ -574,3 +574,13 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 /* points breakdown in the legend colours */
 .race-sum .rs{font:600 12px var(--f-data);white-space:nowrap}
 .race-sum .rs.r{color:var(--ink)}.race-sum .rs.w{color:var(--red)}.race-sum .rs.c{color:#7d776a}.race-sum .rs.x{color:#1f8a4c}
+
+/* MVP race header: headline and the story of the week side by side */
+@media(min-width:900px){.race-head{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:end}}
+.race-t{font-size:clamp(32px,4vw,52px)!important;line-height:.95!important}
+.race-story{font:400 clamp(17px,1.6vw,20px)/1.45 var(--f-body);color:var(--ink)}
+.race-story b{font-weight:700}
+.race-copy .race-rule{font-size:13px;color:var(--muted);margin-top:8px;max-width:none}
+.race-copy .race-rule b{color:var(--ink-2)}
+.race-key{border-top:1px solid var(--rule);padding-top:10px}
+.race-head>*,.race-copy{min-width:0}.race-copy .race-rule{overflow-wrap:break-word}
