@@ -1299,12 +1299,12 @@ function render(){
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">How the points were made</h2></div>
         <p class="race-rule"><b>MVP points = runs + 20 per wicket + 10 per catch or run out + 10 per win</b>, added up across every match that week. The win bonus goes to players on the winning side who played a part: 10+ runs, a wicket, a catch or a run out. Most points is MVP. A second player within 1 point shares it as joint MVP (two at most; level on points, whoever got there first ranks higher). Next two: Impact Player and Game Changer.</p></div>
-      <div class="race-key"><span><i class="rk-r"></i>Runs</span><span><i class="rk-w"></i>Wickets × 20</span><span><i class="rk-c"></i>Catches &amp; run outs × 10</span><span><i class="rk-x"></i>Wins × 10</span></div>
+      <div class="race-key"><span><i class="rk-r"></i>R · Runs</span><span><i class="rk-w"></i>W · Wickets × 20</span><span><i class="rk-c"></i>CT · Catches, RO · Run outs × 10</span><span><i class="rk-x"></i>V · Victories × 10</span></div>
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),pc=v=>(v/top*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
           <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}</small><b>${esc(pname(q.id))}</b></span></a>
           <div class="race-bar"><div class="race-fill" role="img" aria-label="${x.r} runs, ${x.w} wickets, ${x.c} catches, ${x.ro} run outs, ${x.wb} wins"><i class="rk-r" style="width:${pc(x.r)}"></i><i class="rk-w" style="width:${pc(x.w*20)}"></i><i class="rk-c" style="width:${pc((x.c+x.ro)*10)}"></i><i class="rk-x" style="width:${pc(x.wb*10)}"></i></div>
-            <p class="race-sum">${x.r} runs + ${x.w}×20 + ${x.ro?`(${x.c} ct + ${x.ro} ro)`:x.c}×10 + ${x.wb} win${x.wb===1?"":"s"}×10</p></div>
+            <p class="race-sum"><span class="rs r">${x.r} R</span> + <span class="rs w">${x.w} W ×20</span> + <span class="rs c">${x.c} CT ×10</span>${x.ro?` + <span class="rs c">${x.ro} RO ×10</span>`:""} + <span class="rs x">${x.wb} V ×10</span></p></div>
           <span class="race-pts"><b>${x.pts}</b> pts</span></li>`}).join("")}</ol>
     </section>`};
   // the cover: who won, why, and what each MVP did. Same shape for one MVP or a tie of two or three.

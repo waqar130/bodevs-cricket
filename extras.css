@@ -570,3 +570,7 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .dg-chips small{color:var(--muted);font:400 11px var(--f-data)}
 .dg-cols{display:grid;gap:0 36px}
 @media(min-width:960px){.dg-cols{grid-template-columns:1fr 1fr}}
+
+/* points breakdown in the legend colours */
+.race-sum .rs{font:600 12px var(--f-data);white-space:nowrap}
+.race-sum .rs.r{color:var(--ink)}.race-sum .rs.w{color:var(--red)}.race-sum .rs.c{color:#7d776a}.race-sum .rs.x{color:#1f8a4c}
