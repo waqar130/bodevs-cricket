@@ -50,8 +50,17 @@ async function runSync(attempt) {
     lastError = e.message;
     console.error(`score sync failed (attempt ${attempt + 1}):`, e.message);
     if (attempt + 1 < MAX_RETRIES) { nextSync = new Date(Date.now() + RETRY); setTimeout(() => runSync(attempt + 1), RETRY); }
-    else schedule(nextSlot());
+    else { schedule(nextSlot()); alertSyncFailed(e.message); }
   } finally { syncing = false; }
+}
+// After the last retry fails: post to ALERT_URL if one is set (an ntfy.sh topic, a Discord or Slack webhook, or any URL that takes a POST).
+// The site also shows a "running late" notice by itself once Monday morning passes without new scores.
+async function alertSyncFailed(msg) {
+  const url = process.env.ALERT_URL; if (!url) return;
+  const text = `BoDevs Cricket: the Monday score sync failed after ${MAX_RETRIES} tries (${msg}). The site is showing last week's scores. It will try again next Monday, or redeploy to retry now.`;
+  const body = /discord(app)?\.com\/api\/webhooks/.test(url) ? JSON.stringify({ content: text }) : /hooks\.slack\.com/.test(url) ? JSON.stringify({ text }) : text;
+  try { await fetch(url, { method: "POST", headers: { "Content-Type": body === text ? "text/plain" : "application/json", Title: "Score sync failed" }, body }); }
+  catch (e) { console.error("sync alert failed:", e.message); }
 }
 // On start (e.g. after a redeploy), catch up if this week's Monday sync hasn't been applied yet.
 function startSync() {
@@ -148,6 +157,46 @@ function savePrediction(body) {
   return { ok: true, week: ow.week };
 }
 
+// ---- visitor counts: totals only. No cookies and no IP addresses are kept: a visitor is counted once a day
+// through a one-way hash of (a salt that changes daily + IP + browser), and yesterday's hashes are thrown away.
+const VISITS_FILE = path.join(STORAGE, "visits.json");
+const VIEW_KINDS = new Set(["home", "players", "compare", "stats", "season", "club", "live", "player", "match"]);
+const EVENTS = new Set(["install_shown", "install_click", "installed", "app_open"]);
+let visits = (() => { try { return JSON.parse(fs.readFileSync(VISITS_FILE, "utf8")); } catch { return { days: {} }; } })(), visitsDirty = false;
+let salt = { day: "", key: "" }, seenToday = new Set();
+const pkDay = () => new Date(Date.now() + PK).toISOString().slice(0, 10);
+function countHit(req, body) {
+  const day = pkDay();
+  if (salt.day !== day) { salt = { day, key: crypto.randomBytes(16).toString("hex") }; seenToday = new Set(); }
+  const d = visits.days[day] = visits.days[day] || { views: {}, visitors: 0, events: {} };
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  const who = crypto.createHash("sha256").update(salt.key + ip + (req.headers["user-agent"] || "")).digest("base64url").slice(0, 16);
+  if (!seenToday.has(who)) { seenToday.add(who); d.visitors++; }
+  if (VIEW_KINDS.has(body.p)) d.views[body.p] = (d.views[body.p] || 0) + 1;
+  if (EVENTS.has(body.e)) d.events[body.e] = (d.events[body.e] || 0) + 1;
+  visitsDirty = true;
+}
+setInterval(() => {
+  if (!visitsDirty) return; visitsDirty = false;
+  try { fs.mkdirSync(STORAGE, { recursive: true }); fs.writeFileSync(VISITS_FILE + ".tmp", JSON.stringify(visits)); fs.renameSync(VISITS_FILE + ".tmp", VISITS_FILE); }
+  catch (e) { console.error("visits save failed:", e.message); }
+}, 30e3).unref();
+function visitsPage() {
+  const days = Object.keys(visits.days).sort().reverse().slice(0, 60), sum = (f, ds = days) => ds.reduce((a, k) => a + f(visits.days[k]), 0);
+  const kinds = [...VIEW_KINDS], last7 = days.slice(0, 7), last30 = days.slice(0, 30);
+  const views = d => Object.values(d.views).reduce((a, b) => a + b, 0), ev = k => d => d.events[k] || 0;
+  const row = k => { const d = visits.days[k]; return `<tr><td>${k}</td><td><b>${d.visitors}</b></td><td>${views(d)}</td>${kinds.map(x => `<td>${d.views[x] || ""}</td>`).join("")}<td>${d.events.install_click || ""}</td><td>${d.events.installed || ""}</td><td>${d.events.app_open || ""}</td></tr>`; };
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Visitors · BoDevs Cricket</title>
+<style>:root{--ink:#141413;--paper:#f5f5f1;--rule:#d9d6cc;--muted:#6b6862;--red:#d42a1f}@media(prefers-color-scheme:dark){:root{--ink:#f3efe6;--paper:#141413;--rule:#3a3935;--muted:#a9a49a}}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,sans-serif;padding:24px 16px}main{max-width:1100px;margin:0 auto}h1{font-size:40px;line-height:1;margin:0 0 6px;text-transform:uppercase;letter-spacing:-.01em}p{color:var(--muted);margin:0 0 20px}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 24px}.k div{border-top:4px solid var(--ink);padding-top:8px}.k b{display:block;font-size:34px;line-height:1.1}.k span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.t{overflow-x:auto}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:6px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}</style></head>
+<body><main><h1>Visitors</h1><p>Totals only: no cookies, no IP addresses. Days are Pakistan time. <a href="/">Back to the site</a></p>
+<div class="k"><div><b>${sum(d => d.visitors, last7)}</b><span>visitors, last 7 days</span></div><div><b>${sum(views, last7)}</b><span>page views, last 7 days</span></div><div><b>${sum(d => d.visitors, last30)}</b><span>visitors, last 30 days</span></div>
+<div><b>${sum(ev("installed"))}</b><span>app installs</span></div><div><b>${sum(ev("app_open"), last7)}</b><span>opened from the app, 7 days</span></div></div>
+<div class="t"><table><thead><tr><th>Day</th><th>Visitors</th><th>Views</th>${kinds.map(x => `<th>${x}</th>`).join("")}<th>Install taps</th><th>Installs</th><th>App opens</th></tr></thead><tbody>${days.map(row).join("") || `<tr><td colspan="${kinds.length + 6}">No visits counted yet.</td></tr>`}</tbody></table></div></main></body></html>`;
+}
+
 // gzip text responses for browsers that accept it (the page, data and scripts shrink to a fraction)
 const acceptsGzip = res => /\bgzip\b/.test(res.req?.headers["accept-encoding"] || "");
 const COMPRESSIBLE = /^(text\/|application\/json|image\/svg)/;
@@ -164,7 +213,17 @@ http.createServer((req, res) => {
   let url;
   try { url = decodeURIComponent(new URL(req.url, "http://x").pathname); } catch { return send(res, 400, "text/plain", "Bad request"); }
   if (url === "/" || url === "/index.html") return send(res, 200, TYPES[".html"], page({ site: origin(req) }));
-  if (url === "/healthz") return json(res, 200, { ok: true, lastSync, lastError, nextSync });
+  if (url === "/healthz") {
+    const synced_at = data().synced_at || null, stale = !synced_at || Date.parse(synced_at) < lastSlot().getTime();
+    return json(res, 200, { ok: !stale, synced_at, stale, lastSync, lastError, nextSync });
+  }
+  if (url === "/api/hit" && req.method === "POST") {
+    let raw = "";
+    req.on("data", c => { raw += c; if (raw.length > 300) req.destroy(); });
+    req.on("end", () => { try { countHit(req, JSON.parse(raw || "{}")); } catch {} res.writeHead(204); res.end(); });
+    return;
+  }
+  if (url === "/visits") return send(res, 200, TYPES[".html"], visitsPage());
   if (url.startsWith("/p/") || url.startsWith("/m/")) {
     const meta = previewFor(url, req);
     return meta ? send(res, 200, TYPES[".html"], page(meta)) : send(res, 404, "text/plain", "Not found");

@@ -1596,7 +1596,7 @@ function renderLiveCentre(j) {
 /* ---------------- install as an app ---------------- */
 let INSTALL = null;
 addEventListener("beforeinstallprompt", e => { e.preventDefault(); INSTALL = e; renderGetApp(); installBanner(); });
-addEventListener("appinstalled", () => { INSTALL = null; $("#installBar")?.remove(); renderGetApp(); });
+addEventListener("appinstalled", () => { trackEvent?.("installed"); INSTALL = null; $("#installBar")?.remove(); renderGetApp(); });
 /* a small banner on phones: Install on Android/Chrome, "Add to Home Screen" steps on iPhone. Closing it hides it for two weeks. */
 function installBanner() {
   const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
@@ -1610,13 +1610,38 @@ function installBanner() {
       <div><b>Get BoDevs Cricket on your phone</b><span>${INSTALL ? "Full screen, one tap away, scores readable offline." : "Tap <i class=\"ib-share\" aria-label=\"Share\">⇧</i> Share, then <b>Add to Home Screen</b>."}</span></div>
       ${INSTALL ? `<button type="button" class="btn solid small" id="ibGo">Install</button>` : ""}
       <button type="button" class="ib-x" id="ibX" aria-label="Not now">×</button></div>`);
-    setTimeout(() => $("#installBar")?.classList.add("on"), 30);
+    setTimeout(() => $("#installBar")?.classList.add("on"), 30); window.trackEvent?.("install_shown");
     const close = snooze => { if (snooze) try { localStorage.setItem("bdc-install-snooze", Date.now() + 14 * 864e5); } catch (x) {} const b = $("#installBar"); if (b) { b.classList.remove("on"); setTimeout(() => b.remove(), 300); } };
     $("#ibX").onclick = () => close(true);
-    const go = $("#ibGo"); if (go) go.onclick = async () => { const p = INSTALL; if (!p) return close(false); p.prompt(); const r = await p.userChoice.catch(() => ({})); INSTALL = null; close(r.outcome !== "accepted"); renderGetApp(); };
+    const go = $("#ibGo"); if (go) go.onclick = async () => { window.trackEvent?.("install_click"); const p = INSTALL; if (!p) return close(false); p.prompt(); const r = await p.userChoice.catch(() => ({})); INSTALL = null; close(r.outcome !== "accepted"); renderGetApp(); };
   }, 6000);
 }
 installBanner();
+
+/* ---------------- running late: Monday's sync hasn't landed by 9 AM Pakistan time ---------------- */
+function lateNotice() {
+  if (typeof D === "undefined" || !D?.synced_at || $("#lateBar")) return;
+  const pk = new Date(Date.now() + 5 * 3600e3), back = (pk.getUTCDay() + 6) % 7;
+  // this week's sync slot: Monday 2 AM PKT; give it until 9 AM before saying anything
+  const slot = Date.UTC(pk.getUTCFullYear(), pk.getUTCMonth(), pk.getUTCDate() - back, 2) - 5 * 3600e3;
+  if (Date.now() < slot + 7 * 3600e3 || Date.parse(D.synced_at) >= slot) return;
+  const when = new Date(D.synced_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "Asia/Karachi" });
+  document.querySelector("main")?.insertAdjacentHTML("afterbegin", `<div class="late-bar" id="lateBar" role="status"><div class="wrap">Sunday's scores are running late. You're seeing results up to ${when}; they'll appear here as soon as they arrive.</div></div>`);
+}
+
+/* ---------------- visitor counts: which page was opened, nothing about who (see /visits) ---------------- */
+const hit = (body) => { try { const b = JSON.stringify(body); if (!(navigator.sendBeacon && navigator.sendBeacon("/api/hit", new Blob([b], { type: "application/json" })))) fetch("/api/hit", { method: "POST", body: b, keepalive: true }).catch(() => {}); } catch (x) {} };
+window.trackEvent = e => { if (location.protocol.startsWith("http") && !/claude|anthropic/.test(location.hostname)) hit({ e }); };
+let lastHit = "";
+function trackView() {
+  if (!location.protocol.startsWith("http") || /claude|anthropic/.test(location.hostname)) return;
+  const id = location.hash.slice(1);
+  const kind = /^match-\d/.test(id) ? "match" : (typeof BySlug !== "undefined" && BySlug?.has(id.replace(/^player-/, ""))) || /^player-\d/.test(id) ? "player" : (typeof CUR_PAGE !== "undefined" && CUR_PAGE) || "home";
+  const key = kind + "|" + (kind === "player" || kind === "match" ? id : "");
+  if (key === lastHit) return; lastHit = key; hit({ p: kind });
+}
+addEventListener("hashchange", () => setTimeout(trackView, 400));
+setTimeout(() => { trackView(); if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) trackEvent("app_open"); }, 1500);
 function renderGetApp() {
   const el = $("#getappBody"); if (!el) return;
   const installed = matchMedia("(display-mode: standalone)").matches, ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -1624,7 +1649,7 @@ function renderGetApp() {
     <p>Opens full screen like an app, and the last synced scores stay readable without a connection.</p>
     ${INSTALL && !installed ? `<button type="button" class="btn solid" id="installBtn">Install BoDevs Cricket</button>` : ""}</div>
     <div class="ga-steps"><h3 class="tbl-title">${ios ? "On iPhone" : "On Android"}</h3><ol>${ios ? "<li>Open this site in Safari.</li><li>Tap the Share button.</li><li>Choose <b>Add to Home Screen</b>.</li>" : "<li>Open this site in Chrome.</li><li>Tap the menu (⋮).</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li>"}</ol></div></div>`;
-  const b = $("#installBtn"); if (b) b.onclick = async () => { INSTALL.prompt(); await INSTALL.userChoice.catch(() => {}); INSTALL = null; renderGetApp(); };
+  const b = $("#installBtn"); if (b) b.onclick = async () => { window.trackEvent?.("install_click"); INSTALL.prompt(); await INSTALL.userChoice.catch(() => {}); INSTALL = null; renderGetApp(); };
 }
 
 /* ---------------- invite: a richer Play us section ---------------- */
@@ -1669,7 +1694,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderPlayersHero(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };

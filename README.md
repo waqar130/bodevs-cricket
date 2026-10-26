@@ -17,6 +17,8 @@ Live at **https://cricket.waqarahmed.net**
 - The site has six pages, switched by the tabs under the masthead: **This week** (`#home`), **Players**, **Compare**, **Stats**, **Season** and **Club**. Old section links such as `#records` open the right page. Player and match pages are `#<player-slug>` and `#match-<id>`; player pages have sub-pages (`#<player-slug>/batting`, `/bowling`, `/splits`, `/scouting`, `/rivalries`, `/matches`); `/p/<slug>` and `/m/<id>` give WhatsApp link previews.
 - `data/fixtures.json` lists matches against outside teams and `assets/gallery/gallery.json` lists match-night photos (`{week: "YYYY-MM-DD" of the Tuesday, src, caption}`). Both sections stay hidden while empty.
 - Predictions are saved in `STORAGE_DIR` (default `storage/`; on Railway a volume is mounted at `/app/storage`).
+- Visitor counts are saved there too (`visits.json`) and shown at `/visits`: page views, daily visitors, install taps, installs and app opens. Totals only; no cookies, and no IP addresses are stored (a visitor is counted once a day through a hash with a salt that changes daily).
+- If the Monday sync still fails after its retries, the server posts a message to `ALERT_URL` when that variable is set: an ntfy.sh topic URL, a Discord or Slack webhook, or any URL that accepts a POST. Whatever happens, the site shows a "running late" notice from 9 AM Monday (Pakistan time) until new scores arrive. `/healthz` reports `stale: true` in the same case.
 - The server gzips text and answers 304 for unchanged files, so the 870 KB data file costs about 60 KB on a first visit and nothing on a repeat one.
 
 ## Seasons

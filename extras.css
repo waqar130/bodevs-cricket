@@ -768,3 +768,10 @@ main{counter-reset:spage tpage ppage cpage kpage}
 .ib-x{flex:none;background:none;border:0;color:#a9a49a;font:400 26px/1 var(--f-body);padding:4px 6px;cursor:pointer}
 @media print{.install-bar{display:none}}
 .install-bar .btn.solid,.install-bar .btn.solid:hover{background:var(--red);border-color:var(--red);color:#fff}
+
+/* data didn't load */
+.load-err{max-width:520px;padding:40px 0}
+.load-err b{display:block;font:900 clamp(32px,5vw,48px)/1 var(--f-display);text-transform:uppercase;margin-bottom:8px}
+.load-err p{font:400 18px/1.5 var(--f-body);color:var(--muted);margin:0 0 16px}
+/* Monday's scores are late */
+.late-bar{background:#ffd23f;color:#141413;font:600 14px/1.4 var(--f-body);padding:10px 0;border-bottom:1px solid #141413}
