@@ -1019,26 +1019,51 @@ function careerTables(p) {
     <p class="rank-note" style="margin-top:8px">30 counts scores of 30 to 49. BBI: best figures in an innings; BBM: best in a match.</p>`;
 }
 
+/* ---------------- milestones for the trophy cabinet: unlocked with when, or how close ---------------- */
+function milestoneCards(p) {
+  const log = [...p.log.values()]; if (!log.length) return { html: "", got: 0, total: 0 };
+  const X = buildXR().raw, when = mm => `${fmtD(mm.date, { day: "numeric", month: "short" })}, <a href="#match-${mm.id}">match #${mm.id}</a>`;
+  const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));
+  const firstOf = (list, ok) => list.find(ok), bestOf = (list, f) => list.reduce((m, x) => Math.max(m, f(x)), 0);
+  const cards = [];
+  // a card: unlocked shows the moment it happened, locked shows the best so far and the gap
+  const add = (k, hit, big, unit, line, best, need, bestUnit) => cards.push(hit
+    ? { on: 1, html: `<article class="pa-card ms on"><p class="kicker">${k}</p><span class="pa-status">★ Unlocked</span><div class="pa-big">${big}</div><div class="aw-unit">${unit}</div><p class="pa-line">${line}</p></article>` }
+    : { on: 0, html: `<article class="pa-card ms na"><p class="kicker">${k}</p><span class="pa-status">Not yet</span><div class="pa-big">${best}</div><div class="aw-unit">${bestUnit}</div><p class="pa-line">${need}</p></article>` });
+  // batting: the big number is the best (or how many), the line says when it first happened
+  const sc = x => `${x.b.r}${x.b.no ? "*" : ""} (${x.b.b})`, n = (c, one, many) => `${c} ${c === 1 ? one : many}`;
+  const fifties = inns.filter(x => x.b.r >= 50), hs = inns.reduce((m, x) => !m || x.b.r > m.b.r ? x : m, null), hsr = hs ? hs.b.r : 0;
+  add("Half-century", fifties.length, fifties.length, fifties.length === 1 ? "fifty" : "fifties", fifties.length ? `First: ${sc(fifties[0])} on ${when(fifties[0].l.mm)}. Best: ${sc(hs)}.` : "", hsr, `${50 - hsr} short of a first fifty.`, "best score so far");
+  const tons = inns.filter(x => x.b.r >= 100);
+  // the century card only once a fifty is in the bag, so each locked card points at the next target
+  if (fifties.length) add("Century", tons.length, tons.length, tons.length === 1 ? "hundred" : "hundreds", tons.length ? `First: ${sc(tons[0])} on ${when(tons[0].l.mm)}.` : "", hsr, `${100 - hsr} short of a hundred.`, "best score so far");
+  const big6 = inns.filter(x => x.b.s >= 5), b6 = inns.reduce((m, x) => !m || x.b.s > m.b.s ? x : m, null), bs = b6 ? b6.b.s : 0;
+  add("Six machine", big6.length, bs, "sixes in an innings, his best", big6.length ? `Best in ${sc(b6)} on ${when(b6.l.mm)}. ${n(big6.length, "innings", "innings")} with 5+ sixes.` : "", bs, `${5 - bs} more sixes in one innings for 5.`, "most sixes in an innings");
+  const ov = X.overBat.filter(x => x.id === p.id), o5 = ov.filter(x => x.s >= 5), bo = ov.reduce((m, x) => !m || x.s > m.s || (x.s === m.s && x.r > m.r) ? x : m, null), bos = bo ? bo.s : 0;
+  add("Over destroyer", o5.length, bos, "sixes in one over, his best", o5.length ? `${bo.r} off the over${bo.bw ? ` from ${esc(short(bo.bw))}` : ""} on ${when(bo.mm)}. ${n(o5.length, "over", "overs")} with 5+ sixes.` : "", bos, `${5 - bos} more sixes in one over for 5.`, "most sixes in an over");
+  const fin = inns.filter(x => x.b.r >= 30 && x.b.no), bno = inns.filter(x => x.b.no).reduce((m, x) => !m || x.b.r > m.b.r ? x : m, null);
+  add("Finisher", fin.length, fin.length, fin.length === 1 ? "unbeaten 30+" : "unbeaten 30+ scores", fin.length ? `Best: ${sc(bno)} on ${when(bno.l.mm)}. First: ${sc(fin[0])}.` : "", bno ? bno.b.r : 0, "An unbeaten 30 unlocks this.", "best not-out score");
+  // bowling
+  const hauls = spells.filter(x => x.b.w >= 3), bb = spells.reduce((m, x) => !m || x.b.w > m.b.w || (x.b.w === m.b.w && x.b.r < m.b.r) ? x : m, null);
+  if (spells.length) add("Three-wicket haul", hauls.length, bb ? `${bb.b.w}/${bb.b.r}` : "", "best figures", hauls.length ? `${n(hauls.length, "haul", "hauls")}. Best on ${when(bb.l.mm)}.` : "", bb ? `${bb.b.w}/${bb.b.r}` : "–", `${3 - (bb ? bb.b.w : 0)} more wicket${3 - (bb ? bb.b.w : 0) === 1 ? "" : "s"} in a spell for a haul.`, "best figures so far");
+  const wms = X.overBowl.filter(x => x.id === p.id && x.r === 0 && x.w > 0).sort((a, b) => a.mm.date - b.mm.date);
+  if (spells.length) add("Wicket maiden", wms.length, wms.length, wms.length === 1 ? "wicket maiden" : "wicket maidens", wms.length ? `First: ${wms[0].w}/0 in over ${wms[0].ov} on ${when(wms[0].mm)}.` : "", 0, "A wicket in an over with no runs off it.", "so far");
+  // fielding
+  const c3 = log.filter(l => l.c >= 3), bc = log.reduce((m, l) => !m || l.c > m.c ? l : m, null), bcc = bc ? bc.c : 0;
+  add(p.keeper ? "Safe gloves" : "Safe pair", c3.length, bcc, "catches in a match, his best", c3.length ? `Best on ${when(bc.mm)}. ${n(c3.length, "match", "matches")} with 3+ catches.` : "", bcc, `${3 - bcc} more catch${3 - bcc === 1 ? "" : "es"} in one match for 3.`, "most catches in a match");
+  // honours
+  const mv = WEEKS.slice().reverse().filter(w => w.isMvp(p.id));
+  add("MVP of the week", mv.length, mv.length, mv.length === 1 ? "week" : "weeks", mv.length ? `First: issue ${mv[0].issue}, ${weekRange(mv[0])}.${mv.length > 1 ? ` Latest: issue ${mv.at(-1).issue}.` : ""}` : "", 0, "Top the weekly points to unlock.", "MVPs so far");
+  const mom = log.filter(l => (l.mm.poms || []).some(x => x.id === p.id));
+  add("Man of the Match", mom.length, mom.length, mom.length === 1 ? "match" : "matches", mom.length ? `First on ${when(mom[0].mm)}. Latest on ${when(mom.at(-1).mm)}.` : "", 0, "The best performance in a match unlocks it.", "so far");
+  const on = cards.filter(c => c.on);
+  return { html: [...on, ...cards.filter(c => !c.on)].map(c => c.html).join(""), got: on.length, total: cards.length };
+}
+
 /* ---------------- player extras: timeline, best and worst, partners, position, teammates, achievements ---------------- */
 function playerExtras(p) {
   if (!p.matches) return {};
   const log = [...p.log.values()], X = buildXR().raw, out = {};
-  // achievements: first time he did each thing
-  const firsts = [];
-  const first = (label, test, detail) => { for (const l of log) { const r = test(l); if (r) { firsts.push({ label, mm: l.mm, detail: detail ? detail(l, r) : "" }); return; } } };
-  first("First 30", l => l.bat.find(b => b.r >= 30), (l, b) => `${b.r} off ${b.b}`);
-  first("First 50", l => l.bat.find(b => b.r >= 50), (l, b) => `${b.r} off ${b.b}`);
-  first("First 100", l => l.bat.find(b => b.r >= 100), (l, b) => `${b.r} off ${b.b}`);
-  first("5+ sixes in an innings", l => l.bat.find(b => b.s >= 5), (l, b) => `${b.s} sixes`);
-  first("Unbeaten 30+", l => l.bat.find(b => b.r >= 30 && b.no), (l, b) => `${b.r}*`);
-  first("3-wicket haul", l => l.bowl.find(b => b.w >= 3), (l, b) => `${b.w}/${b.r}`);
-  first("3 catches in a match", l => l.c >= 3 && l.c, (l, c) => `${c} catches`);
-  const six6 = X.overBat.filter(x => x.id === p.id && x.s >= 5).sort((a, b) => a.mm.date - b.mm.date)[0]; if (six6) firsts.push({ label: six6.s >= 6 ? "Six sixes in an over" : "5 sixes in an over", mm: six6.mm, detail: `${six6.r} off the over` });
-  const wm = X.overBowl.filter(x => x.id === p.id && x.r === 0 && x.w > 0).sort((a, b) => a.mm.date - b.mm.date)[0]; if (wm) firsts.push({ label: "Wicket maiden", mm: wm.mm, detail: `${wm.w}/0` });
-  const fm = WEEKS.slice().reverse().find(w => w.isMvp(p.id)); if (fm) firsts.push({ label: "First weekly MVP", mm: fm.WM[0], detail: `Issue ${fm.issue}` });
-  const fp = log.find(l => (l.mm.poms || []).some(x => x.id === p.id)); if (fp) firsts.push({ label: "First Man of the Match", mm: fp.mm, detail: "" });
-  firsts.sort((a, b) => a.mm.date - b.mm.date);
-  const ach = `<h2 class="sec-t">Achievements</h2>${firsts.length ? `<div class="ach-grid">${firsts.map(x => `<div class="ach"><span class="ach-i">★</span><b>${x.label}</b><small>${x.detail ? esc(x.detail) + " · " : ""}${matchLink(x.mm)}</small></div>`).join("")}</div>` : `<p class="dnb">The first badge is one good game away.</p>`}`;
   // career timeline by issue
   const wk = [...WEEKS].reverse().map(w => { const ls = log.filter(l => w.WM.some(m => m.id === l.mm.id)); return { w, r: ls.reduce((a, l) => a + l.bat.reduce((s, b) => s + b.r, 0), 0), wk: ls.reduce((a, l) => a + l.bowl.reduce((s, b) => s + b.w, 0), 0), n: ls.length }; });
   const mxr = Math.max(30, ...wk.map(x => x.r)), mxw = Math.max(3, ...wk.map(x => x.wk)), CW = 640, CH = 170, bw = (CW - 40) / wk.length;
@@ -1052,7 +1077,7 @@ function playerExtras(p) {
     <line x1="20" x2="${CW - 20}" y1="110" y2="110" class="fc-base"/></svg>
     <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w" style="border-radius:0"></i>Wickets</span><span>by issue</span></p></div>
     ${ms.length ? `<ul class="tl-ms">${ms.map(x => `<li><b>${esc(x.what)}</b> <span>Issue ${x.w.issue}</span></li>`).join("")}</ul>` : ""}`;
-  out.overview = ach + dnaRadar(p) + tl;
+  out.overview = dnaRadar(p) + tl;
   out.overviewEnd = careerTables(p);
   // best and worst
   const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));

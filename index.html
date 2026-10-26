@@ -1518,9 +1518,12 @@ function awardsFor(p){
   if(p.captain){const k=p.tm.key,ms=[...p.log.values()].map(l=>l.mm),w=ms.filter(m=>m.win&&m.win.key===k).length,l=ms.filter(m=>m.win&&m.win.key!==k).length;
     cap=`<article class="pa-card cap ${k}"><p class="kicker">Captain's record</p><span class="pa-status">${esc(p.team)}</span>
       <div class="pa-big">${w}–${l}</div><div class="aw-unit">won–lost</div><p class="pa-line">${Math.round(w/(w+l||1)*100)}% of matches won as captain.</p></article>`}
+  const ms=typeof milestoneCards==="function"?milestoneCards(p):{html:"",got:0,total:0};
   return `<h2 class="sec-t">Trophy cabinet</h2>
-    <p class="pa-sum">${held?`Holds <b>${held}</b> of ${AWARDS.length} season awards`:"No season awards held yet"}${ru?`, runner-up in <b>${ru}</b>`:""}. Awards are re-counted every Monday.</p>
-    <div class="pa-grid">${cap}${cards.map(c=>c.html).join("")}</div>`;
+    <p class="pa-sum">${held?`Holds <b>${held}</b> of ${AWARDS.length} season awards`:"No season awards held yet"}${ru?`, runner-up in <b>${ru}</b>`:""}${ms.total?`, and has unlocked <b>${ms.got}</b> of ${ms.total} milestones`:""}. Re-counted every Monday.</p>
+    <h3 class="tbl-title">Season awards</h3>
+    <div class="pa-grid">${cap}${cards.map(c=>c.html).join("")}</div>
+    ${ms.html?`<h3 class="tbl-title" style="margin-top:26px">Milestones</h3><div class="pa-grid">${ms.html}</div>`:""}`;
 }
 
 /* ---------- form guide ---------- */

@@ -338,12 +338,6 @@ html section[id],html #top,html #since{scroll-margin-top:118px}
 .wvw small.up{color:#1f8a4c}.wvw small.down{color:var(--red)}
 .wvw i{font-style:normal;color:var(--muted);text-align:right}
 /* player extras */
-.ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:10px;margin-top:8px}
-.ach{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;background:#111;color:#f3efe6;padding:10px 12px}
-.ach-i{grid-row:span 2;font-size:22px;color:#ffd23f}
-.ach b{font:800 16px/1.1 var(--f-display);text-transform:uppercase}
-.ach small{font:400 11px var(--f-data);color:#bdb7aa}
-.ach a{color:inherit}
 .tl-ms{list-style:none;display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:4px}
 .tl-ms li{font:400 13px var(--f-data);background:var(--paper-2);padding:4px 8px}
 .tl-ms span{color:var(--muted)}
@@ -542,3 +536,11 @@ td.mp{font-weight:600}td.mp.abv{background:rgba(31,138,76,.16);color:#14653a}td.
 .mom-b{display:inline-flex;align-items:center;font:700 10.5px/1 var(--f-data);letter-spacing:.06em;text-transform:uppercase;background:#ffd23f;color:#141413;padding:5px 8px;border-left:3px solid var(--ink)}
 .mom-b.t{border-left-color:var(--tiger)}.mom-b.f{border-left-color:var(--falcon)}
 .pb.style.fast{border-color:#a3241b;color:#a3241b}.pb.style.spin{border-color:#5b4bb5;color:#5b4bb5}
+
+/* milestones in the trophy cabinet */
+.pa-card.ms.on{border-top-color:#1f8a4c;background:#0f2a1c;color:#eef5ef}
+.pa-card.ms.on .pa-status{background:#1f8a4c;border-color:#1f8a4c;color:#fff}
+.pa-card.ms.on .pa-big{color:#7fe0a3}
+.pa-card.ms.on .pa-line,.pa-card.ms.on .pa-line a{color:#cfe3d5}
+.pa-card.ms.on .aw-unit{color:#cfe3d5}
+.pa-card.ms.na .pa-big{color:var(--muted)}
