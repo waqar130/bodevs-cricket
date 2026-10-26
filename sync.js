@@ -18,7 +18,7 @@ const decode = s => s.replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").rep
 // Scorecard name -> BoDevs profile (full name, job, photo on bodevs.com)
 const PROFILES = {
   "Waqar":        { full: "Waqar Ahmed",       job: "Senior Project Manager",                     photo: "waqar-min.png", bowl: "fast" },
-  "Tassadduq":    { full: "Tassadduq Hussain", job: "Solution Architect & Senior Full-Stack Engineer", photo: "tassadduq-min.png", captain: true },
+  "Tassadduq":    { full: "Tassadduq Hussain", job: "Solution Architect & Senior Full-Stack Engineer", photo: "tassadduq-min.png", captain: true, bowl: "spin" },
   "Abdullah":     { full: "Abdullah Ali",      job: "Senior Full-Stack Engineer",                 photo: "abdullah-min.png", bowl: "spin" },
   "Asad":         { full: "M. Asad",           job: "Senior Full-Stack Engineer",                 photo: "asad-min.png", bowl: "fast" },
   "Fawad":        { full: "Favad Nafees",      job: "Motion & Animation Designer",                photo: "favad-min.png", bowl: "spin" },

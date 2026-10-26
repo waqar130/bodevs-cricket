@@ -369,7 +369,7 @@ document.addEventListener("click", e => { const m = document.querySelector(".nav
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
 const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  playershero: "players", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
+  playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -814,6 +814,83 @@ function renderPlayersHero() {
         <div><b>${ps.filter(p => p.bowl_style === "fast").length}</b><span>pace bowlers</span></div><div><b>${ps.filter(p => p.bowl_style === "spin").length}</b><span>spinners</span></div><div><b>${ps.filter(p => p.captain).length}</b><span>captains</span></div></div>
     </div>
     <div class="sh-stars ph-stars">${stars.map(card).join("")}</div></div>`;
+}
+
+/* ---------------- debut watch: squad members who haven't played yet ---------------- */
+function nextSundayNight() {
+  // 10:30 PM PKT this coming Sunday (or tonight, if it's Sunday before then)
+  const pk = new Date(Date.now() + 5 * 3600e3), add = (7 - pk.getUTCDay()) % 7;
+  let t = Date.UTC(pk.getUTCFullYear(), pk.getUTCMonth(), pk.getUTCDate() + add, 22, 30) - 5 * 3600e3;
+  if (t < Date.now()) t += 7 * 864e5; return new Date(t);
+}
+function debutIcs(p) {
+  const st = nextSundayNight(), en = new Date(st.getTime() + 2.5 * 3600e3), f = x => x.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//BoDevs Cricket//EN", "BEGIN:VEVENT", `UID:debut-${p.id}-${f(st)}@cricket.waqarahmed.net`, `DTSTAMP:${f(new Date())}`,
+    `DTSTART:${f(st)}`, `DTEND:${f(en)}`, "SUMMARY:BoDevs Cricket: debut night", "LOCATION:SportsX\\, G-12 Islamabad", `DESCRIPTION:${p.name} plays for ${p.team}. Tilde swing ball. Bring your trainers.`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  return URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+}
+function renderDebut() {
+  const sec = $("#debut"), el = $("#debutBody"); if (!el) return;
+  const ds = [...P.values()].filter(p => !p.matches && p.tm?.key);
+  sec.hidden = !ds.length; if (!ds.length) { el.innerHTML = ""; return; }
+  const when = nextSundayNight().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Karachi" });
+  const tm = k => M.filter(m => m.win?.key === k).length, style = { fast: "Pace bowler", spin: "Spin bowler" };
+  const one = p => {
+    const mates = [...P.values()].filter(q => q.tm?.key === p.tm.key && q.matches).sort((a, b) => b.bat.r - a.bat.r).slice(0, 3);
+    const msg = `I'm in for Sunday at SportsX. Debut night for ${p.name}!`;
+    return `<article class="db-card ${p.tm.key}">
+      <a class="db-ph" href="${purl(p.id)}">${p.photo ? `<img src="${p.photo}" alt="${esc(p.name)}" loading="lazy">` : ""}<span>Cap #${[...P.values()].filter(q => q.matches).length + 1 + ds.indexOf(p)}</span></a>
+      <div class="db-copy">
+        <p class="kicker">Debut watch · ${esc(p.team)}</p>
+        <h2 class="db-head">${esc(p.name)}, your cap is waiting.</h2>
+        <p class="pbadges">${p.job ? `<span class="pb pjob">${esc(p.job)}</span>` : ""}${p.bowl_style ? `<span class="pb cric">${style[p.bowl_style]}</span>` : ""}${p.keeper ? `<span class="pb role wk">Keeper</span>` : ""}</p>
+        <p class="db-dek">Next match night is <b>${when}, 10:30 PM</b> at SportsX, G-12. One match and the whole site lights up: a place in the MVP race, the form guide, the record book and a trophy cabinet to fill.</p>
+        <ul class="db-list">
+          <li><b>${tm(p.tm.key)}</b><span>wins for the ${esc(p.tm.short)} so far</span></li>
+          <li><b>${mates.map(q => esc(q.name.split(" ")[0])).join(", ")}</b><span>teammates to bat with</span></li>
+          <li><b>Tilde</b><span>swing ball, provided</span></li>
+        </ul>
+        <div class="db-cta"><a class="btn solid" id="dbIcs${p.id}" download="bodevs-cricket-debut.ics" href="#">Add Sunday to my calendar</a>
+          <a class="btn" href="https://wa.me/923135052165?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Tell the group I'm in ↗</a></div>
+      </div></article>`;
+  };
+  el.innerHTML = ds.map(one).join("");
+  ds.forEach(p => { const a = $("#dbIcs" + p.id); if (a) a.addEventListener("click", ev => { a.href = debutIcs(p); }, { capture: true }); });
+}
+
+/* ---------------- compare cover: the season's biggest one-on-one battles ---------------- */
+function renderCompareHero() {
+  const el = $("#compareHeroBody"); if (!el || typeof H === "undefined" || !H.size) return;
+  const duels = [...H.values()].filter(x => x.b >= 24).sort((a, b) => b.b - a.b).slice(0, 4);
+  const lsr = (() => { let r = 0, b = 0; H.forEach(x => { r += x.r; b += x.b; }); return b ? r / b * 100 : 0; })();
+  const verdict = x => { const sr = x.r / x.b * 100; return x.outs && sr < lsr ? `${esc(pname(x.bowl).split(" ")[0])} on top` : sr >= lsr && x.outs <= 2 ? `${esc(pname(x.bat).split(" ")[0])} on top` : "Even"; };
+  el.innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">Head to head · ${H.size} batter-bowler matchups</p>
+      <h2 class="sh-head">Settle it with numbers.</h2>
+      <p class="sh-dek">Pick any two players below. Or start with the season's longest-running battles: the batters and bowlers who have faced each other most.</p></div>
+    <div class="cmp-duels">${duels.map(x => `<button type="button" class="cmp-duel" data-a="${x.bat}" data-b="${x.bowl}">
+      <span class="cd-names"><b>${esc(pname(x.bat))}</b><i>v</i><b>${esc(pname(x.bowl))}</b></span>
+      <span class="cd-nums"><em>${x.r}<small>runs</small></em><em>${x.b}<small>balls</small></em><em>${x.outs}<small>outs</small></em><em>${Math.round(x.r / x.b * 100)}<small>SR</small></em></span>
+      <span class="cd-v">${verdict(x)} →</span></button>`).join("")}</div></div>`;
+  el.querySelectorAll(".cmp-duel").forEach(b => b.addEventListener("click", () => {
+    const A = $("#cmpA"), B = $("#cmpB"); if (!A || !B) return;
+    A.value = b.dataset.a; B.value = b.dataset.b; A.dispatchEvent(new Event("change", { bubbles: true })); B.dispatchEvent(new Event("change", { bubbles: true }));
+    $("#compare").scrollIntoView({ behavior: "smooth" }); }));
+}
+
+/* ---------------- club cover ---------------- */
+function renderClubHero() {
+  const el = $("#clubHeroBody"); if (!el || !M?.length) return;
+  const ps = [...P.values()].filter(p => p.tm?.key), inns = M.flatMap(m => m.s.scorecards), sixes = inns.reduce((a, sc) => a + sc.batting.reduce((x, b) => x + b.sixes, 0), 0);
+  const nights = new Set(M.map(m => new Date(m.date).toDateString())).size;
+  const go = [["#play", "Play us", "Bring a team to SportsX"], ["#getapp", "Get the app", "Scores on your home screen"], ["#kit", "The ball", "Why the Tilde swings"], ["#archive", "Archive", "Every season, kept"]].filter(([h]) => $(h));
+  el.innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">The club · SportsX, G-12 Islamabad</p>
+      <h2 class="sh-head">Sunday nights, under the lights.</h2>
+      <p class="sh-dek">Two BoDevs sides, one caged astro-turf box and the Tilde swing ball, with every ball scored live by the umpires.</p>
+      <div class="sh-stats"><div><b>${ps.length}</b><span>in the squad</span></div><div><b>${nights}</b><span>match nights</span></div><div><b>${M.length}</b><span>matches</span></div>
+        <div><b>${sixes.toLocaleString()}</b><span>sixes</span></div><div><b>${(typeof SEASONS !== "undefined" && SEASONS?.length) || 1}</b><span>season${(SEASONS?.length || 1) > 1 ? "s" : ""}</span></div><div><b>10:30</b><span>PM, first ball</span></div></div></div>
+    <nav class="club-go">${go.map(([h, t, s]) => `<a href="${h}"><b>${t}</b><span>${s}</span><i>→</i></a>`).join("")}</nav></div>`;
 }
 
 /* ---------------- stats cover: the headline records, as big numbers ---------------- */
@@ -1571,7 +1648,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderPlayersHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); renderStatsHero(); renderPlayersHero(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
@@ -1591,7 +1668,10 @@ function nameSwapper() {
     const i = p.name.toLowerCase().indexOf(p.src.toLowerCase());
     // don't touch a nickname that's already part of the full name ("Waqar Ahmed", "M. Asad")
     const pre = i > 0 ? `(?<!${rx(p.name.slice(0, i))})` : "", post = i >= 0 ? `(?!${rx(p.name.slice(i + p.src.length))})` : "";
-    return { re: new RegExp(`${pre}\\b${rx(p.src)}\\b${i >= 0 && i + p.src.length < p.name.length ? post : ""}`, "gi"), full: p.name };
+    // nor one that's part of a team name ("Farhan Falcons", "Tassadduq Tigers")
+    const teamWords = [...new Set([...P.values()].map(q => q.team).filter(t => t && t.toLowerCase().startsWith(p.src.toLowerCase() + " ")).map(t => rx(t.slice(p.src.length))))];
+    const notTeam = teamWords.length ? `(?!${teamWords.join("|")})` : "";
+    return { re: new RegExp(`${pre}\\b${rx(p.src)}\\b${i >= 0 && i + p.src.length < p.name.length ? post : ""}${notTeam}`, "gi"), full: p.name };
   });
   return node => {
     const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: t => /^(SCRIPT|STYLE|TEXTAREA)$/.test(t.parentNode?.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
