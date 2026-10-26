@@ -1734,7 +1734,7 @@ let RECS=null,DROPS=[];const REC={tab:"bat",cat:{bat:"hs",bowl:"bbi",fld:"ctm"}}
 try{const sv=JSON.parse(localStorage.getItem("bdc-rec")||"null");if(sv&&sv.tab)Object.assign(REC,sv,{cat:{...REC.cat,...sv.cat}})}catch(e){}
 const runVal=t=>t.kind==="six"?6:t.kind==="four"?4:/^\d+$/.test(String(t.mark))?+t.mark:0;
 function buildRecords(){
-  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map(),fInn=[],mFld=new Map();
+  const inn=[],spells=[],overs=[],mBat=new Map(),mBowl=new Map(),fInn=[],mFld=new Map(),hat=[],cnb=new Map(),UP=new Map([...P.values()].map(p=>[p.name.toUpperCase(),p.id]));
   M.forEach(mm=>mm.s.scorecards.forEach(sc=>{
     const ino=sc.innings_no,last=sc===mm.s.scorecards.at(-1),won=mm.win?.name===sc.batting_team,lost=!!mm.win&&!won;
     sc.batting.forEach(x=>{let c=0,f50=null,f100=null;
@@ -1751,6 +1751,20 @@ function buildRecords(){
     const fid=x=>x.id||byName.get(x.name);(sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i)fe(i).c+=x.count});(sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i)fe(i).ro+=x.count||1});
     fi.forEach(x=>{fInn.push(x);const k=mm.id+"|"+x.id,e=mFld.get(k)||{id:x.id,mm,ino,opp:x.opp,c:0,ro:0,parts:[]};
       e.c+=x.c;e.ro+=x.ro;e.parts.push([x.c&&`${x.c} ct`,x.ro&&`${x.ro} ro`].filter(Boolean).join(", "));mFld.set(k,e)});
+    // hat-trick watch: a bowler's wickets in consecutive legal balls in an innings (wides and no-balls don't break it, a run out does);
+    // caught-and-bowled: "c & b X" or "c X b X"
+    const seq=new Map();
+    [...(sc.commentary||[])].reverse().filter(c=>c.type==="ball").forEach(c=>{
+      const t=String(c.text).match(/^(.+?) TO (.+?), (.*)$/);if(!t)return;const bw=UP.get(t[1]);if(!bw)return;
+      const k=c.badge?.kind,how=c.detail?.how||"";if(k==="wide"||k==="noball"||c.badge?.extra==="noball")return;
+      const bwlW=k==="wicket"&&!/run out/i.test(how)&&!/RUN OUT/.test(t[3]);
+      const s=seq.get(bw)||{id:bw,mm,ino,opp:sc.batting_team,n:0,v:[],ov:[]};
+      if(bwlW){s.n++;s.v.push(UP.get(t[2]));s.ov.push(c.over);seq.set(bw,s)}
+      else{if(s.n>=2)hat.push({...s});seq.set(bw,{id:bw,mm,ino,opp:sc.batting_team,n:0,v:[],ov:[]})}
+      const cb=how.match(/^c (.+?) b (.+)$/);
+      if(bwlW&&cb&&(cb[1]==="&"||cb[1]===cb[2])){const e=cnb.get(bw)||{id:bw,n:0,v:[]};e.n++;e.mm=mm;e.ino=ino;e.opp=sc.batting_team;e.v.push(UP.get(t[2]));cnb.set(bw,e)}
+    });
+    seq.forEach(s=>{if(s.n>=2)hat.push(s)});
     (sc.commentary||[]).filter(c=>c.type==="over").forEach(c=>{
       const nm=String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/,""),id=byName.get(nm);if(!id)return;
       overs.push({id,mm,ino,opp:sc.batting_team,r:parseInt(c.text)||0,w:+((String(c.text).match(/(\d+) wicket/)||[])[1]||0),o:c.over_no,lbl:sc.label})});
@@ -1779,6 +1793,7 @@ function buildRecords(){
       {k:"bsr",t:"Best strike rate in a spell",note:"Spells with 2 wickets or more. Balls bowled per wicket.",rows:top(spells,x=>x.w>=2,(a,b)=>a.b/a.w-b.b/b.w||b.w-a.w),big:x=>r1(x.b/x.w),unit:()=>"balls per wicket",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
       {k:"dotp",t:"Highest dot-ball rate",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>b.dots/b.b-a.dots/a.b||a.r-b.r),big:x=>`${Math.round(x.dots/x.b*100)}%`,unit:x=>`dots in ${x.ov} overs`,det:x=>`${x.dots} dots · ${x.w}/${x.r}`},
       {k:"wkm",t:"Most wickets in an over",rows:top(overs,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>x.w,unit:()=>"wickets in one over",det:x=>`Over ${x.o} · ${x.r} runs`},
+      {k:"hat",t:"Hat-trick watch",note:"Wickets in consecutive legal balls by the same bowler in one innings. Three is a hat-trick. Wides and no-balls in between don't break the run.",rows:top(hat,all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:x=>x.n>=3?"wickets in a row: hat-trick":"wickets in consecutive balls",det:x=>`Balls ${x.ov.join(", ")}: ${x.v.map(id=>id?esc(pname(id)):"?").join(", ")}`},
       {k:"exs",t:"Most expensive spells",rows:top(spells,all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · econ ${r1(x.r/x.b*6)}`},
       {k:"sxc",t:"Most sixes conceded in a spell",rows:top(spells,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:x=>`sixes in ${x.ov} overs`,det:x=>`${x.w}/${x.r}`},
       {k:"exp",t:"Most runs conceded in an over",rows:top(overs,all,(a,b)=>b.r-a.r||a.w-b.w),big:x=>x.r,unit:()=>"runs in one over",det:x=>`Over ${x.o} of the ${x.lbl} innings${x.w?` · ${x.w} wkt`:""}`},
@@ -1788,6 +1803,7 @@ function buildRecords(){
       {k:"cti",t:"Most catches in an innings",rows:top(fInn,x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches in one innings",det:x=>x.ro?`Plus ${x.ro} run out${x.ro>1?"s":""}`:"Catches only"},
       {k:"rom",t:"Most run outs in a match",rows:top([...mFld.values()],x=>x.ro>0,(a,b)=>b.ro-a.ro||b.c-a.c),big:x=>x.ro,unit:x=>`run out${x.ro>1?"s":""}`,det:x=>x.parts.join(" & ")},
       {k:"dis",t:"Most dismissals in a match",note:"Catches and run outs together.",rows:top([...mFld.values()],x=>x.c+x.ro>0,(a,b)=>(b.c+b.ro)-(a.c+a.ro)||b.c-a.c),big:x=>x.c+x.ro,unit:()=>"dismissals",det:x=>`${x.c} ct · ${x.ro} ro`},
+      {k:"cnb",t:"Caught and bowled",note:"Bowlers who took the catch off their own bowling, season total. The match is the latest one.",rows:top([...cnb.values()],all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:()=>"caught and bowled",det:x=>{const c=new Map();x.v.forEach(id=>c.set(id,(c.get(id)||0)+1));return [...c].sort((p,q)=>q[1]-p[1]).map(([id,n])=>(id?esc(pname(id)):"?")+(n>1?` ×${n}`:"")).join(", ")}},
       {k:"kp",t:"Keeper: most catches in a match",note:"Catches by a wicket-keeper.",rows:top([...mFld.values()],x=>x.c>0&&P.get(x.id)?.keeper,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
     ]};
 }
