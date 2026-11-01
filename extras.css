@@ -775,3 +775,18 @@ main{counter-reset:spage tpage ppage cpage kpage}
 .load-err p{font:400 18px/1.5 var(--f-body);color:var(--muted);margin:0 0 16px}
 /* Monday's scores are late */
 .late-bar{background:#ffd23f;color:#141413;font:600 14px/1.4 var(--f-body);padding:10px 0;border-bottom:1px solid #141413}
+/* rivalries: runners-up packed tight, stat and note on one line */
+.nb-r.sub{padding:2px 0;gap:0 10px;grid-template-columns:22px minmax(0,1fr) auto}
+.nb-r.sub .nb-who{gap:8px}
+.nb-r.sub .nb-who .thumb{width:26px;height:26px;transform:none;font-size:10px}
+.nb-r.sub .nb-who b{font-size:15px}
+.nb-r.sub .nb-stat{font-size:16px}
+.nb-r.sub .nb-note{grid-column:2/-1;padding-left:34px;font-size:11px;line-height:1.3;margin-top:-2px}
+@media(min-width:600px){
+  .nb-r.sub{grid-template-columns:22px auto minmax(0,1fr) auto;padding:3px 0}
+  .nb-r.sub .nb-stat{grid-column:4;grid-row:1}
+  .nb-r.sub .nb-note{grid-column:3;grid-row:1;padding-left:4px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
+.rivals .nb-r.sub{padding:2px 0}
+.rivals .nb-r.sub .nb-who .thumb{width:22px;height:22px}
+.rivals .nb-r.sub .nb-n{font-size:11px}
