@@ -2164,8 +2164,8 @@ function rivalries(p){
   const id=p.id,asBat=[...H.values()].filter(x=>x.bat===id&&P.has(x.bowl)),asBowl=[...H.values()].filter(x=>x.bowl===id&&P.has(x.bat));
   const fl=[...FX.values()].filter(x=>x.bat===id);
   const sr=x=>x.b?x.r/x.b*100:0,ec=x=>x.b?x.r/x.b*6:0,dp=x=>x.b?x.dots/x.b*100:0;
-  // the top three in each category
-  const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a)).slice(0,3);
+  // every qualifying opponent in each category, ranked
+  const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a));
   const nm=id2=>pname(id2);
   const row=(label,list,who,stat,note)=>list.length?`<div class="nb"><span class="kicker">${label}</span>${list.map((x,i)=>{const oid=x[who];return `<div class="nb-r${i?" sub":""}"><span class="nb-n">${i+1}</span><a class="nb-who" href="${purl(oid)}">${miniThumb(P.get(oid))}<b>${esc(pname(oid))}</b></a><span class="nb-stat">${stat(x)}</span>${note&&note(x)?`<span class="nb-note">${note(x)}</span>`:""}</div>`}).join("")}</div>`:"";
   const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`;
