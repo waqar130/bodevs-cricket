@@ -573,13 +573,20 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .rivals{display:grid;gap:36px;margin-top:10px}
 @media(min-width:1000px){.rivals{grid-template-columns:1fr 1fr;gap:48px}}
 .rivals>div{min-width:0}
-.nb{display:grid;grid-template-columns:1fr auto;gap:2px 16px;padding:14px 0;border-bottom:1px solid var(--rule);align-items:center}
-.nb .kicker{grid-column:1/-1}
+.nb{padding:14px 0;border-bottom:1px solid var(--rule)}
+.nb .kicker{display:block;margin-bottom:4px}
+.nb-r{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:6px 0}
+.nb-r.sub{padding:4px 0;border-top:1px dashed var(--rule)}
+.nb-n{font:700 12px var(--f-data);color:var(--red)}
+.nb-r.sub .nb-n{color:var(--muted)}
+.nb-r.sub .nb-who b{font-size:16px}
+.nb-r.sub .nb-stat{font-size:19px}
+.nb-r.sub .nb-who .thumb{transform:scale(.82)}
 .nb-who{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:0}
 .nb-who b{font:600 19px/1.2 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nb-who:hover b{color:var(--red)}
 .nb-stat{font:900 26px/1 var(--f-display);text-transform:uppercase;text-align:right;white-space:nowrap}
-.nb-note{grid-column:1/-1;font:400 13px var(--f-data);color:var(--muted);padding-left:56px}
+.nb-note{grid-column:2/-1;font:400 13px var(--f-data);color:var(--muted);padding-left:56px}
 
 /* rankings */
 .rankings{display:grid;gap:36px;margin-bottom:14px}
@@ -2157,9 +2164,10 @@ function rivalries(p){
   const id=p.id,asBat=[...H.values()].filter(x=>x.bat===id&&P.has(x.bowl)),asBowl=[...H.values()].filter(x=>x.bowl===id&&P.has(x.bat));
   const fl=[...FX.values()].filter(x=>x.bat===id);
   const sr=x=>x.b?x.r/x.b*100:0,ec=x=>x.b?x.r/x.b*6:0,dp=x=>x.b?x.dots/x.b*100:0;
-  const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a))[0];
+  // the top three in each category
+  const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a)).slice(0,3);
   const nm=id2=>pname(id2);
-  const row=(label,oid,stat,note)=>oid?`<div class="nb"><span class="kicker">${label}</span><a class="nb-who" href="${purl(oid)}">${miniThumb(P.get(oid))}<b>${esc(pname(oid))}</b></a><span class="nb-stat">${stat}</span>${note?`<span class="nb-note">${note}</span>`:""}</div>`:"";
+  const row=(label,list,who,stat,note)=>list.length?`<div class="nb"><span class="kicker">${label}</span>${list.map((x,i)=>{const oid=x[who];return `<div class="nb-r${i?" sub":""}"><span class="nb-n">${i+1}</span><a class="nb-who" href="${purl(oid)}">${miniThumb(P.get(oid))}<b>${esc(pname(oid))}</b></a><span class="nb-stat">${stat(x)}</span>${note&&note(x)?`<span class="nb-note">${note(x)}</span>`:""}</div>`}).join("")}</div>`:"";
   const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`;
 
   // with the bat
@@ -2187,22 +2195,22 @@ function rivalries(p){
   <!--pane:rivalries--><h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
-      ${row("Nemesis",nem?.bowl,nem&&`Out ${nem.outs}×`,nem&&line(nem))}
-      ${row("Doesn't like facing",hate?.bowl,hate&&`SR ${r1(sr(hate))}`,hate&&`${hate.r} off ${hate.b} · ${Math.round(dp(hate))}% dots`)}
-      ${row("Favourite bowler to face",fav?.bowl,fav&&`SR ${r1(sr(fav))}`,fav&&`${fav.r} off ${fav.b} · ${fav.s} sixes`)}
-      ${row("Most runs off",mostR?.bowl,mostR&&`${mostR.r} runs`,mostR&&`off ${mostR.b} balls · out ${mostR.outs}×`)}
-      ${row("Most sixes off",mostS?.bowl,mostS&&`${mostS.s} sixes`,mostS&&line(mostS))}
-      ${row("Dot-ball trap",trap?.bowl,trap&&`${Math.round(dp(trap))}% dots`,trap&&`${trap.dots} of ${trap.b} balls`)}
-      ${row("Usually caught by",catcher?.fld,catcher&&`${catcher.c} catch${catcher.c>1?"es":""}`,"")}
-      ${row("Lucky charm",lucky?.fld,lucky&&`Dropped ${lucky.d}×`,"Has put down the most chances off this batter")}
+      ${row("Nemesis",nem,"bowl",x=>`Out ${x.outs}×`,line)}
+      ${row("Doesn't like facing",hate,"bowl",x=>`SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${Math.round(dp(x))}% dots`)}
+      ${row("Favourite bowler to face",fav,"bowl",x=>`SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
+      ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>`off ${x.b} balls · out ${x.outs}×`)}
+      ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,line)}
+      ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls`)}
+      ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`)}
+      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`)}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
-      ${row("Bunny",bunny?.bat,bunny&&`Out ${bunny.outs}×`,bunny&&`for ${bunny.r} runs off ${bunny.b} balls`)}
-      ${row("Tormentor",torment?.bat,torment&&`${torment.r} runs`,torment&&`off ${torment.b} balls · econ ${r1(ec(torment))}`)}
-      ${row("Hit for most sixes by",sixer?.bat,sixer&&`${sixer.s} sixes`,sixer&&`${sixer.r} runs off ${sixer.b} balls`)}
-      ${row("Best economy against",tight?.bat,tight&&`Econ ${r1(ec(tight))}`,tight&&`${tight.r} off ${tight.b} · ${tight.outs} wkt${tight.outs===1?"":"s"}`)}
-      ${row("Doesn't like bowling to",leak?.bat,leak&&`Econ ${r1(ec(leak))}`,leak&&`${leak.r} off ${leak.b} · ${leak.s} sixes`)}
-      ${row("Bowls most extras to",wides?.bat,wides&&`${wides.wd} wd · ${wides.nb} nb`,"")}
+      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`for ${x.r} runs off ${x.b} balls`)}
+      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · econ ${r1(ec(x))}`)}
+      ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`${x.r} runs off ${x.b} balls`)}
+      ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"}`)}
+      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
+      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`)}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
     </div>
   </div>
