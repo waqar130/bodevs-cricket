@@ -790,3 +790,12 @@ main{counter-reset:spage tpage ppage cpage kpage}
 .rivals .nb-r.sub{padding:2px 0}
 .rivals .nb-r.sub .nb-who .thumb{width:22px;height:22px}
 .rivals .nb-r.sub .nb-n{font-size:11px}
+
+.nb-face{font-size:.9em;margin-right:6px;vertical-align:1px}
+.nb-note abbr{text-decoration:none;font-weight:700;color:var(--ink)}
+@media(min-width:600px){.rivals .nb-r.sub .nb-note{white-space:normal;overflow:visible;line-height:1.3;padding:2px 0 2px 4px}}
+@media(min-width:600px) and (max-width:1199px){
+  .rivals .nb-r.sub{grid-template-columns:22px minmax(0,1fr) auto}
+  .rivals .nb-r.sub .nb-stat{grid-column:3;grid-row:1}
+  .rivals .nb-r.sub .nb-note{grid-column:2/-1;grid-row:2;padding:0 0 2px 30px}
+}

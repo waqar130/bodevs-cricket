@@ -2169,10 +2169,17 @@ function rivalries(p){
   const nm=id2=>pname(id2);
   const row=(label,list,who,stat,note)=>list.length?`<div class="nb"><span class="kicker">${label}</span>${list.map((x,i)=>{const oid=x[who];return `<div class="nb-r${i?" sub":""}"><span class="nb-n">${i+1}</span><a class="nb-who" href="${purl(oid)}">${miniThumb(P.get(oid))}<b>${esc(pname(oid))}</b></a><span class="nb-stat">${stat(x)}</span>${note&&note(x)?`<span class="nb-note">${note(x)}</span>`:""}</div>`}).join("")}</div>`:"";
   const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`;
+  // dismissals by type, e.g. "C (5) · B (2)"; run outs aren't the bowler's
+  const HOW={caught:["C","caught"],"caught behind":["WK","caught behind"],bowled:["B","bowled"],"hit wicket":["HW","hit wicket"],lbw:["LBW","lbw"],stumped:["ST","stumped"],other:["O","other"]};
+  const hows=x=>Object.entries(x.how||{}).filter(([k,n])=>k!=="run out"&&n).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<abbr title="${(HOW[k]||[k,k])[1]} ${n}×">${(HOW[k]||[k])[0]} (${n})</abbr>`).join(" · ");
+  // a face for his strike rate against this bowler, measured against his usual strike rate
+  const usual=p.bat.b?p.bat.r/p.bat.b*100:0;
+  const face=x=>{if(!usual||!x.b)return "";const q=sr(x)/usual;const [f,t]=q<0.7?["😢","well below his usual"]:q<0.9?["🙁","below his usual"]:q<1.1?["😐","about his usual"]:["😊","above his usual"];return `<span class="nb-face" title="SR ${r1(sr(x))}: ${t} ${r1(usual)}">${f}</span>`};
+  const extrasLine=x=>{const del=x.b+x.wd,e=x.wd+x.nb;return del?`${e} of ${del} deliveries (${Math.round(e/del*100)}%) · one every ${r1(del/e)} balls`:""};
 
   // with the bat
   const nem=pick(asBat,x=>x.outs*1000-x.r,x=>x.outs>0);
-  const fav=pick(asBat,sr,x=>x.b>=MINB),hate=pick(asBat,x=>-sr(x),x=>x.b>=MINB);
+  const hate=pick(asBat,x=>-sr(x),x=>x.b>=MINB);
   const mostR=pick(asBat,x=>x.r),mostS=pick(asBat,x=>x.s*1000+x.r,x=>x.s>0),trap=pick(asBat,dp,x=>x.b>=MINB);
   const catcher=pick(fl,x=>x.c,x=>x.c>0),lucky=pick(fl,x=>x.d,x=>x.d>0);
   // with the ball
@@ -2195,22 +2202,21 @@ function rivalries(p){
   <!--pane:rivalries--><h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
-      ${row("Nemesis",nem,"bowl",x=>`Out ${x.outs}×`,line)}
+      ${row("Nemesis",nem,"bowl",x=>`${face(x)}Out ${x.outs}×`,x=>`${hows(x)} · ${line(x)}`)}
       ${row("Doesn't like facing",hate,"bowl",x=>`SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${Math.round(dp(x))}% dots`)}
-      ${row("Favourite bowler to face",fav,"bowl",x=>`SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
       ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>`off ${x.b} balls · out ${x.outs}×`)}
       ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,line)}
-      ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls`)}
+      ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls faced`)}
       ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`)}
       ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`)}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
-      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`for ${x.r} runs off ${x.b} balls`)}
-      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · econ ${r1(ec(x))}`)}
-      ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`${x.r} runs off ${x.b} balls`)}
+      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`${hows(x)} · for ${x.r} runs off ${x.b} balls · a wicket every ${r1(x.b/x.outs)} balls`)}
+      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · SR ${r1(sr(x))} · econ ${r1(ec(x))}`)}
+      ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`a six every ${r1(x.b/x.s)} balls · ${x.r} runs off ${x.b}`)}
       ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"}`)}
       ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
-      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`)}
+      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,extrasLine)}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
     </div>
   </div>
