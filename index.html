@@ -2202,8 +2202,8 @@ function rivalries(p){
   <!--pane:rivalries--><h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
-      ${row("Nemesis",nem,"bowl",x=>`${face(x)}Out ${x.outs}×`,x=>`${hows(x)} · ${line(x)}`)}
-      ${row("Doesn't like facing",hate,"bowl",x=>`SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${Math.round(dp(x))}% dots`)}
+      ${row("Nemesis",nem,"bowl",x=>`${face(x)}Out ${x.outs}×`,x=>`${hows(x)} · ${x.r} runs off ${x.b} balls · out every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`)}
+      ${row("Doesn't like facing",hate,"bowl",x=>`${face(x)}SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${Math.round(dp(x))}% dots`)}
       ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>`off ${x.b} balls · out ${x.outs}×`)}
       ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,line)}
       ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls faced`)}
@@ -2211,10 +2211,10 @@ function rivalries(p){
       ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`)}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
-      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`${hows(x)} · for ${x.r} runs off ${x.b} balls · a wicket every ${r1(x.b/x.outs)} balls`)}
+      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`${hows(x)} · for ${x.r} runs off ${x.b} balls · a wicket every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`)}
       ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · SR ${r1(sr(x))} · econ ${r1(ec(x))}`)}
       ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`a six every ${r1(x.b/x.s)} balls · ${x.r} runs off ${x.b}`)}
-      ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"}`)}
+      ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"} · ${Math.round(dp(x))}% dots`)}
       ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
       ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,extrasLine)}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
