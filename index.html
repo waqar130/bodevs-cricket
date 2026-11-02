@@ -618,7 +618,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
   </div>
 </header>
 <nav class="pagetabs" aria-label="Pages"><div class="wrap">
-  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#rankings" data-p="rankings">Rankings</a><a href="#compare" data-p="compare">Compare</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
+  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#rankings" data-p="rankings">Rankings</a><a href="#compare" data-p="compare">Compare</a><a href="#strategy" data-p="strategy">Strategy</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
 </div></nav>
 <div class="livebar" id="liveBar" hidden aria-live="polite"></div>
 
@@ -750,6 +750,22 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 
   <section class="dept players-cover" id="comparehero">
     <div class="wrap" id="compareHeroBody"></div>
+  </section>
+
+  <section class="dept players-cover" id="stratboard">
+    <div class="wrap">
+      <p class="sh-kicker">Game plan</p>
+      <h2 class="sh-head st-plan-h">Plan against anyone.</h2>
+      <p class="sh-dek">Pick the player you're facing and who's on your side. The plan comes from every ball they've faced and bowled this season: who gets them out, who keeps them quiet, and who scores off them.</p>
+      <div class="sg-pick">
+        <label class="cmp-sel"><span class="label">Plan against</span><select id="sgTarget"></select></label>
+        <div class="sg-side"><span class="label">Your side <button type="button" class="sg-all" id="sgAll">all</button> <button type="button" class="sg-all" id="sgNone">none</button></span><div id="sgSide"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dept" id="strategy">
+    <div class="wrap" id="strategyBody"></div>
   </section>
 
   <section class="dept" id="compare">
@@ -1144,7 +1160,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["rankhero","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["stratboard","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one
@@ -1466,8 +1482,8 @@ function render(){
   const qB=p=>p.bat.b>=30,qO=p=>outs(p)>=2,qW=p=>p.bowl.b>=36;
   $("#batTable").innerHTML=table(bats,[
     {h:"M",v:p=>p.matches},{h:"Inns",v:p=>p.bat.inns},{h:"NO",t:"Not out",v:p=>p.bat.no},{h:"DNB",t:"Did not bat",v:p=>p.bat.dnb},
-    {h:"Runs",v:p=>p.bat.r,show:f0,hl:1,cls:"hi"},{h:"HS",v:p=>p.bat.hs?p.bat.hs.r:nan,show:(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",hl:1},
-    {h:"Avg",v:p=>outs(p)>0?p.bat.avg:nan,show:f1,hl:1,q:qO},{h:"SR",v:p=>p.bat.b?p.bat.sr:nan,show:f1,hl:1,q:qB},
+    {h:"Runs",v:p=>p.bat.r,show:f0,hl:1,cls:"hi"},{h:"HS",t:"Highest score",v:p=>p.bat.hs?p.bat.hs.r:nan,show:(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",hl:1},
+    {h:"Avg",t:"Batting average",v:p=>outs(p)>0?p.bat.avg:nan,show:f1,hl:1,q:qO},{h:"SR",t:"Strike rate",v:p=>p.bat.b?p.bat.sr:nan,show:f1,hl:1,q:qB},
     {h:"B/out",t:"Balls faced per dismissal",v:p=>outs(p)>0?p.bat.b/outs(p):nan,show:f1,hl:1,q:qO},
     {h:"30+",t:"Scores of 30 or more",v:s30,hl:1},{h:"50+",t:"Fifties and hundreds",v:p=>p.bat.fifty+p.bat.hundred,hl:1},
     {h:"4s",v:p=>p.bat.f,hl:1},{h:"6s",v:p=>p.bat.s,hl:1},
@@ -1483,9 +1499,9 @@ function render(){
   const bowls=all.filter(p=>p.bowl.b).sort((a,b)=>b.bowl.w-a.bowl.w||a.bowl.econ-b.bowl.econ);
   $("#bowlTable").innerHTML=table(bowls,[
     {h:"Inns",v:p=>p.bowl.inns},{h:"DNB",t:"Did not bowl",v:p=>p.bowl.dnb},{h:"Ov",v:p=>p.bowl.b,show:(v,p)=>ovs(p.bowl.b)},
-    {h:"Wkts",v:p=>p.bowl.w,hl:1,cls:"hi"},{h:"Wkts/m",t:"Wickets per match",v:p=>p.matches?p.bowl.w/p.matches:nan,show:f2,hl:1},
-    {h:"Runs",v:p=>p.bowl.r},{h:"Best",v:p=>p.bowl.best?p.bowl.best.w*1000-p.bowl.best.r:nan,show:(v,p)=>p.bowl.best?`${p.bowl.best.w}/${p.bowl.best.r}`:"–",hl:1},
-    {h:"Econ",v:p=>p.bowl.b?p.bowl.econ:nan,show:f1,hl:-1,q:qW},{h:"Avg",v:p=>p.bowl.w?p.bowl.avg:nan,show:f1,hl:-1,q:p=>qW(p)&&p.bowl.w>=2},
+    {h:"Wkts",t:"Wickets",v:p=>p.bowl.w,hl:1,cls:"hi"},{h:"Wkts/m",t:"Wickets per match",v:p=>p.matches?p.bowl.w/p.matches:nan,show:f2,hl:1},
+    {h:"Runs",v:p=>p.bowl.r},{h:"Best",t:"Best bowling",v:p=>p.bowl.best?p.bowl.best.w*1000-p.bowl.best.r:nan,show:(v,p)=>p.bowl.best?`${p.bowl.best.w}/${p.bowl.best.r}`:"–",hl:1},
+    {h:"Econ",t:"Economy",v:p=>p.bowl.b?p.bowl.econ:nan,show:f1,hl:-1,q:qW},{h:"Avg",t:"Bowling average",v:p=>p.bowl.w?p.bowl.avg:nan,show:f1,hl:-1,q:p=>qW(p)&&p.bowl.w>=2},
     {h:"SR",t:"Balls per wicket",v:p=>p.bowl.w?p.bowl.b/p.bowl.w:nan,show:f1,hl:-1,q:p=>qW(p)&&p.bowl.w>=2},
     {h:"Dot %",t:"Dot balls bowled",v:p=>p.bowl.b?p.bowl.dots/p.bowl.b*100:nan,show:pc,hl:1,q:qW},
     {h:"B/bdry",t:"Balls per boundary conceded",v:p=>bndC.get(p.id)?p.bowl.b/bndC.get(p.id):nan,show:f1,hl:1,q:qW},

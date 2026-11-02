@@ -367,9 +367,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["rankings", "Rankings"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["rankings", "Rankings"], ["compare", "Compare"], ["strategy", "Strategy"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
+  stratboard: "strategy", strategy: "strategy", rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -878,6 +878,121 @@ function ratingTrend(p) {
   };
   return `<h2 class="sec-t">Rating trend</h2><div class="rt-grid">${["rBat", "rBowl", "rAll"].map(card).join("")}</div>
     <p class="rank-note" style="margin-top:8px">Ratings rebuilt after every week of the season. ▲▼ are places moved since last week. <a href="#rankings">Full rankings →</a></p>`;
+}
+
+/* ---------------- strategy: a game plan against one player, from the ball-by-ball matchups ---------------- */
+const SG = { target: null, side: null };
+try { const s = JSON.parse(localStorage.getItem("bdc-sg") || "null"); if (s) Object.assign(SG, s); } catch (x) {}
+const saveSG = () => { try { localStorage.setItem("bdc-sg", JSON.stringify(SG)); } catch (x) {} };
+function renderStrategy() {
+  const sel = $("#sgTarget"); if (!sel || !P?.size) return;
+  const ps = [...P.values()].filter(p => p.matches).sort((a, b) => pname(a.id).localeCompare(pname(b.id)));
+  if (!P.get(SG.target)?.matches) SG.target = ps.slice().sort((a, b) => b.bat.r - a.bat.r)[0]?.id;
+  sel.innerHTML = ps.map(p => `<option value="${p.id}"${p.id === SG.target ? " selected" : ""}>${esc(pname(p.id))} · ${esc(p.tm.short)}</option>`).join("");
+  sel.onchange = () => { SG.target = +sel.value; SG.side = null; saveSG(); drawSide(); drawStrategy(); };
+  $("#sgAll").onclick = () => { SG.side = ps.filter(p => p.id !== SG.target).map(p => p.id); saveSG(); drawSide(); drawStrategy(); };
+  $("#sgNone").onclick = () => { SG.side = []; saveSG(); drawSide(); drawStrategy(); };
+  drawSide(); drawStrategy();
+}
+function sideIds() {
+  const t = P.get(SG.target); if (!t) return [];
+  // default side: everyone on the other team
+  if (!Array.isArray(SG.side)) SG.side = [...P.values()].filter(p => p.matches && p.id !== t.id && p.tm.key !== t.tm.key).map(p => p.id);
+  return SG.side.filter(id => id !== t.id && P.get(id));
+}
+function drawSide() {
+  const box = $("#sgSide"), on = new Set(sideIds());
+  box.innerHTML = [...P.values()].filter(p => p.matches && p.id !== SG.target).sort((a, b) => a.tm.key.localeCompare(b.tm.key) || pname(a.id).localeCompare(pname(b.id)))
+    .map(p => `<button type="button" class="sg-chip ${p.tm.key}" data-id="${p.id}" aria-pressed="${on.has(p.id)}">${esc(pname(p.id))}</button>`).join("");
+  box.onclick = ev => { const b = ev.target.closest("[data-id]"); if (!b) return; const id = +b.dataset.id, s = new Set(sideIds());
+    s.has(id) ? s.delete(id) : s.add(id); SG.side = [...s]; saveSG(); drawSide(); drawStrategy(); };
+}
+function drawStrategy() {
+  const el = $("#strategyBody"), t = P.get(SG.target); if (!el || !t) return;
+  const side = new Set(sideIds()), tn = esc(pname(t.id)), first = n => esc(pname(n).split(" ")[0] === "M." ? pname(n) : pname(n).split(" ")[0]);
+  const r1x = v => isFinite(v) ? r1(v) : "–", pc = v => isFinite(v) ? Math.round(v) + "%" : "–";
+  // one table of matchups, ranked on several measures at once; best/second/worst highlighted per column
+  const board = (rows, cols, who) => {
+    if (!rows.length) return '<p class="dnb">No one on your side has enough balls in this matchup yet (12 or more).</p>';
+    const ext = cols.map(c => { if (!c.hl) return null; const vs = [...new Set(rows.map(x => c.r(c.v(x))).filter(isFinite))].sort((a, b) => c.hl > 0 ? b - a : a - b);
+      return vs.length < 2 ? null : { best: vs[0], second: vs.length > 2 ? vs[1] : null, worst: vs.at(-1) }; });
+    return `<div class="tbl-wrap"><table class="data sg-tbl"><thead><tr><th></th><th style="text-align:left">${who}</th>${cols.map(c => `<th${c.t ? ` title="${c.t}"` : ""}>${c.h}</th>`).join("")}</tr></thead><tbody>
+      ${rows.map((x, i) => { const p = P.get(x.id); return `<tr><td class="rk">${i + 1}</td><td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(p)}<span>${esc(pname(x.id))}</span></a></td>${cols.map((c, j) => { const v = c.r(c.v(x)), s = c.s(c.v(x)), e = ext[j];
+        const m = e && isFinite(v) ? v === e.best ? "rv-best" : v === e.second ? "rv-second" : v === e.worst ? "rv-worst" : "" : ""; return `<td>${m ? `<mark class="${m}">${s}</mark>` : s}</td>`; }).join("")}</tr>`; }).join("")}
+      </tbody></table></div>`; };
+  const rd1 = v => isFinite(v) ? Math.round(v * 10) / 10 : NaN, rd0 = v => isFinite(v) ? Math.round(v) : NaN;
+  // rank by the sum of places across the measures that matter (lower total is better)
+  const rankBy = (list, keys) => { const pl = new Map(list.map(x => [x, 0]));
+    keys.forEach(([f, hi]) => { const vals = list.map(x => [x, f(x)]).filter(([, v]) => isFinite(v)).sort((a, b) => hi ? b[1] - a[1] : a[1] - b[1]);
+      list.forEach(x => { const i = vals.findIndex(([y]) => y === x); pl.set(x, pl.get(x) + (i < 0 ? list.length : i)); }); });
+    return [...list].sort((a, b) => pl.get(a) - pl.get(b)); };
+
+  /* ---- when he bats: your bowlers ---- */
+  const vsBowl = [...H.values()].filter(x => x.bat === t.id && side.has(x.bowl) && x.b >= MINB).map(x => ({ id: x.bowl, ...x,
+    bpw: x.outs ? x.b / x.outs : Infinity, rpw: x.outs ? x.r / x.outs : Infinity, econ: x.r / x.b * 6, bpb: x.f + x.s ? x.b / (x.f + x.s) : Infinity, dot: x.dots / x.b * 100, sr: x.r / x.b * 100 }));
+  const bowlers = rankBy(vsBowl, [[x => x.bpw, 0], [x => x.rpw, 0], [x => x.econ, 0], [x => x.bpb, 1], [x => x.dot, 1]]);
+  const few = [...H.values()].filter(x => x.bat === t.id && side.has(x.bowl) && x.b > 0 && x.b < MINB);
+  const ss = styleSplit(t), sAvg = k => ss[k].o ? ss[k].r / ss[k].o : NaN, sSR = k => ss[k].b ? ss[k].r / ss[k].b * 100 : NaN;
+  const outs = {}; [...t.log.values()].forEach(l => l.mm.s.scorecards.forEach(sc => sc.batting.filter(b => b.id === t.id && b.out).forEach(b => { const k = b.out === "caught" && keeperCatch(b.how) ? "caught behind" : String(b.out).replace("_", " "); outs[k] = (outs[k] || 0) + 1; })));
+  const outN = Object.values(outs).reduce((a, b) => a + b, 0), outTop = Object.entries(outs).sort((a, b) => b[1] - a[1]);
+  const catchers = [...FX.values()].filter(x => x.bat === t.id && side.has(x.fld) && x.c + x.d > 0).sort((a, b) => b.c - a.c || a.d - b.d);
+  const quickest = [...vsBowl].filter(x => x.outs).sort((a, b) => a.bpw - b.bpw)[0], tightest = [...vsBowl].sort((a, b) => a.econ - b.econ)[0], leaky = [...vsBowl].sort((a, b) => a.bpb - b.bpb)[0];
+  const batPlan = [];
+  if (bowlers[0]) batPlan.push(`<b>Open with ${esc(pname(bowlers[0].id))}.</b> Best all round against him: ${bowlers[0].outs ? `a wicket every ${r1(bowlers[0].bpw)} balls, ` : ""}${r1(bowlers[0].econ)} an over, a boundary every ${isFinite(bowlers[0].bpb) ? r1(bowlers[0].bpb) : "–"} balls.`);
+  if (quickest && quickest !== bowlers[0]) batPlan.push(`<b>For a wicket, ${esc(pname(quickest.id))}</b> gets him out quickest: every ${r1(quickest.bpw)} balls (${quickest.outs} times).`);
+  if (tightest && tightest !== bowlers[0]) batPlan.push(`<b>To keep him quiet, ${esc(pname(tightest.id))}</b>: ${r1(tightest.econ)} an over and ${Math.round(tightest.dot)}% dots.`);
+  if (leaky && vsBowl.length > 2 && isFinite(leaky.bpb)) batPlan.push(`<b>Keep ${esc(pname(leaky.id))} away from him:</b> a boundary every ${r1(leaky.bpb)} balls, ${r1(leaky.econ)} an over.`);
+  if (isFinite(sAvg("fast")) && isFinite(sAvg("spin"))) { const k = sAvg("fast") < sAvg("spin") ? "fast" : "spin"; batPlan.push(`<b>Use ${k === "fast" ? "pace" : "spin"}.</b> He averages ${r1(sAvg(k))} against ${k === "fast" ? "pace" : "spin"} (SR ${Math.round(sSR(k))}) and ${r1(sAvg(k === "fast" ? "spin" : "fast"))} against ${k === "fast" ? "spin" : "pace"} (SR ${Math.round(sSR(k === "fast" ? "spin" : "fast"))}).`); }
+  if (outTop[0]) { const [k, n] = outTop[0], tip = { caught: "keep your safest catchers where he hits it", "caught behind": "bowl outside off and keep the keeper up", bowled: "bowl straight at the stumps", "run out": "attack the stumps when he's running", "hit wicket": "make him play back" }[k] || "";
+    batPlan.push(`<b>He's out ${k} most often</b> (${n} of ${outN})${tip ? `: ${tip}` : ""}.`); }
+  if (catchers[0]) batPlan.push(`<b>${esc(pname(catchers[0].fld))} takes his catches:</b> ${catchers[0].c} held, ${catchers[0].d} dropped off him.`);
+
+  /* ---- when he bowls: your batters ---- */
+  const vsBat = [...H.values()].filter(x => x.bowl === t.id && side.has(x.bat) && x.b >= MINB).map(x => ({ id: x.bat, ...x,
+    sr: x.r / x.b * 100, bpw: x.outs ? x.b / x.outs : Infinity, avg: x.outs ? x.r / x.outs : x.r, bpb: x.f + x.s ? x.b / (x.f + x.s) : Infinity, dot: x.dots / x.b * 100 }));
+  const batters = rankBy(vsBat, [[x => x.sr, 1], [x => x.bpw, 1], [x => x.avg, 1], [x => x.bpb, 0], [x => x.dot, 0]]);
+  const fewB = [...H.values()].filter(x => x.bowl === t.id && side.has(x.bat) && x.b > 0 && x.b < MINB);
+  const style = t.bowl_style, styleName = style === "fast" ? "pace" : style === "spin" ? "spin" : null;
+  const styleBest = styleName ? [...side].map(id => P.get(id)).filter(p => p && styleSplit(p)[style].b >= 30 && styleSplit(p)[style].o).map(p => ({ p, avg: styleSplit(p)[style].r / styleSplit(p)[style].o, sr: styleSplit(p)[style].r / styleSplit(p)[style].b * 100 })).sort((a, b) => b.avg - a.avg).slice(0, 3) : [];
+  const fastest = [...vsBat].sort((a, b) => b.sr - a.sr)[0], survivor = [...vsBat].sort((a, b) => b.bpw - a.bpw)[0], victim = [...vsBat].filter(x => x.outs).sort((a, b) => a.bpw - b.bpw)[0];
+  const W = t.bowl, exEvery = W.wd + W.nb ? (W.b + W.wd) / (W.wd + W.nb) : 0;
+  const bowlPlan = [];
+  if (!W.b) bowlPlan.push(`${tn} hasn't bowled this season.`);
+  else {
+    if (batters[0]) bowlPlan.push(`<b>Send in ${esc(pname(batters[0].id))}.</b> Best all round against him: SR ${Math.round(batters[0].sr)}, ${batters[0].outs ? `out every ${r1(batters[0].bpw)} balls` : "never dismissed by him"}, a boundary every ${isFinite(batters[0].bpb) ? r1(batters[0].bpb) : "–"} balls.`);
+    if (fastest && fastest !== batters[0]) bowlPlan.push(`<b>To score fast, ${esc(pname(fastest.id))}:</b> SR ${Math.round(fastest.sr)} off him.`);
+    if (survivor && survivor !== batters[0] && isFinite(survivor.bpw)) bowlPlan.push(`<b>To see him off, ${esc(pname(survivor.id))}:</b> out only once every ${r1(survivor.bpw)} balls.`); else if (survivor && !survivor.outs && survivor !== batters[0]) bowlPlan.push(`<b>To see him off, ${esc(pname(survivor.id))}:</b> never out to him in ${survivor.b} balls.`);
+    if (victim && vsBat.length > 2) bowlPlan.push(`<b>Protect ${esc(pname(victim.id))} from him:</b> out every ${r1(victim.bpw)} balls (${victim.outs} times).`);
+    if (styleName) bowlPlan.push(`<b>He bowls ${styleName}.</b> ${styleBest.length ? `Your best against ${styleName}: ${styleBest.map(x => `${esc(pname(x.p.id))} (avg ${r1(x.avg)}, SR ${Math.round(x.sr)})`).join(", ")}.` : ""}`);
+    bowlPlan.push(`<b>His figures:</b> ${W.w} wickets at ${r1(W.econ)} an over, ${Math.round(W.dots / W.b * 100)}% dots${exEvery ? `, and an extra every ${r1(exEvery)} balls` : ""}.`);
+  }
+  const fewNote = (xs, k) => xs.length ? `<p class="rank-note">Too few balls to rank yet: ${xs.map(x => `${esc(pname(x[k]))} (${x.b})`).join(", ")}.</p>` : "";
+  const bowlCols = [
+    { h: "Balls", v: x => x.b, r: v => v, s: v => v },
+    { h: "Out", t: "Times he was out to this bowler", v: x => x.outs, r: v => v, s: v => v, hl: 1 },
+    { h: "Wkt every", t: "Balls per wicket", v: x => x.bpw, r: rd1, s: r1x, hl: -1 },
+    { h: "Runs a wkt", t: "Runs conceded per wicket", v: x => x.rpw, r: rd1, s: r1x, hl: -1 },
+    { h: "Econ", v: x => x.econ, r: rd1, s: r1x, hl: -1 },
+    { h: "Ball per bdry", t: "Balls per four or six conceded", v: x => x.bpb, r: rd1, s: r1x, hl: 1 },
+    { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: 1 },
+    { h: "His SR", t: "His strike rate against this bowler", v: x => x.sr, r: rd0, s: v => Math.round(v), hl: -1 }];
+  const batCols = [
+    { h: "Balls", v: x => x.b, r: v => v, s: v => v },
+    { h: "Runs", v: x => x.r, r: v => v, s: v => v, hl: 1 },
+    { h: "SR", v: x => x.sr, r: rd0, s: v => Math.round(v), hl: 1 },
+    { h: "Out", v: x => x.outs, r: v => v, s: v => v, hl: -1 },
+    { h: "Out every", t: "Balls per dismissal", v: x => x.bpw, r: rd1, s: r1x, hl: 1 },
+    { h: "Avg", v: x => x.avg, r: rd1, s: r1x, hl: 1 },
+    { h: "Ball per bdry", t: "Balls per four or six", v: x => x.bpb, r: rd1, s: r1x, hl: -1 },
+    { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: -1 }];
+  el.innerHTML = `<div class="sg-head ${t.tm.key}">${miniThumb(t)}<div><p class="kicker">Game plan against</p><h2>${tn}</h2><p class="sg-sub">${esc(t.tm.short)} · ${t.bat.r} runs at SR ${Math.round(t.bat.sr)} · ${t.bowl.w} wickets at ${r1(t.bowl.econ)} an over</p></div></div>
+    <div class="sg-grid">
+      <article class="sg-col"><h3 class="xr-h">When ${first(t.id)} bats</h3><ul class="sg-plan">${batPlan.map(x => `<li>${x}</li>`).join("") || "<li>Not enough balls against your side yet.</li>"}</ul>
+        <h4 class="tbl-title">Your bowlers against him, best first</h4>${board(bowlers, bowlCols, "Bowler")}${fewNote(few, "bowl")}</article>
+      <article class="sg-col"><h3 class="xr-h">When ${first(t.id)} bowls</h3><ul class="sg-plan">${bowlPlan.map(x => `<li>${x}</li>`).join("")}</ul>
+        ${W.b ? `<h4 class="tbl-title">Your batters against him, best first</h4>${board(batters, batCols, "Batter")}${fewNote(fewB, "bat")}` : ""}</article>
+    </div>
+    <p class="rank-note" style="margin-top:14px">Built from the ball-by-ball commentary. A matchup needs 12 balls to be ranked. "Best first" weighs every column together: for bowlers, quick wickets, few runs a wicket, low economy, few boundaries and many dots; for batters, the reverse. Yellow is best in each column, pale yellow second, red worst.</p>`;
 }
 
 /* ---------------- players cover: the squad in numbers and four faces worth knowing ---------------- */
@@ -1785,7 +1900,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
@@ -1819,9 +1934,25 @@ function nameSwapper() {
     }
   };
 }
+/* ---------------- tooltips on every best / second / worst highlight, naming what it's best at ---------------- */
+function highlightTips(root) {
+  const marks = root.querySelectorAll ? root.querySelectorAll("mark.rv-best:not([title]),mark.rv-second:not([title]),mark.rv-worst:not([title])") : [];
+  marks.forEach(m => {
+    const kind = m.classList.contains("rv-best") ? "best" : m.classList.contains("rv-second") ? "second" : "worst";
+    const label = kind === "best" ? "Best" : kind === "second" ? "Second best" : "Worst";
+    const td = m.closest("td"), row = m.closest(".cmp-row"), card = m.closest(".rv");
+    if (row) { // two players (or the two sides) next to each other
+      const what = row.querySelector(".cmp-l")?.textContent.trim().toLowerCase() || "this";
+      m.title = `${kind === "best" ? "Ahead" : "Behind"} on ${what}`; return; }
+    if (td) { const th = td.closest("table")?.querySelectorAll("thead th")[td.cellIndex], col = (th?.title || th?.textContent || "").trim();
+      m.title = `${label}: ${col}\n(among players with enough balls or chances to count)`; return; }
+    if (card) { m.title = `${label} in ${card.querySelector(".rv-h span")?.textContent.trim() || "this list"}: ${m.textContent.trim()}`; return; }
+    m.title = label;
+  });
+}
 (function watchNames() {
   let swap = null;
-  const run = n => { swap = swap || nameSwapper(); if (swap) swap(n); };
+  const run = n => { swap = swap || nameSwapper(); if (swap) swap(n); highlightTips(n); };
   const mo = new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) run(n); else if (n.nodeType === 3 && n.parentNode) run(n.parentNode); })));
   mo.observe(document.body, { childList: true, subtree: true });
   if (typeof P !== "undefined" && P?.size) run(document.body);
