@@ -1539,6 +1539,11 @@ function awardsFor(p){
   if(typeof addUniqueAwards==="function")addUniqueAwards();
   if(!p.matches||!AWARDS.length)return "";
   const nm=x=>esc(x.full_name||x.name),fmt=(a,v)=>a.dec?r1(v):Math.round(v).toLocaleString();
+  // the race: everyone from the top down to this player (or the next two behind, if he leads); the top is highlighted
+  const ladder=(a,p)=>{const L=a.list,me=L.findIndex(x=>x.id===p.id);if(me<0||L.length<2)return "";
+    const top=a.n(L[0]),place=x=>L.filter(y=>a.low?a.n(y)<a.n(x):a.n(y)>a.n(x)).length+1;
+    const end=Math.max(me,L.findIndex(x=>a.n(x)===a.n(p))+L.filter(x=>a.n(x)===a.n(p)).length-1),rows=L.slice(0,a.n(p)===top?Math.min(L.length,end+3):end+1);
+    return `<ol class="pa-ladder">${rows.map(x=>`<li class="${x.id===p.id?"me":""}${a.n(x)===top?" top":""}"><span>${L.filter(y=>a.n(y)===a.n(x)).length>1?"=":""}${place(x)}</span><a href="${purl(x.id)}">${nm(x)}</a><b>${a.v(x)}</b></li>`).join("")}</ol>`};
   const cards=AWARDS.filter(a=>!a.only||a.only(p)).map(a=>{
     if(!a.list.some(x=>x.id===p.id))return{rank:99,html:`<article class="pa-card na">
       <p class="kicker">${a.k}</p><span class="pa-status">Not eligible yet</span>
@@ -1554,7 +1559,7 @@ function awardsFor(p){
       <p class="kicker">${a.k}${a.note?` <span class="label">(${a.note})</span>`:""}</p>
       <span class="pa-status">${i===0?ICON_MOM:""}${status[1]}</span>
       <div class="pa-big">${a.v(p)}</div><div class="aw-unit">${a.u1&&a.n(p)===1?a.u1:a.u}</div>
-      <p class="pa-line">${line}</p></article>`};
+      <p class="pa-line">${line}</p>${ladder(a,p)}</article>`};
   }).sort((x,y)=>x.rank-y.rank);
   const held=cards.filter(c=>c.rank===0).length,ru=cards.filter(c=>c.rank===1).length;
   let cap="";

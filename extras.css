@@ -836,3 +836,14 @@ main{counter-reset:spage tpage ppage cpage kpage rpage}
 .rb-nospark{color:var(--muted)}
 .rb-best{white-space:nowrap}.rb-best small{display:block;font:400 10px var(--f-data);color:var(--muted)}
 @media(max-width:640px){.rb-tbl th:nth-child(7),.rb-tbl td:nth-child(7){display:none}.rb-spark{width:80px}}
+/* trophy cards: the race from the top down to this player */
+.pa-ladder{list-style:none;margin:12px 0 0;padding:10px 0 0;border-top:1px solid var(--rule);display:grid;gap:3px}
+.pa-ladder li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:baseline;font:400 13px/1.3 var(--f-body);padding:2px 4px}
+.pa-ladder span{font:700 10px var(--f-data);color:var(--muted)}
+.pa-ladder a{color:inherit;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pa-ladder a:hover{color:var(--red)}
+.pa-ladder b{font:800 15px/1 var(--f-display);white-space:nowrap}
+.pa-ladder li.top{background:#ffd23f;color:#141413}
+.pa-ladder li.top span{color:#141413}
+.pa-ladder li.me{font-weight:700;box-shadow:inset 3px 0 0 var(--red)}
+.pa-card.gold .pa-ladder{border-top-color:#3a3935}
