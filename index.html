@@ -2179,11 +2179,16 @@ function rivalries(p){
   const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a));
   const nm=id2=>pname(id2);
   const row=(label,list,who,stat,note)=>{if(!list.length)return "";
-    const [L,...rest]=list,lid=L[who],lp=P.get(lid),nt=x=>note&&note(x)?`<span class="rv-note">${note(x)}</span>`:"";
+    const [L,...rest]=list,lid=L[who],lp=P.get(lid);
+    // the best number in each column of the detail line is highlighted
+    const parts=new Map(list.map(x=>[x,note?[].concat(note(x)):[]])),best=[];
+    // only matchups with enough balls can win a highlight
+    if(list.length>1)parts.forEach((ps,x)=>!(x.b<MINB)&&ps.forEach((v,i)=>{if(v&&typeof v==="object"&&isFinite(v.v)&&(best[i]===undefined||(v.lo?v.v<best[i]:v.v>best[i])))best[i]=v.v}));
+    const nt=x=>{const ps=parts.get(x);if(!ps.some(v=>v!==""&&v!=null))return "";return `<span class="rv-note">${ps.map((v,i)=>typeof v==="object"?(isFinite(v.v)&&v.v===best[i]?`<mark class="rv-best">${v.t}</mark>`:v.t):v).filter(v=>v!==""&&v!=null).join(" · ")}</span>`};
     return `<section class="rv"><header class="rv-h"><span>${label}</span><small>${list.length} ${who==="bowl"?"bowler":who==="fld"?"fielder":"batter"}${list.length>1?"s":""}</small></header>
       <div class="rv-lead ${lp?.tm.key||""}"><a href="${purl(lid)}">${miniThumb(lp)}</a><div><a class="rv-name" href="${purl(lid)}">${esc(pname(lid))}</a>${nt(L)}</div><em class="rv-stat">${stat(L)}</em></div>
       ${rest.length?`<ol class="rv-list" start="2">${rest.map(x=>{const oid=x[who];return `<li class="${P.get(oid)?.tm.key||""}"><a class="rv-name" href="${purl(oid)}">${esc(pname(oid))}</a><em class="rv-stat">${stat(x)}</em>${nt(x)}</li>`}).join("")}</ol>`:""}</section>`};
-  const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`;
+  const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`,m=(v,t,lo)=>({v:Math.round(v*10)/10,t,lo});
   // dismissals by type, e.g. "C (5) · B (2)"; run outs aren't the bowler's
   const HOW={caught:["C","caught"],"caught behind":["WK","caught behind"],bowled:["B","bowled"],"hit wicket":["HW","hit wicket"],lbw:["LBW","lbw"],stumped:["ST","stumped"],other:["O","other"]};
   const hows=x=>Object.entries(x.how||{}).filter(([k,n])=>k!=="run out"&&n).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<abbr title="${(HOW[k]||[k,k])[1]} ${n}×">${(HOW[k]||[k])[0]} (${n})</abbr>`).join(" · ");
@@ -2217,21 +2222,21 @@ function rivalries(p){
   <!--pane:rivalries--><h2 class="sec-t">Rivalries</h2>
   <div class="rivals">
     <div><h3 class="tbl-title">With the bat</h3>
-      ${row("Nemesis",nem,"bowl",x=>`${face(x)}Out ${x.outs}×`,x=>`${hows(x)} · ${x.r} runs off ${x.b} balls · out every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`)}
-      ${row("Doesn't like facing",hate,"bowl",x=>`${face(x)}SR ${r1(sr(x))}`,x=>`${x.r} off ${x.b} · ${Math.round(dp(x))}% dots`)}
-      ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>`off ${x.b} balls · out ${x.outs}×`)}
-      ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,line)}
+      ${row("Nemesis",nem,"bowl",x=>`${face(x)}Out ${x.outs}×`,x=>[hows(x),`${x.r} runs off ${x.b} balls`,m(x.b/x.outs,`out every ${r1(x.b/x.outs)} balls`,1),m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`,1)])}
+      ${row("Doesn't like facing",hate,"bowl",x=>`${face(x)}SR ${r1(sr(x))}`,x=>[`${x.r} off ${x.b}`,m(dp(x),`${Math.round(dp(x))}% dots`)])}
+      ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>[`off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`),m(x.outs,`out ${x.outs}×`,1)])}
+      ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,x=>[m(x.b/x.s,`a six every ${r1(x.b/x.s)} balls`,1),`${x.r} runs off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`)])}
       ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls faced`)}
-      ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`,x=>`${x.c} held · ${x.d} dropped · ${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)}
-      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`,x=>`${x.c} held · ${x.d} dropped · ${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)}
+      ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`,x=>[`${x.c} held · ${x.d} dropped`,m(x.c/((x.c+x.d)||1)*100,`${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)])}
+      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`,x=>[`${x.c} held · ${x.d} dropped`,m(x.c/((x.c+x.d)||1)*100,`${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`,1)])}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
-      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`${hows(x)} · for ${x.r} runs off ${x.b} balls · a wicket every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`)}
-      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · SR ${r1(sr(x))} · econ ${r1(ec(x))}`)}
-      ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`a six every ${r1(x.b/x.s)} balls · ${x.r} runs off ${x.b}`)}
-      ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"} · ${Math.round(dp(x))}% dots`)}
-      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes · ${x.outs?`a wicket every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`:"no wicket yet"}`)}
-      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,extrasLine)}
+      ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>[hows(x),`for ${x.r} runs off ${x.b} balls`,m(x.b/x.outs,`a wicket every ${r1(x.b/x.outs)} balls`,1),m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`,1)])}
+      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>[`off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`),m(ec(x),`econ ${r1(ec(x))}`)])}
+      ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>[m(x.b/x.s,`a six every ${r1(x.b/x.s)} balls`,1),`${x.r} runs off ${x.b}`])}
+      ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>[`${x.r} off ${x.b}`,m(x.outs,`${x.outs} wkt${x.outs===1?"":"s"}`),m(dp(x),`${Math.round(dp(x))}% dots`)])}
+      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>[`${x.r} off ${x.b} · ${x.s} sixes`,x.outs?m(x.b/x.outs,`a wicket every ${r1(x.b/x.outs)} balls`):"no wicket yet",x.outs?m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`):""])}
+      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,x=>{const del=x.b+x.wd,e=x.wd+x.nb;return del?[`${e} of ${del} deliveries`,m(e/del*100,`${Math.round(e/del*100)}%`),m(del/e,`one every ${r1(del/e)} balls`,1)]:[]})}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
     </div>
   </div>

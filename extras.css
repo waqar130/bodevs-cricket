@@ -810,3 +810,6 @@ main{counter-reset:spage tpage ppage cpage kpage}
 .duel-g small{font:400 12px/1.35 var(--f-data);color:var(--muted)}
 .duel-v b{font-weight:800}
 .cmp-v small{font-size:.75em;color:var(--muted);font-weight:400}
+
+/* rivalries: the best number in each column */
+.rv-best{background:#ffd23f;color:#141413;font-weight:700;padding:0 3px;border-radius:2px}
