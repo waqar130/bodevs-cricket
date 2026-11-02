@@ -859,6 +859,27 @@ function drawBoard() {
     : '<p class="dnb">No ratings yet.</p>';
 }
 
+/* ---------------- player page: his ratings week by week ---------------- */
+function ratingTrend(p) {
+  const H = rankHistory(); if (H.length < 2) return "";
+  const card = k => {
+    const series = H.map(s => s.val.get(p.id)?.[k] || 0), ranks = H.map(s => s.rk[k].get(p.id) || null), now = series.at(-1);
+    if (!now) return `<div class="rt-card na"><p class="kicker">${RK_LABEL[k]}</p><p class="rt-none">Not rated yet</p></div>`;
+    const prev = series.at(-2), d = prev ? now - prev : null, rk = ranks.at(-1), prk = ranks.at(-2), mv = prk ? prk - rk : null;
+    const peak = Math.max(...series), peakW = H[series.lastIndexOf(peak)].W;
+    const W = 280, Ht = 70, n = series.length - 1, pts = series.map((v, i) => [i, v]).filter(([, v]) => v > 0), max = Math.max(...pts.map(q => q[1])), min = Math.min(...pts.map(q => q[1])), span = max - min || 1;
+    const xy = pts.map(([i, v]) => [8 + i / n * (W - 16), Ht - 8 - (v - min) / span * (Ht - 20)]), cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
+    const path = xy.map((q, i) => (i ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1)).join(" ");
+    return `<div class="rt-card ${cls}"><p class="kicker">${RK_LABEL[k]}</p>
+      <div class="rt-top"><b>${now}</b><span>${rk ? `#${rk}` : ""}${mv ? ` <i class="${mv > 0 ? "up" : "down"}">${mv > 0 ? "▲" : "▼"}${Math.abs(mv)}</i>` : ""}</span></div>
+      <p class="rt-d">${d === null ? "First week rated" : d > 0 ? `+${d} this week` : d < 0 ? `${d} this week` : "No change this week"} · best ${peak} (issue ${peakW.issue})</p>
+      ${xy.length > 1 ? `<svg class="rt-svg" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${RK_LABEL[k]} rating by week: ${series.join(", ")}"><path d="${path}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${xy.map((q, i) => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${i === xy.length - 1 ? 4 : 2}" fill="currentColor"><title>Issue ${H[pts[i][0]].W.issue}: ${pts[i][1]}</title></circle>`).join("")}</svg>
+      <p class="rt-axis"><span>Issue ${H[pts[0][0]].W.issue}</span><span>Issue ${H.at(-1).W.issue}</span></p>` : ""}</div>`;
+  };
+  return `<h2 class="sec-t">Rating trend</h2><div class="rt-grid">${["rBat", "rBowl", "rAll"].map(card).join("")}</div>
+    <p class="rank-note" style="margin-top:8px">Ratings rebuilt after every week of the season. ▲▼ are places moved since last week. <a href="#rankings">Full rankings →</a></p>`;
+}
+
 /* ---------------- players cover: the squad in numbers and four faces worth knowing ---------------- */
 function renderPlayersHero() {
   const el = $("#playersHeroBody"); if (!el || !M?.length) return;
@@ -1302,7 +1323,7 @@ function playerExtras(p) {
     <line x1="20" x2="${CW - 20}" y1="110" y2="110" class="fc-base"/></svg>
     <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w" style="border-radius:0"></i>Wickets</span><span>by issue</span></p></div>
     ${ms.length ? `<ul class="tl-ms">${ms.map(x => `<li><b>${esc(x.what)}</b> <span>Issue ${x.w.issue}</span></li>`).join("")}</ul>` : ""}`;
-  out.overview = dnaRadar(p) + tl;
+  out.overview = dnaRadar(p) + ratingTrend(p) + tl;
   out.overviewEnd = careerTables(p);
   // best and worst
   const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));

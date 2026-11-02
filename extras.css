@@ -847,3 +847,18 @@ main{counter-reset:spage tpage ppage cpage kpage rpage}
 .pa-ladder li.top span{color:#141413}
 .pa-ladder li.me{font-weight:700;box-shadow:inset 3px 0 0 var(--red)}
 .pa-card.gold .pa-ladder{border-top-color:#3a3935}
+
+/* player page: rating trend */
+.rt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media(max-width:760px){.rt-grid{grid-template-columns:1fr}}
+.rt-card{border-top:4px solid var(--ink);padding-top:10px;color:var(--muted)}
+.rt-card.up{color:#1f8a4c}.rt-card.down{color:var(--red)}
+.rt-card .kicker{color:var(--red)}
+.rt-top{display:flex;align-items:baseline;gap:10px;color:var(--ink)}
+.rt-top b{font:900 44px/1 var(--f-display)}
+.rt-top span{font:700 14px var(--f-data)}
+.rt-top i{font-style:normal}.rt-top i.up{color:#1f8a4c}.rt-top i.down{color:var(--red)}
+.rt-d{font:400 12px var(--f-data);color:var(--muted);margin:4px 0 6px}
+.rt-svg{width:100%;height:auto;display:block}
+.rt-axis{display:flex;justify-content:space-between;font:400 10px var(--f-data);color:var(--muted);margin:0}
+.rt-none{font:600 14px var(--f-body);color:var(--muted)}

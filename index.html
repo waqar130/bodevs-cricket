@@ -1542,7 +1542,8 @@ function awardsFor(p){
   // the race: everyone from the top down to this player (or the next two behind, if he leads); the top is highlighted
   const ladder=(a,p)=>{const L=a.list,me=L.findIndex(x=>x.id===p.id);if(me<0||L.length<2)return "";
     const top=a.n(L[0]),place=x=>L.filter(y=>a.low?a.n(y)<a.n(x):a.n(y)>a.n(x)).length+1;
-    const end=Math.max(me,L.findIndex(x=>a.n(x)===a.n(p))+L.filter(x=>a.n(x)===a.n(p)).length-1),rows=L.slice(0,a.n(p)===top?Math.min(L.length,end+3):end+1);
+    // leaders: the next two behind; everyone else: the players ahead, then him (not the others level with him)
+    const rows=a.n(p)===top?L.filter(x=>a.n(x)===top).concat(L.filter(x=>a.n(x)!==top).slice(0,2)):L.filter(x=>a.low?a.n(x)<a.n(p):a.n(x)>a.n(p)).concat([p]);
     return `<ol class="pa-ladder">${rows.map(x=>`<li class="${x.id===p.id?"me":""}${a.n(x)===top?" top":""}"><span>${L.filter(y=>a.n(y)===a.n(x)).length>1?"=":""}${place(x)}</span><a href="${purl(x.id)}">${nm(x)}</a><b>${a.v(x)}</b></li>`).join("")}</ol>`};
   const cards=AWARDS.filter(a=>!a.only||a.only(p)).map(a=>{
     if(!a.list.some(x=>x.id===p.id))return{rank:99,html:`<article class="pa-card na">
@@ -1554,7 +1555,11 @@ function awardsFor(p){
     const links=xs=>xs.slice(0,3).map(x=>`<a href="${purl(x.id)}">${nm(x)}</a>`).join(", ")+(xs.length>3?` and ${xs.length-3} more`:"");
     const status=i===0?["gold",level.length?"Joint holder":"Holder"]:i===1?["silver",level.length?"Joint runner-up":"Runner-up"]:i===2?["bronze",level.length?"Joint third":"Third"]:["",`${level.length?"=":"#"}${i+1} of ${a.list.length}`];
     const line=i===0?(level.length?`Level with ${links(level)} on ${a.v(p)}.`:run?`Leads <a href="${purl(run.id)}">${nm(run)}</a> by ${fmt(a,gapTo(run))} ${a.unit}.`:"Only qualifier so far.")
-      :`${fmt(a,gapTo(lead))} ${a.unit} ${a.low?"more than":"behind"} <a href="${purl(lead.id)}">${nm(lead)}</a> (${a.v(lead)}).${level.length?` Level with ${links(level)}.`:""}`;
+      :(()=>{// the nearest player ahead, and what it takes to catch and pass him
+        const ahead=a.list.filter(better),nx=ahead.at(-1),g=gapTo(nx),nxPlace=a.list.filter(x=>a.low?a.n(x)<a.n(nx):a.n(x)>a.n(nx)).length+1;
+        const ord=n=>n+(["th","st","nd","rd"][(n%100>10&&n%100<14)?0:n%10<4?n%10:0]||"th"),who=`<a href="${purl(nx.id)}">${nm(nx)}</a>`;
+        if(!a.dec&&!a.low)return `Needs <b>${fmt(a,g)}</b> more ${g===1&&a.u1?a.u1:a.unit} to draw level with ${who} in ${ord(nxPlace)}, and <b>${fmt(a,g+1)}</b> to move ahead.`;
+        return `Needs to ${a.low?"bring it down":"improve"} by <b>${fmt(a,g)}</b> ${a.unit} to catch ${who} in ${ord(nxPlace)}.`;})();
     return{rank:i,html:`<article class="pa-card ${status[0]}">
       <p class="kicker">${a.k}${a.note?` <span class="label">(${a.note})</span>`:""}</p>
       <span class="pa-status">${i===0?ICON_MOM:""}${status[1]}</span>
