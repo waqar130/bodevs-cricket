@@ -845,6 +845,43 @@ function renderRankings() {
   tabs.onclick = ev => { const b = ev.target.closest("[data-k]"); if (!b) return; RK.kind = b.dataset.k; try { localStorage.setItem("bdc-rk", RK.kind); } catch (x) {} drawBoard(); };
   drawBoard();
 }
+// how each rating is worked out, with the No. 1's own numbers as a worked example (same formula as rateAll in index.html)
+function rankHow(k, top) {
+  const rr = typeof SEASON_RR !== "undefined" ? SEASON_RR : 0, p = top?.p, n0 = v => Math.round(v).toLocaleString();
+  const bat = p => { const B = p.bat, outs = B.inns - B.no, a1 = outs ? B.r / outs : B.r, a2 = B.r / B.inns, avg = (a1 + a2) / 2, exp = Math.min(1, B.inns / 15);
+    return { B, outs, a1, a2, avg, exp, raw: avg * (B.sr / 100) * 6 * exp }; };
+  const bowl = p => { const W = p.bowl, wpo = W.w / (W.b / 6), exp = Math.min(1, W.b / 180);
+    return { W, wpo, exp, raw: wpo * 10 * (rr / W.econ) * 230 * exp }; };
+  const batHow = `<div class="rk-how-c"><h4>Batting rating</h4>
+    <p class="rk-f">(<b>average</b> × <b>strike rate</b> ÷ 100) × 6 × <b>experience</b></p>
+    <ul><li><b>Average</b> is the mean of two averages, so not-outs don't flatter it: runs per dismissal, and runs per innings.</li>
+      <li><b>Strike rate</b> is runs per 100 balls.</li>
+      <li><b>Experience</b> is innings ÷ 15, up to 1. Full weight from 15 innings.</li>
+      <li>Needs 3 innings to be rated. Highest possible rating is 999.</li></ul></div>`;
+  const bowlHow = `<div class="rk-how-c"><h4>Bowling rating</h4>
+    <p class="rk-f"><b>wickets per over</b> × 10 × (<b>league run rate</b> ÷ <b>economy</b>) × 230 × <b>experience</b></p>
+    <ul><li><b>Wickets per over</b> is wickets ÷ overs bowled.</li>
+      <li><b>League run rate</b> is runs per over across every innings this season, now <b>${r1(rr)}</b>. Conceding less than that lifts the rating, more lowers it.</li>
+      <li><b>Experience</b> is overs ÷ 30, up to 1. Full weight from 30 overs (180 balls).</li>
+      <li>Needs 6 overs to be rated. Highest possible rating is 999.</li></ul></div>`;
+  const allHow = `<div class="rk-how-c"><h4>All-rounder rating</h4>
+    <p class="rk-f"><b>batting rating</b> × <b>bowling rating</b> ÷ 1,000</p>
+    <ul><li>Multiplying means a player needs both: a great batter who doesn't bowl rates 0.</li>
+      <li>Needs a batting and a bowling rating.</li></ul></div>`;
+  let ex = "";
+  if (p) {
+    if (k === "rBat") { const x = bat(p); ex = `${esc(pname(p.id))}: ${x.B.r} runs, ${x.outs} outs, ${x.B.inns} innings → average (${r1(x.a1)} + ${r1(x.a2)}) ÷ 2 = <b>${r1(x.avg)}</b>; strike rate <b>${r1(x.B.sr)}</b>; experience ${Math.min(x.B.inns, 15)}/15 = <b>${r1(x.exp)}</b>. ${r1(x.avg)} × ${r1(x.B.sr)} ÷ 100 × 6 × ${r1(x.exp)} = <b>${n0(Math.min(999, x.raw))}</b>.`; }
+    if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}: ${x.W.w} wickets in ${ovs(x.W.b)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
+    if (k === "rAll") ex = `${esc(pname(p.id))}: batting ${p.rBat} × bowling ${p.rBowl} ÷ 1,000 = <b>${p.rAll}</b>.`;
+  }
+  return `<div class="rk-how"><h3 class="xr-h">How it's calculated</h3>
+    <div class="rk-how-g">${k === "rAll" ? allHow + batHow + bowlHow : k === "rBat" ? batHow : bowlHow}</div>
+    ${ex ? `<p class="rk-ex"><span>Worked example, No. 1</span>${ex}</p>` : ""}
+    <ul class="rk-key"><li><b>#</b> rank now · <b>▲▼</b> places moved since last week · <b>This week</b> change in rating points since last week</li>
+      <li><b>Position by week</b> place after each of the last six issues (green a climb, red a drop, solid for 2+ places) · <b>Season</b> places moved since first ranked</li>
+      <li><b>Rating trend</b> the rating after every issue, from the first week rated · <b>Best</b> highest rating reached, and when</li>
+      <li>Every rating is rebuilt from scratch after each week using all matches up to that week, and updated every Monday after Sunday's games.</li></ul></div>`;
+}
 function drawBoard() {
   const body = $("#rankBoardBody"), k = RK.kind, rows = rankRows(k), H = rankHistory();
   $("#rbTabs").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
@@ -869,7 +906,7 @@ function drawBoard() {
       <td class="rb-trend">${sparkline(x.series, x.delta > 0 ? "up" : x.delta < 0 ? "down" : "flat")}</td>
       <td class="rb-best">${x.peak}<small>${x.peakAt ? `issue ${x.peakAt.issue}` : ""}</small></td></tr>`).join("")}
     </tbody></table></div>
-    <p class="rank-note" style="margin-top:12px">${k === "rAll" ? "All-rounder rating is the batting rating multiplied by the bowling rating, divided by 1,000, so it rewards players who do both. " : ""}Batting combines average and strike rate; bowling combines wickets per over and economy against the league run rate. Ratings scale up with experience: full weight from 15 innings or 30 overs. ▲▼ are places moved since last week; "this week" is the change in rating points. The trend line runs from the first week a player was rated to now.</p>`
+    ${rankHow(k, rows[0])}`
     : '<p class="dnb">No ratings yet.</p>';
   const svg = body.querySelector(".bump");
   if (svg) { const on = id => svg.classList.toggle("focus", !!id) || svg.querySelectorAll(".bump-l").forEach(g => g.classList.toggle("hot", g.dataset.id === String(id)));

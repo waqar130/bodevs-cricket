@@ -917,3 +917,15 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .rb-sea{white-space:nowrap}.rb-sea small{display:block;font:400 10px var(--f-data);color:var(--muted)}
 .rb-season{font:800 16px var(--f-display);color:var(--muted)}.rb-season.up{color:#1f8a4c}.rb-season.down{color:var(--red)}
 @media(max-width:640px){.rb-tbl th:nth-child(8),.rb-tbl td:nth-child(8),.rb-tbl th:nth-child(9),.rb-tbl td:nth-child(9){display:none}}
+/* rankings: how it's calculated */
+.rk-how{margin-top:28px}
+.rk-how-g{display:grid;gap:16px;margin-top:12px}
+@media(min-width:900px){.rk-how-g{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
+.rk-how-c{background:var(--paper-2);padding:14px 16px}
+.rk-how-c h4{font:900 20px/1 var(--f-display);text-transform:uppercase;margin:0 0 8px}
+.rk-f{font:600 14px/1.5 var(--f-data);background:var(--paper);border-left:4px solid var(--red);padding:8px 10px;margin:0 0 10px}
+.rk-how-c ul{margin:0;padding-left:18px;display:grid;gap:5px;font:400 14px/1.45 var(--f-body)}
+.rk-ex{font:400 14px/1.5 var(--f-data);border-top:2px solid var(--ink);padding-top:10px;margin-top:16px}
+.rk-ex span{display:block;font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
+.rk-key{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:4px;font:400 12px/1.5 var(--f-data);color:var(--muted)}
+.rk-key b{color:var(--ink)}
