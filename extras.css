@@ -979,3 +979,10 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .tm-lc>a{box-shadow:none!important;background:none!important}
 .tm-lc p{margin:0;padding:0 10px 10px 14px;font:400 12px var(--f-data);color:var(--muted)}.tm-lc p a{color:var(--ink);text-decoration:none}.tm-lc p a:hover{color:var(--red)}
 .tm-lc p a{display:inline;padding:0;background:none;grid-template-columns:none}
+
+/* Analysis sub-tabs */
+.subtabs{background:var(--paper-2);border-bottom:1px solid var(--rule);position:sticky;top:var(--subtop,96px);z-index:19}
+.subtabs .wrap{display:flex;gap:22px;overflow-x:auto;scrollbar-width:none}
+.subtabs a{font:800 15px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:11px 0 9px;border-bottom:3px solid transparent;white-space:nowrap}
+.subtabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--red)}
+.subtabs a:hover{color:var(--ink)}

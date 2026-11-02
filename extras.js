@@ -374,6 +374,9 @@ const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
 let CUR_PAGE = null;
+const ANALYSIS = ["rankings", "compare", "strategy"];
+// the Analysis tab opens whichever of its pages was used last
+try { const last = localStorage.getItem("bdc-ana"); if (ANALYSIS.includes(last)) { const set = () => { const t = document.getElementById("anaTab"); if (t) t.href = "#" + last; }; document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", set) : set(); } } catch (x) {}
 function tagPages() {
   Object.entries(PAGE_OF).forEach(([id, p]) => { const el = document.getElementById(id); if (el) el.dataset.page = p; });
   document.querySelector("section.cover")?.setAttribute("data-page", "home");
@@ -382,7 +385,13 @@ function tagPages() {
 function applyPage(p, target) {
   const changed = CUR_PAGE !== p; CUR_PAGE = p;
   document.querySelectorAll("[data-page]").forEach(el => { el.hidden = el.dataset.page !== p || el.dataset.empty === "1"; });
-  document.querySelectorAll(".pagetabs a").forEach(a => a.setAttribute("aria-current", a.dataset.p === p ? "page" : "false"));
+  // Rankings, Compare and Strategy sit under one Analysis tab, with their own sub-tabs
+  const inAna = ANALYSIS.includes(p), sub = $("#anaTabs"), tab = $("#anaTab");
+  document.querySelectorAll(".pagetabs a").forEach(a => a.setAttribute("aria-current", a.dataset.p === p || (a.dataset.p === "analysis" && inAna) ? "page" : "false"));
+  // the sub-tabs stick just under the page tabs (which stick 64px from the top)
+  if (sub && inAna) sub.style.setProperty("--subtop", `calc(64px + env(safe-area-inset-top, 0px) + ${document.querySelector(".pagetabs")?.offsetHeight || 48}px)`);
+  if (sub) { sub.hidden = !inAna; sub.querySelectorAll("a").forEach(a => a.setAttribute("aria-current", a.dataset.p === p ? "page" : "false")); }
+  if (inAna && tab) { tab.href = "#" + p; try { localStorage.setItem("bdc-ana", p); } catch (x) {} }
   if (target) target.scrollIntoView({ block: "start", behavior: changed ? "instant" : "smooth" });
   else if (changed) window.scrollTo({ top: 0, behavior: "instant" });
 }
