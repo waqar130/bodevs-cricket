@@ -1525,14 +1525,16 @@ function awardsFor(p){
   if(!p.matches||!AWARDS.length)return "";
   const nm=x=>esc(x.full_name||x.name),fmt=(a,v)=>a.dec?r1(v):Math.round(v).toLocaleString();
   const cards=AWARDS.filter(a=>!a.only||a.only(p)).map(a=>{
-    const i=a.list.findIndex(x=>x.id===p.id);
-    if(i<0)return{rank:99,html:`<article class="pa-card na">
+    if(!a.list.some(x=>x.id===p.id))return{rank:99,html:`<article class="pa-card na">
       <p class="kicker">${a.k}</p><span class="pa-status">Not eligible yet</span>
       <p class="pa-line">Qualifies at ${a.note}. ${a.need?a.need(p):""}.</p></article>`};
-    const lead=a.list[0],run=a.list[1],gapTo=o=>Math.abs(a.n(p)-a.n(o));
-    const status=i===0?["gold","Holder"]:i===1?["silver","Runner-up"]:i===2?["bronze","Third"]:["",`#${i+1} of ${a.list.length}`];
-    const line=i===0?(run?(gapTo(run)?`Leads <a href="${purl(run.id)}">${nm(run)}</a> by ${fmt(a,gapTo(run))} ${a.unit}.`:`Level with <a href="${purl(run.id)}">${nm(run)}</a>.`):"Only qualifier so far.")
-      :(gapTo(lead)?`${fmt(a,gapTo(lead))} ${a.unit} ${a.low?"more than":"behind"} <a href="${purl(lead.id)}">${nm(lead)}</a> (${a.v(lead)}).`:`Level with <a href="${purl(lead.id)}">${nm(lead)}</a> on ${a.v(lead)}.`);
+    // rank on the number itself: players level on it share the place, so level with the leader is a joint holder
+    const mine=a.n(p),better=x=>a.low?a.n(x)<mine:a.n(x)>mine,i=a.list.filter(better).length;
+    const level=a.list.filter(x=>x.id!==p.id&&a.n(x)===mine),lead=a.list[0],run=a.list.find(x=>x.id!==p.id),gapTo=o=>Math.abs(mine-a.n(o));
+    const links=xs=>xs.slice(0,3).map(x=>`<a href="${purl(x.id)}">${nm(x)}</a>`).join(", ")+(xs.length>3?` and ${xs.length-3} more`:"");
+    const status=i===0?["gold",level.length?"Joint holder":"Holder"]:i===1?["silver",level.length?"Joint runner-up":"Runner-up"]:i===2?["bronze",level.length?"Joint third":"Third"]:["",`${level.length?"=":"#"}${i+1} of ${a.list.length}`];
+    const line=i===0?(level.length?`Level with ${links(level)} on ${a.v(p)}.`:run?`Leads <a href="${purl(run.id)}">${nm(run)}</a> by ${fmt(a,gapTo(run))} ${a.unit}.`:"Only qualifier so far.")
+      :`${fmt(a,gapTo(lead))} ${a.unit} ${a.low?"more than":"behind"} <a href="${purl(lead.id)}">${nm(lead)}</a> (${a.v(lead)}).${level.length?` Level with ${links(level)}.`:""}`;
     return{rank:i,html:`<article class="pa-card ${status[0]}">
       <p class="kicker">${a.k}${a.note?` <span class="label">(${a.note})</span>`:""}</p>
       <span class="pa-status">${i===0?ICON_MOM:""}${status[1]}</span>

@@ -940,16 +940,20 @@ function renderSeasonAwards() {
   const fmt = (a, x) => a.dec ? r1(x) : Math.round(x).toLocaleString();
   if (typeof addUniqueAwards === "function") addUniqueAwards();
   const card = a => {
-    const list = a.list.slice(0, 5), h = list[0]; if (!h) return "";
-    const n = a.n(h), second = list[1], gap = second ? Math.abs(n - a.n(second)) : 0, tied = second && gap === 0;
-    const lead = !second ? "Only qualifier so far." : tied ? `Level with ${plink(second.id)}.` : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
+    const h = a.list[0]; if (!h) return "";
+    // everyone level with the leader holds it jointly; the race below starts after them
+    const n = a.n(h), holders = a.list.filter(x => a.n(x) === n), tied = holders.length > 1, chasers = a.list.slice(holders.length), second = chasers[0];
+    const list = [...holders, ...chasers.slice(0, Math.max(0, 5 - holders.length))], gap = second ? Math.abs(n - a.n(second)) : 0;
+    const lead = tied ? `${holders.length} players level on ${a.v(h)}${second ? `; next is ${plink(second.id)}, ${fmt(a, gap)} ${a.unit} behind` : ""}.` : !second ? "Only qualifier so far." : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
+    // a place is shared by everyone on the same number
+    const place = p => a.list.filter(x => a.low ? a.n(x) < a.n(p) : a.n(x) > a.n(p)).length + 1;
     const chasing = a.ok ? [...P.values()].filter(p => p.matches && !a.ok(p) && (a.k === "Mr Economy" ? p.bowl.b >= 60 : p.bat.b >= 75))
       .sort((x, y) => a.k === "Mr Economy" ? x.bowl.econ - y.bowl.econ : y.bat.sr - x.bat.sr).slice(0, 2) : [];
     return `<article class="sa-card" id="award-${slugify(a.k)}">
       <p class="kicker">${esc(a.k)}${a.note ? ` <span class="sa-note">(${esc(a.note)})</span>` : ""}</p>
-      <a class="sa-holder ${h.tm.key}" href="${purl(h.id)}">${miniThumb(h)}<span><small>${tied ? "Joint holder" : "Holder"}</small><b>${esc(pname(h.id))}</b></span><span class="sa-v">${a.v(h)}<small>${esc(n === 1 && a.u1 ? a.u1 : a.u)}</small></span></a>
+      ${holders.map(x => `<a class="sa-holder ${x.tm.key}" href="${purl(x.id)}">${miniThumb(x)}<span><small>${tied ? "Joint holder" : "Holder"}</small><b>${esc(pname(x.id))}</b></span><span class="sa-v">${a.v(x)}<small>${esc(n === 1 && a.u1 ? a.u1 : a.u)}</small></span></a>`).join("")}
       <p class="sa-lead">${lead}</p>
-      <ol class="sa-race">${list.slice(1).map((p, i) => `<li><span class="xr-n">${i + 2}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
+      <ol class="sa-race">${list.slice(holders.length).map(p => `<li><span class="xr-n">${a.list.filter(x => a.n(x) === a.n(p)).length > 1 ? "=" : ""}${place(p)}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
       ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.k === "Mr Economy" ? r1(p.bowl.econ) + " an over" : Math.round(p.bat.sr) + " SR"})`).join("; ")}.</p>` : ""}
     </article>`;
   };
