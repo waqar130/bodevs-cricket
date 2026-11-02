@@ -717,7 +717,7 @@ function renderTape() {
     ["Economy", ...K.map(k => r1(conceded[k] / bBalls[k] * 6)), K.map(k => conceded[k] / bBalls[k]), 0],
     ["Extras given away", ex.t, ex.f, [ex.t, ex.f], 0],
     ["Catches", fld.t.c, fld.f.c, [fld.t.c, fld.f.c], 1],
-    ["Catch success", ...K.map(k => pct0(fld[k].c / ((fld[k].c + fld[k].d) || 1))), K.map(k => fld[k].c / ((fld[k].c + fld[k].d) || 1)), 1],
+    ["Catch rate", ...K.map(k => pct0(fld[k].c / ((fld[k].c + fld[k].d) || 1))), K.map(k => fld[k].c / ((fld[k].c + fld[k].d) || 1)), 1],
     ["Run outs", fld.t.ro, fld.f.ro, [fld.t.ro, fld.f.ro], 1],
     ["Weekly MVPs", mvps.t, mvps.f, [mvps.t, mvps.f], 1],
     ["Men of the Match", ...K.map(k => done.reduce((a, m) => a + (m.poms || []).filter(x => team(x.tm).key === k).length, 0)), K.map(k => done.reduce((a, m) => a + (m.poms || []).filter(x => team(x.tm).key === k).length, 0)), 1],
@@ -1139,7 +1139,7 @@ function notables(p) {
   if (cm?.c) out.fld.push(tile("Most catches in a match", cm.c, "", cm.mm));
   out.fld.push(tile("Run outs", p.fld.ro, p.fld.ro ? `${r1(p.fld.ro / p.matches)} a match` : "none yet"));
   const fav2 = by(fx.filter(x => x.c), (a, b) => b.c - a.c); if (fav2) out.fld.push(tile("Catches most often", esc(short(fav2.bat)), `${fav2.c} catch${fav2.c > 1 ? "es" : ""}`));
-  const tot = p.fld.c + p.fld.drop; if (tot) out.fld.push(tile("Catch success", `${Math.round(p.fld.c / tot * 100)}%`, `${p.fld.c} taken, ${p.fld.drop} dropped`));
+  const tot = p.fld.c + p.fld.drop; if (tot) out.fld.push(tile("Catch rate", `${Math.round(p.fld.c / tot * 100)}%`, `${p.fld.c} taken, ${p.fld.drop} dropped`));
   if (p.drp?.made) out.fld.push(tile("Drops cost", `${p.drp.madeR} runs`, `from ${p.drp.made} dropped catch${p.drp.made > 1 ? "es" : ""}`));
   const grid = a => `<div class="nt-grid">${a.join("")}</div>`;
   return { batting: out.bat.length ? `<h2 class="sec-t">Batting notables</h2>${grid(out.bat)}` : "",

@@ -1645,34 +1645,39 @@ function initCompare(){
 function drawCompare(){
   const A=P.get(CMP.a),B=P.get(CMP.b);if(!A||!B)return;
   const form=new Map(formData().map(x=>[x.p.id,x.form]));
-  // per-player extras: the team's catches and run outs while he was fielding, and matches won
-  const ext=p=>{if(p._cx)return p._cx;let tc=0,tro=0,won=0;
+  // per-player extras: matches won, 30+ scores, matches with a run out, boundaries conceded
+  const ext=p=>{if(p._cx)return p._cx;let won=0,s30=0,roM=0,bnd=0;
     p.log.forEach(l=>{if(l.mm.win&&l.mm.win.name===l.team)won++;
-      l.mm.s.scorecards.forEach(sc=>{if(sc.bowling_team!==l.team)return;const f=sc.fielding||{};
-        (f.catches||[]).forEach(x=>tc+=x.count);(f.runouts||[]).forEach(x=>tro+=x.count||1)})});
-    return p._cx={tc,tro,won}};
+      s30+=l.bat.filter(x=>x.r>=30).length;let ro=0;
+      l.mm.s.scorecards.forEach(sc=>{(sc.fielding?.runouts||[]).forEach(x=>{if(x.id===p.id)ro++});
+        sc.bowling.forEach(x=>{if(x.id===p.id)bnd+=(x.fours||0)+(x.sixes||0)})});
+      if(ro)roM++});
+    return p._cx={won,s30,roM,bnd}};
+  const outs=p=>p.bat.inns-p.bat.no,chances=p=>p.fld.c+p.fld.drop;
   const q=(ok,v)=>ok?v:NaN,pct=v=>isNaN(v)?"–":Math.round(v)+"%",d1=v=>isNaN(v)?"–":r1(v),n=v=>isNaN(v)?"–":v.toLocaleString();
   // [group, label, value fn, display fn, higher is better]; rate stats need enough balls or chances to count
   const rows=[
-    ["Batting","Innings",p=>p.bat.inns,n,1],["Batting","Runs",p=>p.bat.r,n,1],
-    ["Batting","Batting average",p=>q(p.bat.inns-p.bat.no>0,p.bat.avg),d1,1],["Batting","Strike rate",p=>q(p.bat.b>=30,p.bat.sr),d1,1],
-    ["Batting","Highest score",p=>p.bat.hs?p.bat.hs.r:0,(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",1],
-    ["Batting","50s + 100s",p=>p.bat.fifty+p.bat.hundred,n,1],["Batting","Sixes",p=>p.bat.s,n,1],["Batting","Fours",p=>p.bat.f,n,1],["Batting","Not outs",p=>p.bat.no,n,1],
-    ["Batting","Boundary %",p=>q(p.bat.r>=50,(p.bat.f*4+p.bat.s*6)/p.bat.r*100),pct,1],
+    ["Batting","Batting average",p=>q(outs(p)>0,p.bat.avg),d1,1],
     ["Batting","Average v pace",p=>{const x=styleSplit(p).fast;return q(x.o>=2,x.r/x.o)},d1,1],["Batting","Average v spin",p=>{const x=styleSplit(p).spin;return q(x.o>=2,x.r/x.o)},d1,1],
+    ["Batting","Strike rate",p=>q(p.bat.b>=30,p.bat.sr),d1,1],
     ["Batting","SR v pace",p=>{const x=styleSplit(p).fast;return q(x.b>=30,x.r/x.b*100)},d1,1],["Batting","SR v spin",p=>{const x=styleSplit(p).spin;return q(x.b>=30,x.r/x.b*100)},d1,1],
-    ["Batting","Dot balls faced",p=>q(p.bat.b>=30,p.bat.dots/p.bat.b*100),pct,0],["Batting","Ducks",p=>p.bat.ducks,n,0],
-    ["Bowling","Wickets",p=>p.bowl.w,n,1],["Bowling","Overs bowled",p=>p.bowl.b/6,(v,p)=>ovs(p.bowl.b),1],
+    ["Batting","Balls faced per dismissal",p=>q(outs(p)>0,p.bat.b/outs(p)),d1,1],
+    ["Batting","Highest score",p=>p.bat.hs?p.bat.hs.r:0,(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",1],
+    ["Batting","30+ scores",p=>ext(p).s30,n,1],
+    ["Batting","Balls per boundary",p=>q(p.bat.f+p.bat.s>0&&p.bat.b>=30,p.bat.b/(p.bat.f+p.bat.s)),d1,0],
+    ["Batting","Boundary %",p=>q(p.bat.r>=50,(p.bat.f*4+p.bat.s*6)/p.bat.r*100),pct,1],
+    ["Batting","Dot balls faced",p=>q(p.bat.b>=30,p.bat.dots/p.bat.b*100),pct,0],["Batting","Duck %",p=>q(p.bat.inns>0,p.bat.ducks/p.bat.inns*100),pct,0],
+    ["Bowling","Wickets per match",p=>q(p.matches>0,p.bowl.w/p.matches),v=>isNaN(v)?"–":v.toFixed(2),1],
     ["Bowling","Economy",p=>q(p.bowl.b>=36,p.bowl.econ),d1,0],["Bowling","Bowling average",p=>q(p.bowl.b>=36&&p.bowl.w>0,p.bowl.avg),d1,0],
     ["Bowling","Bowling strike rate",p=>q(p.bowl.b>=36&&p.bowl.w>0,p.bowl.sr),d1,0],
     ["Bowling","Best bowling",p=>p.bowl.best?p.bowl.best.w*1000-p.bowl.best.r:NaN,(v,p)=>p.bowl.best?`${p.bowl.best.w}/${p.bowl.best.r}`:"–",1],
     ["Bowling","Dot balls bowled",p=>q(p.bowl.b>=36,p.bowl.dots/p.bowl.b*100),pct,1],
+    ["Bowling","Balls per boundary conceded",p=>q(p.bowl.b>=36&&ext(p).bnd>0,p.bowl.b/ext(p).bnd),d1,1],
     ["Bowling","Extras per over",p=>q(p.bowl.b>=36,(p.bowl.wd+p.bowl.nb)/p.bowl.b*6),d1,0],
-    ["Fielding","Catches",p=>p.fld.c,n,1],["Fielding","Catch success",p=>q(p.fld.c+p.fld.drop>=3,p.fld.c/(p.fld.c+p.fld.drop)*100),pct,1],
-    ["Fielding","Share of team catches",p=>q(ext(p).tc>0,p.fld.c/ext(p).tc*100),pct,1],
-    ["Fielding","Run outs",p=>p.fld.ro,n,1],["Fielding","Share of team run outs",p=>q(ext(p).tro>0,p.fld.ro/ext(p).tro*100),pct,1],
-    ["Fielding","Drops",p=>p.fld.drop,n,0],
-    ["Overall","Matches",p=>p.matches,n,1],["Overall","Win %",p=>q(p.matches>0,ext(p).won/p.matches*100),pct,1],
+    ["Fielding","Catches",p=>p.fld.c,n,1],["Fielding","Catch rate",p=>q(chances(p)>=3,p.fld.c/chances(p)*100),pct,1],
+    ["Fielding","Catch drop %",p=>q(chances(p)>=3,p.fld.drop/chances(p)*100),pct,0],
+    ["Fielding","Run out %",p=>q(p.matches>0,ext(p).roM/p.matches*100),pct,1],
+    ["Overall","Match attendance %",p=>M.length?p.matches/M.length*100:NaN,pct,1],["Overall","Win %",p=>q(p.matches>0,ext(p).won/p.matches*100),pct,1],
     ["Overall","MVP awards",p=>p.mvpN,n,1],["Overall","Man of the Match",p=>p.pomN,n,1],
     ["Overall","Current form",p=>form.get(p.id)||0,v=>Math.round(v),1],
   ];
@@ -1693,7 +1698,7 @@ function drawCompare(){
   const head=p=>`<a class="cmp-head ${p.tm.key}" href="${purl(p.id)}">${photo(p,"cmp-ph")}<span><b>${esc(p.full_name||p.name)}</b><small>${esc(p.title||"")} · ${esc(p.tm.short)}</small></span></a>`;
   $("#cmpBody").innerHTML=`<div class="cmp-top">${head(A)}<div class="cmp-score"><b>${wa}</b><span>–</span><b>${wb}</b><small>of ${rows.length} categories won</small></div>${head(B)}</div>
     <div class="cmp-rows">${body}</div>
-    <p class="rank-note" style="margin-top:12px">Rate stats need enough of a sample to count: strike rate and dot balls 30+ balls faced, bowling rates 6+ overs, catch success 3+ chances. "Share of team" is his part of all the catches or run outs his side took in the matches he played.</p>
+    <p class="rank-note" style="margin-top:12px">Rate stats need enough of a sample to count: strike rate, balls per boundary and dot balls 30+ balls faced; bowling rates 6+ overs; catch rate and drop % 3+ chances. Run out % is the share of his matches with at least one run out. Match attendance is matches played out of all ${M.length} this season.</p>
     ${A.id===B.id?"":`<h3 class="tbl-title" style="margin-top:34px">When they meet</h3><div class="duels">${duel(A,B)}${duel(B,A)}</div>`}`;
 }
 
