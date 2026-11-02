@@ -573,20 +573,6 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .rivals{display:grid;gap:36px;margin-top:10px}
 @media(min-width:1000px){.rivals{grid-template-columns:1fr 1fr;gap:48px}}
 .rivals>div{min-width:0}
-.nb{padding:14px 0;border-bottom:1px solid var(--rule)}
-.nb .kicker{display:block;margin-bottom:4px}
-.nb-r{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:6px 0}
-.nb-r.sub{padding:4px 0;border-top:1px dashed var(--rule)}
-.nb-n{font:700 12px var(--f-data);color:var(--red)}
-.nb-r.sub .nb-n{color:var(--muted)}
-.nb-r.sub .nb-who b{font-size:16px}
-.nb-r.sub .nb-stat{font-size:19px}
-.nb-r.sub .nb-who .thumb{transform:scale(.82)}
-.nb-who{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:0}
-.nb-who b{font:600 19px/1.2 var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.nb-who:hover b{color:var(--red)}
-.nb-stat{font:900 26px/1 var(--f-display);text-transform:uppercase;text-align:right;white-space:nowrap}
-.nb-note{grid-column:2/-1;font:400 13px var(--f-data);color:var(--muted);padding-left:56px}
 
 /* rankings */
 .rankings{display:grid;gap:36px;margin-bottom:14px}
@@ -2167,14 +2153,18 @@ function rivalries(p){
   // every qualifying opponent in each category, ranked
   const pick=(list,score,ok=()=>true)=>list.filter(ok).sort((a,b)=>score(b)-score(a));
   const nm=id2=>pname(id2);
-  const row=(label,list,who,stat,note)=>list.length?`<div class="nb"><span class="kicker">${label}</span>${list.map((x,i)=>{const oid=x[who];return `<div class="nb-r${i?" sub":""}"><span class="nb-n">${i+1}</span><a class="nb-who" href="${purl(oid)}">${miniThumb(P.get(oid))}<b>${esc(pname(oid))}</b></a><span class="nb-stat">${stat(x)}</span>${note&&note(x)?`<span class="nb-note">${note(x)}</span>`:""}</div>`}).join("")}</div>`:"";
+  const row=(label,list,who,stat,note)=>{if(!list.length)return "";
+    const [L,...rest]=list,lid=L[who],lp=P.get(lid),nt=x=>note&&note(x)?`<span class="rv-note">${note(x)}</span>`:"";
+    return `<section class="rv"><header class="rv-h"><span>${label}</span><small>${list.length} ${who==="bowl"?"bowler":who==="fld"?"fielder":"batter"}${list.length>1?"s":""}</small></header>
+      <div class="rv-lead ${lp?.tm.key||""}"><a href="${purl(lid)}">${miniThumb(lp)}</a><div><a class="rv-name" href="${purl(lid)}">${esc(pname(lid))}</a>${nt(L)}</div><em class="rv-stat">${stat(L)}</em></div>
+      ${rest.length?`<ol class="rv-list" start="2">${rest.map(x=>{const oid=x[who];return `<li class="${P.get(oid)?.tm.key||""}"><a class="rv-name" href="${purl(oid)}">${esc(pname(oid))}</a><em class="rv-stat">${stat(x)}</em>${nt(x)}</li>`}).join("")}</ol>`:""}</section>`};
   const line=x=>`${x.r} runs off ${x.b} balls · SR ${r1(sr(x))}`;
   // dismissals by type, e.g. "C (5) · B (2)"; run outs aren't the bowler's
   const HOW={caught:["C","caught"],"caught behind":["WK","caught behind"],bowled:["B","bowled"],"hit wicket":["HW","hit wicket"],lbw:["LBW","lbw"],stumped:["ST","stumped"],other:["O","other"]};
   const hows=x=>Object.entries(x.how||{}).filter(([k,n])=>k!=="run out"&&n).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<abbr title="${(HOW[k]||[k,k])[1]} ${n}×">${(HOW[k]||[k])[0]} (${n})</abbr>`).join(" · ");
   // a face for his strike rate against this bowler, measured against his usual strike rate
   const usual=p.bat.b?p.bat.r/p.bat.b*100:0;
-  const face=x=>{if(!usual||!x.b)return "";const q=sr(x)/usual;const [f,t]=q<0.7?["😢","well below his usual"]:q<0.9?["🙁","below his usual"]:q<1.1?["😐","about his usual"]:["😊","above his usual"];return `<span class="nb-face" title="SR ${r1(sr(x))}: ${t} ${r1(usual)}">${f}</span>`};
+  const face=x=>{if(!usual||!x.b)return "";const q=sr(x)/usual;const [f,t]=q<0.7?["😢","well below his usual"]:q<0.9?["🙁","below his usual"]:q<1.1?["😐","about his usual"]:["😊","above his usual"];return `<span class="rv-face" title="SR ${r1(sr(x))}: ${t} ${r1(usual)}">${f}</span>`};
   const extrasLine=x=>{const del=x.b+x.wd,e=x.wd+x.nb;return del?`${e} of ${del} deliveries (${Math.round(e/del*100)}%) · one every ${r1(del/e)} balls`:""};
 
   // with the bat
@@ -2215,7 +2205,7 @@ function rivalries(p){
       ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>`off ${x.b} balls · SR ${r1(sr(x))} · econ ${r1(ec(x))}`)}
       ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>`a six every ${r1(x.b/x.s)} balls · ${x.r} runs off ${x.b}`)}
       ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.outs} wkt${x.outs===1?"":"s"} · ${Math.round(dp(x))}% dots`)}
-      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes`)}
+      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>`${x.r} off ${x.b} · ${x.s} sixes · ${x.outs?`a wicket every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`:"no wicket yet"}`)}
       ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,extrasLine)}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
     </div>
