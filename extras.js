@@ -367,9 +367,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["rankings", "Rankings"], ["compare", "Compare"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
+  rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -404,10 +404,11 @@ function markEmpty(id, empty) {
 
 /* ---------------- since last Monday: what changed with this week's sync ---------------- */
 // Ratings as they stood before the latest week (same formula as rateAll in index.html; keep the two in step).
-function ranksBefore(skip) {
+function ranksBefore(skip) { return ratingsFrom(M.filter(m => !skip.has(m.id))).rk; }
+function ratingsFrom(ms) {
   const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0 }); return g.get(id); };
   let tr = 0, tb = 0;
-  M.filter(m => !skip.has(m.id)).forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
+  ms.forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
     mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id); a.inns++; a.r += x.runs; a.b += x.balls; if (!x.out) a.no++; });
       sc.bowling.forEach(x => { const a = e(x.id); a.wb += balls(x.overs); a.wr += x.runs; a.w += x.wickets; }); }); });
   const RR = tb ? tr / tb * 6 : 0, out = new Map();
@@ -416,7 +417,7 @@ function ranksBefore(skip) {
     const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.wb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.wb / 180))) : 0;
     out.set(a.id, { rBat, rBowl, rAll: Math.round(rBat * rBowl / 1000) }); });
   const rk = {}; ["rBat", "rBowl", "rAll"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
-  return rk;
+  return { val: out, rk };
 }
 let MOVES = new Map(); // "id|kBat" -> places moved (+ up, - down, "new")
 function computeMoves() {
@@ -793,6 +794,69 @@ function renderWeekNumbers() {
     ${wm.more.replace('<h3 class="xr-h">More from the week</h3>', H3(4, "More from the week"))}`;
 
   $("#weeknumbers .kicker").textContent = now ? "The week in numbers" : `The week in numbers · Issue ${W.issue}`;
+}
+
+/* ---------------- rankings: ratings rebuilt after every week, with the trend ---------------- */
+const RK = { kind: "rAll" };
+try { const k = localStorage.getItem("bdc-rk"); if (["rAll", "rBat", "rBowl"].includes(k)) RK.kind = k; } catch (x) {}
+let RHIST = null;
+function rankHistory() {
+  if (RHIST) return RHIST;
+  // weeks oldest first; each snapshot rates every match played up to the end of that week
+  const weeks = [...WEEKS].reverse(), seen = [];
+  RHIST = weeks.map(W => { seen.push(...W.WM); return { W, ...ratingsFrom([...seen]) }; });
+  return RHIST;
+}
+const RK_LABEL = { rAll: "All-rounder", rBat: "Batting", rBowl: "Bowling" };
+function rankRows(kind) {
+  const H = rankHistory(), now = H.at(-1), prev = H.at(-2);
+  if (!now) return [];
+  return [...now.rk[kind].entries()].sort((a, b) => a[1] - b[1]).map(([id, rank]) => {
+    const series = H.map(s => s.val.get(id)?.[kind] || 0), rating = series.at(-1), before = prev?.val.get(id)?.[kind] || 0, prevRank = prev?.rk[kind].get(id);
+    const peak = Math.max(...series), peakAt = H[series.lastIndexOf(peak)]?.W;
+    return { p: P.get(id), id, rank, rating, delta: before ? rating - before : null, move: prevRank ? prevRank - rank : "new", series, peak, peakAt };
+  }).filter(x => x.p);
+}
+function sparkline(series, up) {
+  const pts = series.map((v, i) => [i, v]).filter(([, v]) => v > 0); if (pts.length < 2) return '<span class="rb-nospark">–</span>';
+  const w = 120, h = 30, n = series.length - 1 || 1, max = Math.max(...pts.map(p => p[1])), min = Math.min(...pts.map(p => p[1])), span = max - min || 1;
+  const xy = pts.map(([i, v]) => [i / n * w, h - 3 - (v - min) / span * (h - 6)]);
+  const last = xy.at(-1);
+  return `<svg class="rb-spark ${up}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><polyline points="${xy.map(p => p.map(c => c.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.2" fill="currentColor"/></svg>`;
+}
+const moveTag = m => m === "new" ? '<span class="rb-mv new">New</span>' : m > 0 ? `<span class="rb-mv up" title="Up ${m} since last week">▲${m}</span>` : m < 0 ? `<span class="rb-mv down" title="Down ${-m} since last week">▼${-m}</span>` : '<span class="rb-mv same" title="Same place as last week">–</span>';
+const deltaTag = d => d === null ? '<span class="rb-d">new</span>' : d > 0 ? `<span class="rb-d up">+${d}</span>` : d < 0 ? `<span class="rb-d down">${d}</span>` : '<span class="rb-d">0</span>';
+function renderRankings() {
+  const hero = $("#rankHeroBody"), body = $("#rankBoardBody"), tabs = $("#rbTabs"); if (!hero || !body || !WEEKS?.length) return;
+  RHIST = null; const H = rankHistory(), W = H.at(-1)?.W;
+  // cover: the three number ones
+  const ones = rankRows("rAll").slice(0, 3).map(x => ({ k: "rAll", x })), no1 = k => rankRows(k)[0];
+  const climbers = ["rAll", "rBat", "rBowl"].flatMap(k => rankRows(k).filter(x => x.delta).map(x => ({ ...x, k }))).sort((a, b) => b.delta - a.delta);
+  const up = climbers[0], down = climbers.at(-1);
+  hero.innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">Player ratings · after issue ${W.issue}, ${esc(weekRange(W))}</p>
+      <h2 class="sh-head">Who's on top.</h2>
+      <p class="sh-dek">Batting, bowling and all-rounder ratings, rebuilt after every week of the season. Arrows show places moved since last Monday; the line shows the whole season.</p>
+      <div class="sh-stats">${up && up.delta > 0 ? `<div><b>+${up.delta}</b><span>biggest climb · ${esc(pname(up.id))}, ${RK_LABEL[up.k].toLowerCase()}</span></div>` : ""}${down && down.delta < 0 ? `<div><b>${down.delta}</b><span>biggest drop · ${esc(pname(down.id))}, ${RK_LABEL[down.k].toLowerCase()}</span></div>` : ""}${["rBat", "rBowl"].map(k => no1(k) ? `<div><b>${no1(k).rating}</b><span>No. 1 ${RK_LABEL[k].toLowerCase()} · ${esc(pname(no1(k).id))}</span></div>` : "").join("")}<div><b>${H.length}</b><span>weeks rated</span></div></div></div>
+    <div class="sh-stars">${ones.map(({ k, x }) => `<a class="sh-star ${x.p.tm.key}" href="#rankboard" data-rk="${k}"><span class="sh-ph">${x.p.photo ? `<img src="${x.p.photo}" alt="" loading="lazy">` : ""}</span><small>No. ${x.rank} · All-rounder</small><b>${esc(pname(x.id))}</b><em>${x.rating} <i>points ${x.move === "new" ? "" : x.move > 0 ? "▲" + x.move : x.move < 0 ? "▼" + -x.move : ""}</i></em></a>`).join("")}</div></div>`;
+  hero.querySelectorAll("[data-rk]").forEach(a => a.addEventListener("click", () => { RK.kind = a.dataset.rk; drawBoard(); }));
+  tabs.innerHTML = ["rAll", "rBat", "rBowl"].map(k => `<button type="button" role="tab" data-k="${k}">${RK_LABEL[k]}</button>`).join("");
+  tabs.onclick = ev => { const b = ev.target.closest("[data-k]"); if (!b) return; RK.kind = b.dataset.k; try { localStorage.setItem("bdc-rk", RK.kind); } catch (x) {} drawBoard(); };
+  drawBoard();
+}
+function drawBoard() {
+  const body = $("#rankBoardBody"), k = RK.kind, rows = rankRows(k), H = rankHistory();
+  $("#rbTabs").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
+  const sub = x => k === "rAll" ? `Bat ${H.at(-1).val.get(x.id).rBat} · Bowl ${H.at(-1).val.get(x.id).rBowl}` : k === "rBat" ? `${x.p.bat.r} runs · avg ${r1(x.p.bat.avg)} · SR ${Math.round(x.p.bat.sr)}` : `${x.p.bowl.w} wkts · econ ${r1(x.p.bowl.econ)}`;
+  body.innerHTML = rows.length ? `<div class="tbl-wrap"><table class="data rb-tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Player</th><th>Rating</th><th>This week</th><th style="text-align:left">Season trend</th><th>Best</th></tr></thead><tbody>
+    ${rows.map(x => `<tr class="${x.p.tm.key}${x.rank === 1 ? " top" : ""}"><td class="rk">${x.rank}</td><td>${moveTag(x.move)}</td>
+      <td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(x.p)}<span><b>${esc(pname(x.id))}</b><small>${sub(x)}</small></span></a></td>
+      <td class="hi rb-rating">${x.rating}</td><td>${deltaTag(x.delta)}</td>
+      <td class="rb-trend">${sparkline(x.series, x.delta > 0 ? "up" : x.delta < 0 ? "down" : "flat")}</td>
+      <td class="rb-best">${x.peak}<small>${x.peakAt ? `issue ${x.peakAt.issue}` : ""}</small></td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="rank-note" style="margin-top:12px">${k === "rAll" ? "All-rounder rating is the batting rating multiplied by the bowling rating, divided by 1,000, so it rewards players who do both. " : ""}Batting combines average and strike rate; bowling combines wickets per over and economy against the league run rate. Ratings scale up with experience: full weight from 15 innings or 30 overs. ▲▼ are places moved since last week; "this week" is the change in rating points. The trend line runs from the first week a player was rated to now.</p>`
+    : '<p class="dnb">No ratings yet.</p>';
 }
 
 /* ---------------- players cover: the squad in numbers and four faces worth knowing ---------------- */
@@ -1700,7 +1764,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
