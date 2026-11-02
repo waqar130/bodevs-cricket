@@ -931,19 +931,11 @@ function drawBoard() {
   const body = $("#rankBoardBody"), k = RK.kind, rows = rankRows(k), H = rankHistory();
   $("#rbTabs").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
   const sub = x => k === "rAll" ? `Bat ${H.at(-1).val.get(x.id).rBat} · Bowl ${H.at(-1).val.get(x.id).rBowl}` : k === "rBat" ? `${x.p.bat.r} runs · avg ${r1(x.p.bat.avg)} · SR ${Math.round(x.p.bat.sr)}` : `${x.p.bowl.w} wkts · econ ${r1(x.p.bowl.econ)}`;
-  // places by week: every jump is a step in the line
-  const weeks = H.map(s => s.W), n = rows.length, CW = 900, top = 26, gap = 30, CH = top + n * gap + 10, L = 40, R = 190, xs = i => L + (weeks.length > 1 ? i / (weeks.length - 1) : 0) * (CW - L - R), ys = r => top + (r - 1) * gap;
-  const bump = `<div class="bump-wrap"><svg class="bump" viewBox="0 0 ${CW} ${CH}" role="img" aria-label="${RK_LABEL[k]} ranking by week">
-    ${weeks.map((w, i) => `<text x="${xs(i).toFixed(1)}" y="14" class="bump-w">${w.issue}</text>`).join("")}
-    ${rows.map(x => { const pts = x.ranks.map((r, i) => r ? [xs(i), ys(r), r, i] : null).filter(Boolean); if (!pts.length) return "";
-      const d = pts.map((q, i) => (i ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1)).join(" ");
-      return `<g class="bump-l ${x.p.tm.key}" data-id="${x.id}"><path d="${d}"/>${pts.map(q => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="9"/><text x="${q[0].toFixed(1)}" y="${(q[1] + 3.5).toFixed(1)}" class="bump-n">${q[2]}</text>`).join("")}
-        <text x="${(CW - R + 16).toFixed(1)}" y="${(ys(x.rank) + 4).toFixed(1)}" class="bump-name">${esc(pname(x.id))}${x.season ? ` <tspan class="${x.season > 0 ? "up" : "down"}">${x.season > 0 ? "▲" : "▼"}${Math.abs(x.season)}</tspan>` : ""}</text></g>`; }).join("")}
-    </svg><p class="rank-note">Place after each issue, 1 at the top. ▲▼ beside the names are places moved since each player was first ranked. Hover a line to follow one player.</p></div>`;
+  const weeks = H.map(s => s.W);
   const recent = 6, path = x => `<span class="rb-path">${x.ranks.slice(-recent).map((r, i, a) => { const prev = i ? a[i - 1] : x.ranks[x.ranks.length - recent - 1] ?? null, c = r && prev ? (r < prev ? "up" : r > prev ? "down" : "") : "", big = r && prev && Math.abs(prev - r) >= 2 ? " big" : "";
     return `<i class="${c}${big}" title="${r ? `#${r}` : "not ranked"} after issue ${weeks[weeks.length - a.length + i].issue}">${r || "·"}</i>`; }).join("")}</span>`;
   const seasonCell = x => x.start ? `<span class="rb-season ${x.season > 0 ? "up" : x.season < 0 ? "down" : ""}">${x.season > 0 ? "▲" + x.season : x.season < 0 ? "▼" + -x.season : "="}</span><small>from #${x.start}, issue ${x.startW.issue}</small>` : "–";
-  body.innerHTML = rows.length ? bump + `<div class="tbl-wrap"><table class="data rb-tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Player</th><th>Rating</th><th>This week</th><th style="text-align:left" title="Place after each of the last 6 issues; green is a climb, red a drop">Position by week</th><th title="Places moved since first ranked">Season</th><th style="text-align:left">Rating trend</th><th>Best</th></tr></thead><tbody>
+  body.innerHTML = rows.length ? `<div class="tbl-wrap"><table class="data rb-tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Player</th><th>Rating</th><th>This week</th><th style="text-align:left" title="Place after each of the last 6 issues; green is a climb, red a drop">Position by week</th><th title="Places moved since first ranked">Season</th><th style="text-align:left">Rating trend</th><th>Best</th></tr></thead><tbody>
     ${rows.map(x => `<tr class="${x.p.tm.key}${x.rank === 1 ? " top" : ""}"><td class="rk">${x.rank}</td><td>${moveTag(x.move)}</td>
       <td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(x.p)}<span><b>${esc(pname(x.id))}</b><small>${sub(x)}</small></span></a></td>
       <td class="hi rb-rating">${x.rating}</td><td>${deltaTag(x.delta)}</td>
@@ -953,10 +945,6 @@ function drawBoard() {
     </tbody></table></div>
     ${rankHow(k, rows[0])}`
     : '<p class="dnb">No ratings yet.</p>';
-  const svg = body.querySelector(".bump");
-  if (svg) { const on = id => svg.classList.toggle("focus", !!id) || svg.querySelectorAll(".bump-l").forEach(g => g.classList.toggle("hot", g.dataset.id === String(id)));
-    svg.querySelectorAll(".bump-l").forEach(g => { g.addEventListener("mouseenter", () => on(g.dataset.id)); g.addEventListener("mouseleave", () => on(null)); });
-    body.querySelectorAll(".rb-tbl tbody tr").forEach((tr, i) => { tr.addEventListener("mouseenter", () => on(rows[i].id)); tr.addEventListener("mouseleave", () => on(null)); }); }
 }
 
 /* ---------------- player page: his ratings week by week ---------------- */

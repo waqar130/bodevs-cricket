@@ -899,16 +899,6 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .sh-star b{font-size:clamp(16px,1.5vw,22px)}
 
 /* rankings: position chart and position columns */
-.bump-wrap{margin:4px 0 24px;overflow-x:auto}
-.bump{width:100%;min-width:620px;height:auto;display:block}
-.bump-w{font:600 10px var(--f-data);fill:var(--muted);text-anchor:middle}
-.bump-l{--c:var(--muted);cursor:pointer}.bump-l.t{--c:var(--tiger)}.bump-l.f{--c:var(--falcon)}
-.bump-l path{fill:none;stroke:var(--c);stroke-width:3;stroke-linejoin:round;opacity:.55}
-.bump-l circle{fill:var(--paper);stroke:var(--c);stroke-width:2}
-.bump-n{font:700 9px var(--f-data);fill:var(--ink);text-anchor:middle}
-.bump-name{font:600 13px var(--f-body);fill:var(--ink)}
-.bump-name .up{fill:#1f8a4c;font:700 11px var(--f-data)}.bump-name .down{fill:var(--red);font:700 11px var(--f-data)}
-.bump.focus .bump-l{opacity:.15}.bump.focus .bump-l.hot{opacity:1}.bump.focus .bump-l.hot path{opacity:1;stroke-width:4}
 .rb-path{display:inline-flex;gap:3px}
 .rb-path i{font:700 11px var(--f-data);font-style:normal;min-width:20px;text-align:center;padding:2px 0;background:var(--paper-2);color:var(--muted)}
 .rb-path i:last-child{color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
