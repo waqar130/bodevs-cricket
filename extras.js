@@ -1614,7 +1614,7 @@ function chaseRows() {
   CHASE = [];
   M.forEach(mm => { if (!mm.win) return; const sc = mm.s.scorecards.at(-1); if (!sc?.target) return; const maxB = (mm.m.overs || 0) * 6, won = mm.win.name === sc.batting_team;
     (sc.commentary || []).filter(c => c.type === "over").forEach(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return;
-      const need = sc.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return; CHASE.push({ need, left, rr: need / left * 6, won, mm }); }); });
+      const need = sc.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return; CHASE.push({ need, left, rr: need / left * 6, wk: +m[2], maxB, won, mm }); }); });
   return CHASE;
 }
 const RRB = [[0, 10, "under 10"], [10, 14, "10–14"], [14, 18, "14–18"], [18, 24, "18–24"], [24, 1e9, "24+"]], LB = [[25, 1e9, "25+ balls left"], [13, 24, "13–24 left"], [1, 12, "1–12 left"]];
@@ -1622,6 +1622,87 @@ function oddsAt(need, left) {
   const rr = need / left * 6, a = RRB.find(b => rr >= b[0] && rr < b[1]), b = LB.find(x => left >= x[0] && left <= x[1]);
   const set = chaseRows().filter(x => x.rr >= a[0] && x.rr < a[1] && x.left >= b[0] && x.left <= b[1]);
   return { n: set.length, w: set.filter(x => x.won).length };
+}
+/* ---------------- win probability: a chase model fitted to this season, and par scores for earlier innings ---------------- */
+let WPM = null;
+function wpModel() {
+  if (WPM) return WPM;
+  const runs = M.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.runs, 0), 0), bls = M.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.b, 0), 0), LRR = bls ? runs / bls * 6 : 12;
+  // features: how far the asking rate is above the league rate, share of the innings left, wickets lost
+  const fx = (need, left, wk, maxB) => { const rr = need / Math.max(1, left) * 6; return [1, Math.max(-1, Math.min(3, (rr - LRR) / LRR)), left / Math.max(6, maxB), Math.min(1, wk / 4)]; };
+  const rows = chaseRows().map(x => ({ f: fx(x.need, x.left, x.wk || 0, x.maxB || 60), y: x.won ? 1 : 0 }));
+  let w = [0, -2, 0.5, -1]; const sig = z => 1 / (1 + Math.exp(-z));
+  // logistic regression by gradient descent, lightly regularised so a small season doesn't overfit
+  for (let it = 0; it < 3000 && rows.length > 10; it++) { const g = [0, 0, 0, 0];
+    rows.forEach(r => { const p = sig(r.f.reduce((a, v, i) => a + v * w[i], 0)); r.f.forEach((v, i) => g[i] += (p - r.y) * v); });
+    w = w.map((v, i) => v - 0.05 * (g[i] / rows.length + (i ? 0.02 * v : 0))); }
+  // par: average completed score by format and innings number
+  const par = {}; M.forEach(m => m.s.scorecards.forEach(sc => { const k = m.fmt + "|" + sc.innings_no; (par[k] = par[k] || []).push(sc.runs); }));
+  Object.keys(par).forEach(k => par[k] = par[k].reduce((a, b) => a + b, 0) / par[k].length);
+  WPM = { LRR, chase: (need, left, wk, maxB) => need <= 0 ? 1 : left <= 0 ? 0 : sig(fx(need, left, wk, maxB).reduce((a, v, i) => a + v * w[i], 0)), par, w };
+  return WPM;
+}
+// P(the side batting first wins) at the end of every over of every innings
+function winProb(mm) {
+  const W = wpModel(), maxB = (mm.m.overs || 1) * 6, scs = mm.s.scorecards; if (!scs.length) return [];
+  const first = scs[0].batting_team, nInn = mm.fmt === "Test" ? 4 : 2, lastTeam = nInn === 4 ? scs[1]?.batting_team || (first === mm.m.team_a.name ? mm.m.team_b.name : mm.m.team_a.name) : (first === mm.m.team_a.name ? mm.m.team_b.name : mm.m.team_a.name);
+  const parOf = n => W.par[mm.fmt + "|" + n] || W.LRR * maxB / 6;
+  const pts = [];
+  // state: runs so far in each innings; unplayed innings at par, the current one projected
+  const est = (i, runs, ballsUsed, wk) => { // trust the current run rate more as the innings goes on
+    const left = maxB - ballsUsed, f = Math.min(1, ballsUsed / maxB), rate = ballsUsed ? (runs / ballsUsed * 6) * f + W.LRR * (1 - f) : W.LRR; return runs + Math.max(0, left) * rate / 6 * Math.max(0.4, 1 - 0.1 * wk); };
+  const probAt = (i, runs, ballsUsed, wk) => {
+    const tot = { [first]: 0, [lastTeam]: 0 };
+    for (let j = 0; j < nInn; j++) { const sc = scs[j], who = sc ? sc.batting_team : (j % 2 === 0 ? first : lastTeam);
+      tot[who] = (tot[who] || 0) + (j < i ? sc.runs : j === i ? (j === nInn - 1 ? runs : est(j, runs, ballsUsed, wk)) : parOf(j + 1)); }
+    if (i === nInn - 1) { // the final chase: the fitted model
+      const target = tot[first] - (tot[lastTeam] - runs) + 1, pc = W.chase(target - runs, maxB - ballsUsed, wk, maxB);
+      return lastTeam === first ? pc : 1 - pc; }
+    // earlier innings: the target the last side will face (its own final innings counted at par), chased from ball one
+    const pc = W.chase(Math.max(1, Math.round(tot[first] - tot[lastTeam] + parOf(nInn) + 1)), maxB, 0, maxB);
+    return 1 - pc;
+  };
+  pts.push({ i: 0, o: 0, p: probAt(0, 0, 0, 0), label: "Start" });
+  scs.forEach((sc, i) => { (sc.commentary || []).filter(c => c.type === "over").sort((a, b) => a.over_no - b.over_no).forEach(c => {
+      const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return; pts.push({ i, o: c.over_no, p: probAt(i, +m[1], c.over_no * 6, +m[2]), label: `${team(sc.batting_team).short} ${m[1]}/${m[2]} after ${c.over_no}`, sc }); });
+    if (i < scs.length - 1 || !mm.win) pts.push({ i, o: Math.ceil(balls(sc.overs) / 6), p: probAt(Math.min(i + 1, nInn - 1), i + 1 <= nInn - 1 ? 0 : sc.runs, 0, 0), label: `End of ${team(sc.batting_team).short} innings, ${sc.runs}/${sc.wickets}`, end: 1, sc }); });
+  if (mm.win) pts.push({ i: scs.length - 1, o: Math.ceil(balls(scs.at(-1).overs) / 6), p: mm.win.name === first ? 1 : 0, label: `${mm.win.short} won`, end: 1 });
+  return pts.map(x => ({ ...x, p: Math.max(0.01, Math.min(0.99, x.p)) })).map((x, k, a) => k === a.length - 1 && mm.win ? { ...x, p: mm.win.name === first ? 1 : 0 } : x);
+}
+function wpChart(mm) {
+  const pts = winProb(mm); if (pts.length < 3) return "";
+  const first = mm.s.scorecards[0].batting_team, other = first === mm.m.team_a.name ? mm.m.team_b.name : mm.m.team_a.name, kf = team(first).key, ko = team(other).key;
+  const W = 640, H = 220, L = 40, R = 14, T = 14, B = 30, n = pts.length - 1, xs = k => L + k / n * (W - L - R), ys = p => T + (1 - p) * (H - T - B);
+  const line = pts.map((q, k) => `${k ? "L" : "M"}${xs(k).toFixed(1)} ${ys(q.p).toFixed(1)}`).join(" ");
+  const area = `${line} L${xs(n)} ${ys(0.5)} L${xs(0)} ${ys(0.5)} Z`;
+  // innings breaks and the three biggest swings
+  const breaks = pts.map((q, k) => q.end && k < n ? k : null).filter(k => k !== null);
+  const swings = pts.slice(1).map((q, k) => ({ k: k + 1, d: q.p - pts[k].p, q })).filter(s => !s.q.end && Math.abs(s.d) >= 0.12).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3);
+  const pct = p => Math.round(p * 100) + "%";
+  return `<div class="fc-wrap wp-wrap"><svg class="fc wp" viewBox="0 0 ${W} ${H}" role="img" aria-label="Win probability after every over">
+    <defs><clipPath id="wpTop${mm.id}"><rect x="0" y="0" width="${W}" height="${ys(0.5)}"/></clipPath><clipPath id="wpBot${mm.id}"><rect x="0" y="${ys(0.5)}" width="${W}" height="${H}"/></clipPath></defs>
+    ${[1, .75, .5, .25, 0].map(g => `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${ys(g)}" y2="${ys(g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(g) + 4}" text-anchor="end">${Math.round((g >= .5 ? g : 1 - g) * 100)}%</text>`).join("")}
+    <path d="${area}" class="wp-a ${kf}" clip-path="url(#wpTop${mm.id})"/><path d="${area}" class="wp-a ${ko}" clip-path="url(#wpBot${mm.id})"/>
+    ${breaks.map(k => `<line class="wp-brk" x1="${xs(k)}" x2="${xs(k)}" y1="${T}" y2="${H - B}"/>`).join("")}
+    <path d="${line}" class="wp-l"/>
+    ${pts.map((q, k) => `<circle class="wp-pt" cx="${xs(k).toFixed(1)}" cy="${ys(q.p).toFixed(1)}" r="3.5"><title>${esc(q.label)}: ${esc(team(first).short)} ${pct(q.p)}, ${esc(team(other).short)} ${pct(1 - q.p)}</title></circle>`).join("")}
+    ${swings.map(s => `<g class="wp-sw"><circle cx="${xs(s.k).toFixed(1)}" cy="${ys(s.q.p).toFixed(1)}" r="7"/><text x="${xs(s.k).toFixed(1)}" y="${(ys(s.q.p) + (s.q.p > .5 ? 20 : -12)).toFixed(1)}" text-anchor="middle">${s.d > 0 ? "+" : "−"}${Math.round(Math.abs(s.d) * 100)}</text></g>`).join("")}
+    <text class="wp-t ${kf}" x="${L + 6}" y="${T + 14}">${esc(team(first).short)} winning ↑</text><text class="wp-t ${ko}" x="${L + 6}" y="${H - B - 6}">${esc(team(other).short)} winning ↓</text>
+  </svg>
+  ${swings.length ? `<ul class="wp-swings">${swings.map(s => `<li><b>${s.d > 0 ? "+" : "−"}${Math.round(Math.abs(s.d) * 100)}%</b> ${esc(s.q.label)}: ${esc((s.d > 0 ? team(first) : team(other)).short)} up to ${pct(s.d > 0 ? s.q.p : 1 - s.q.p)}</li>`).join("")}</ul>` : ""}
+  <p class="rank-note">Chance of winning after every over. In the final innings it comes from every chase this season: runs needed against the league rate (${r1(wpModel().LRR)} an over), balls left and wickets lost. Before that, each side's score is projected and unplayed innings count at the average score for that innings in a ${esc(mm.fmt)}. Numbers on the line are the biggest swings, in percentage points; dashed lines mark innings breaks. Hover any point for the score.</p></div>`;
+}
+/* ---------------- Manhattan: runs in every over, wickets on top ---------------- */
+function manhattan(mm) {
+  const inns = mm.s.scorecards.map(sc => ({ sc, k: team(sc.batting_team).key, ov: (sc.commentary || []).filter(c => c.type === "over").sort((a, b) => a.over_no - b.over_no).map(c => ({ o: c.over_no, r: parseInt(c.text) || 0, w: +((String(c.text).match(/(\d+) wicket/) || [])[1] || 0), bw: String(c.bowler).replace(/\s+\d+(\.\d+)?-\d+-\d+$/, "") })) })).filter(i => i.ov.length);
+  if (!inns.length) return "";
+  const mo = Math.max(mm.m.overs || 1, ...inns.map(i => i.ov.length)), mr = Math.max(12, ...inns.flatMap(i => i.ov.map(o => o.r)));
+  const W = 300, H = 150, L = 26, R = 6, T = 16, B = 22, bw = (W - L - R) / mo, ys = r => T + (H - T - B) * (1 - r / mr);
+  return `<div class="mh-grid">${inns.map(i => `<figure class="mh"><figcaption><b class="${i.k}">${esc(team(i.sc.batting_team).short)}</b> ${esc(i.sc.label)} · ${i.sc.runs}/${i.sc.wickets} (${esc(i.sc.overs)})</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Runs per over">
+      ${[0, .5, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${ys(mr * g)}" y2="${ys(mr * g)}"/><text class="ch-ax" x="${L - 4}" y="${ys(mr * g) + 3}" text-anchor="end">${Math.round(mr * g)}</text>`).join("")}
+      ${i.ov.map(o => { const x = L + (o.o - 1) * bw + bw * 0.12, y = ys(o.r); return `<g><title>Over ${o.o}: ${o.r} runs${o.w ? `, ${o.w} wicket${o.w > 1 ? "s" : ""}` : ""} · ${esc(o.bw)}</title><rect class="mh-b ${i.k}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.76).toFixed(1)}" height="${(H - B - y).toFixed(1)}"/>${Array.from({ length: o.w }, (_, j) => `<circle class="mh-w" cx="${(x + bw * 0.38).toFixed(1)}" cy="${(y - 6 - j * 9).toFixed(1)}" r="3.6"/>`).join("")}<text class="ch-ax" x="${(x + bw * 0.38).toFixed(1)}" y="${H - 8}" text-anchor="middle">${o.o}</text></g>`; }).join("")}
+    </svg></figure>`).join("")}</div><p class="fc-key"><span>Runs in each over · <i class="mh-key"></i> a wicket · hover a bar for the bowler</span></p>`;
 }
 function worm(mm) {
   const inns = mm.s.scorecards.map(sc => ({ sc, k: team(sc.batting_team).key, pts: [[0, 0], ...(sc.commentary || []).filter(c => c.type === "over").map(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); return m ? [c.over_no, +m[1]] : null; }).filter(Boolean).sort((a, b) => a[0] - b[0])] }));
@@ -1653,7 +1734,9 @@ function matchExtras(mm) {
   if (last?.target) { const maxB = (mm.m.overs || 0) * 6;
     const rows = (last.commentary || []).filter(c => c.type === "over").map(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return null; const need = last.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return null; return { o: c.over_no, need, left, ...oddsAt(need, left) }; }).filter(Boolean).sort((a, b) => a.o - b.o);
     if (rows.length) odds = `<h3 class="tbl-title" style="margin-top:22px">Chase odds</h3><div class="tbl-wrap"><table class="data"><thead><tr><th>After over</th><th>Needed</th><th>Req. rate</th><th>Teams in this spot won</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.o}</td><td>${r.need} off ${r.left}</td><td>${r1(r.need / r.left * 6)}</td><td class="hi">${r.n ? `${Math.round(r.w / r.n * 100)}% <small class="label">(${r.w} of ${r.n})</small>` : "–"}</td></tr>`).join("")}</tbody></table></div>`; }
-  return `<section class="mx"><h2 class="sec-t">Match report</h2><div class="mx-grid"><div class="mx-rep">${lines.map(l => `<p>${l}</p>`).join("")}</div><div>${worm(mm)}</div></div>${odds}</section>`;
+  return `<section class="mx"><h2 class="sec-t">Match report</h2><div class="mx-grid"><div class="mx-rep">${lines.map(l => `<p>${l}</p>`).join("")}</div><div>${worm(mm)}</div></div>
+    <h2 class="sec-t">Win probability</h2>${wpChart(mm)}
+    <h2 class="sec-t">Runs per over</h2>${manhattan(mm)}${odds}</section>`;
 }
 
 /* ---------------- Stats page: matchup heatmap, pressure, chase odds ---------------- */

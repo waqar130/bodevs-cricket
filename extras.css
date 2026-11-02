@@ -929,3 +929,21 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .rk-ex span{display:block;font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
 .rk-key{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:4px;font:400 12px/1.5 var(--f-data);color:var(--muted)}
 .rk-key b{color:var(--ink)}
+
+/* match page: win probability and Manhattan */
+.wp .wp-a.t{fill:var(--tiger);opacity:.18}.wp .wp-a.f{fill:var(--falcon);opacity:.18}
+.wp .wp-l{fill:none;stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
+.wp .wp-pt{fill:var(--paper);stroke:var(--ink);stroke-width:1.5}
+.wp .wp-brk{stroke:var(--muted);stroke-dasharray:4 4}
+.wp .wp-sw circle{fill:none;stroke:var(--red);stroke-width:2}
+.wp .wp-sw text{font:700 11px var(--f-data);fill:var(--red)}
+.wp .wp-t{font:700 11px var(--f-data);letter-spacing:.06em;text-transform:uppercase}.wp .wp-t.t{fill:var(--tiger)}.wp .wp-t.f{fill:var(--falcon)}
+.wp-swings{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px;font:400 14px var(--f-body)}
+.wp-swings b{font:800 15px var(--f-display);color:var(--red);margin-right:6px}
+.mh-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.mh{margin:0}.mh figcaption{font:400 12px var(--f-data);color:var(--muted);margin-bottom:4px}
+.mh figcaption b{font:800 14px var(--f-display);text-transform:uppercase}.mh figcaption b.t{color:var(--tiger)}.mh figcaption b.f{color:var(--falcon)}
+.mh svg{width:100%;height:auto;display:block}
+.mh-b.t{fill:var(--tiger)}.mh-b.f{fill:var(--falcon)}
+.mh-w{fill:var(--red);stroke:var(--paper);stroke-width:1.5}
+.mh-key{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);vertical-align:middle}
