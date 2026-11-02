@@ -866,3 +866,4 @@ main{counter-reset:spage tpage ppage cpage kpage rpage}
 #tables .data td mark{white-space:nowrap}
 /* wide stat tables: the player column stays put while the rest scrolls */
 #tables .data th:first-child,#tables .data td:first-child{position:sticky;left:0;z-index:1;background:var(--paper);box-shadow:1px 0 0 var(--rule)}
+.rv-second{background:#fff1b8;color:#141413;font-weight:700;padding:0 3px;border-radius:2px;box-shadow:inset 0 0 0 1px #e0b400}

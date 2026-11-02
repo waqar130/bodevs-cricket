@@ -1454,10 +1454,14 @@ function render(){
   const nan=NaN,f1=v=>isNaN(v)?"–":r1(v),f0=v=>isNaN(v)?"–":Math.round(v).toLocaleString(),pc=v=>isNaN(v)?"–":Math.round(v)+"%",f2=v=>isNaN(v)?"–":v.toFixed(2);
   const sty=(p,k,fn)=>{const x=styleSplit(p)[k];return fn(x)};
   const table=(rows,cols,first)=>{
-    const ext=cols.map(c=>{if(!c.hl)return null;const vs=rows.filter(p=>!c.q||c.q(p)).map(c.v).filter(v=>isFinite(v));if(vs.length<2)return null;
-      const hi=Math.max(...vs),lo=Math.min(...vs);return hi===lo?null:{best:c.hl>0?hi:lo,worst:c.hl>0?lo:hi}});
-    const cell=(c,i,p)=>{const v=c.v(p),s=c.show?c.show(v,p):v,e=ext[i],ok=e&&(!c.q||c.q(p))&&isFinite(v);
-      return `<td class="${c.cls||""}">${ok&&v===e.best?`<mark class="rv-best">${s}</mark>`:ok&&v===e.worst?`<mark class="rv-worst">${s}</mark>`:s}</td>`};
+    // compare values as shown (rounded), so players showing the same number share a highlight
+    const rv=(c,v)=>{const d=c.show===f1?1:c.show===f2?2:c.show===pc||c.show===f0?0:null;return d===null||!isFinite(v)?v:Math.round(v*10**d)/10**d};
+    const ext=cols.map(c=>{if(!c.hl)return null;const vs=rows.filter(p=>!c.q||c.q(p)).map(p=>rv(c,c.v(p))).filter(v=>isFinite(v));if(vs.length<2)return null;
+      const hi=Math.max(...vs),lo=Math.min(...vs);if(hi===lo)return null;
+      // the runner-up value too, so close races show
+      const u=[...new Set(vs)].sort((x,y)=>c.hl>0?y-x:x-y);return {best:u[0],second:u.length>2?u[1]:null,worst:u.at(-1)}});
+    const cell=(c,i,p)=>{const raw=c.v(p),s=c.show?c.show(raw,p):raw,v=rv(c,raw),e=ext[i],ok=e&&(!c.q||c.q(p))&&isFinite(v);
+      return `<td class="${c.cls||""}">${ok&&v===e.best?`<mark class="rv-best">${s}</mark>`:ok&&v===e.second?`<mark class="rv-second">${s}</mark>`:ok&&v===e.worst?`<mark class="rv-worst">${s}</mark>`:s}</td>`};
     return `<thead><tr><th>Player</th>${cols.map(c=>`<th${c.t?` title="${c.t}"`:""}>${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(p=>`<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)}${first?" "+honours(p,"inline"):""}</td>${cols.map((c,i)=>cell(c,i,p)).join("")}</tr>`).join("")}</tbody>`};
   const qB=p=>p.bat.b>=30,qO=p=>outs(p)>=2,qW=p=>p.bowl.b>=36;
   $("#batTable").innerHTML=table(bats,[
