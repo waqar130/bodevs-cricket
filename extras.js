@@ -727,8 +727,10 @@ function renderTape() {
     ["Safest hands", ...K.map(k => { const p = lead(k, p => p.fld.c); return pl(p, p?.fld.c); }), null],
   ];
   let wt = 0, wf = 0;
+  // the better side yellow, the other red (none on a tie)
+  const hl = (s, won, lost) => won ? `<mark class="rv-best">${s}</mark>` : lost ? `<mark class="rv-worst">${s}</mark>` : s;
   const body = rows.map(([l, a, b, n, hi]) => { const aw = n && n[0] !== n[1] && ((n[0] > n[1]) === !!hi), bw = n && n[0] !== n[1] && !aw; if (aw) wt++; if (bw) wf++;
-    return `<div class="cmp-row"><span class="cmp-v ca ${aw ? "win" : ""}">${a}</span><span class="cmp-l">${l}</span><span class="cmp-v cb ${bw ? "win" : ""}">${b}</span></div>`; }).join("");
+    return `<div class="cmp-row"><span class="cmp-v ca ${aw ? "win" : ""}">${hl(a, aw, bw)}</span><span class="cmp-l">${l}</span><span class="cmp-v cb ${bw ? "win" : ""}">${hl(b, bw, aw)}</span></div>`; }).join("");
   el.innerHTML = `<h3 class="tbl-title tape-t">Tale of the tape</h3>
     <div class="cmp-grp tape-h"><span class="ca">Tigers ${wt}</span><b>Categories</b><span class="cb">${wf} Falcons</span></div>
     <div class="cmp-rows">${body}</div>`;
