@@ -813,8 +813,9 @@ function rankRows(kind) {
   if (!now) return [];
   return [...now.rk[kind].entries()].sort((a, b) => a[1] - b[1]).map(([id, rank]) => {
     const series = H.map(s => s.val.get(id)?.[kind] || 0), rating = series.at(-1), before = prev?.val.get(id)?.[kind] || 0, prevRank = prev?.rk[kind].get(id);
-    const peak = Math.max(...series), peakAt = H[series.lastIndexOf(peak)]?.W;
-    return { p: P.get(id), id, rank, rating, delta: before ? rating - before : null, move: prevRank ? prevRank - rank : "new", series, peak, peakAt };
+    const peak = Math.max(...series), peakAt = H[series.lastIndexOf(peak)]?.W, ranks = H.map(s => s.rk[kind].get(id) || null);
+    const firstAt = ranks.findIndex(r => r), start = ranks[firstAt];
+    return { p: P.get(id), id, rank, rating, delta: before ? rating - before : null, move: prevRank ? prevRank - rank : "new", series, peak, peakAt, ranks, start, startW: H[firstAt]?.W, season: start ? start - rank : 0 };
   }).filter(x => x.p);
 }
 function sparkline(series, up) {
@@ -832,12 +833,12 @@ function renderRankings() {
   // cover: the three number ones
   const ones = rankRows("rAll").slice(0, 3).map(x => ({ k: "rAll", x })), no1 = k => rankRows(k)[0];
   const climbers = ["rAll", "rBat", "rBowl"].flatMap(k => rankRows(k).filter(x => x.delta).map(x => ({ ...x, k }))).sort((a, b) => b.delta - a.delta);
-  const up = climbers[0], down = climbers.at(-1);
+  const up = climbers[0], down = climbers.at(-1), riser = ["rAll", "rBat", "rBowl"].flatMap(k => rankRows(k).map(x => ({ ...x, k }))).sort((a, b) => b.season - a.season)[0];
   hero.innerHTML = `<div class="sh-grid"><div class="sh-copy">
       <p class="sh-kicker">Player ratings · after issue ${W.issue}, ${esc(weekRange(W))}</p>
       <h2 class="sh-head">Who's on top.</h2>
       <p class="sh-dek">Batting, bowling and all-rounder ratings, rebuilt after every week of the season. Arrows show places moved since last Monday; the line shows the whole season.</p>
-      <div class="sh-stats">${up && up.delta > 0 ? `<div><b>+${up.delta}</b><span>biggest climb · ${esc(pname(up.id))}, ${RK_LABEL[up.k].toLowerCase()}</span></div>` : ""}${down && down.delta < 0 ? `<div><b>${down.delta}</b><span>biggest drop · ${esc(pname(down.id))}, ${RK_LABEL[down.k].toLowerCase()}</span></div>` : ""}${["rBat", "rBowl"].map(k => no1(k) ? `<div><b>${no1(k).rating}</b><span>No. 1 ${RK_LABEL[k].toLowerCase()} · ${esc(pname(no1(k).id))}</span></div>` : "").join("")}<div><b>${H.length}</b><span>weeks rated</span></div></div></div>
+      <div class="sh-stats">${riser && riser.season > 0 ? `<div><b>▲${riser.season}</b><span>season's biggest climb · ${esc(pname(riser.id))}, #${riser.start} to #${riser.rank} ${RK_LABEL[riser.k].toLowerCase()}</span></div>` : ""}${up && up.delta > 0 ? `<div><b>+${up.delta}</b><span>biggest climb · ${esc(pname(up.id))}, ${RK_LABEL[up.k].toLowerCase()}</span></div>` : ""}${down && down.delta < 0 ? `<div><b>${down.delta}</b><span>biggest drop · ${esc(pname(down.id))}, ${RK_LABEL[down.k].toLowerCase()}</span></div>` : ""}${["rBat", "rBowl"].map(k => no1(k) ? `<div><b>${no1(k).rating}</b><span>No. 1 ${RK_LABEL[k].toLowerCase()} · ${esc(pname(no1(k).id))}</span></div>` : "").join("")}<div><b>${H.length}</b><span>weeks rated</span></div></div></div>
     <div class="sh-stars">${ones.map(({ k, x }) => `<a class="sh-star ${x.p.tm.key}" href="#rankboard" data-rk="${k}"><span class="sh-ph">${x.p.photo ? `<img src="${x.p.photo}" alt="" loading="lazy">` : ""}</span><small>No. ${x.rank} · All-rounder</small><b>${esc(pname(x.id))}</b><em>${x.rating} <i>points ${x.move === "new" ? "" : x.move > 0 ? "▲" + x.move : x.move < 0 ? "▼" + -x.move : ""}</i></em></a>`).join("")}</div></div>`;
   hero.querySelectorAll("[data-rk]").forEach(a => a.addEventListener("click", () => { RK.kind = a.dataset.rk; drawBoard(); }));
   tabs.innerHTML = ["rAll", "rBat", "rBowl"].map(k => `<button type="button" role="tab" data-k="${k}">${RK_LABEL[k]}</button>`).join("");
@@ -848,15 +849,32 @@ function drawBoard() {
   const body = $("#rankBoardBody"), k = RK.kind, rows = rankRows(k), H = rankHistory();
   $("#rbTabs").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
   const sub = x => k === "rAll" ? `Bat ${H.at(-1).val.get(x.id).rBat} · Bowl ${H.at(-1).val.get(x.id).rBowl}` : k === "rBat" ? `${x.p.bat.r} runs · avg ${r1(x.p.bat.avg)} · SR ${Math.round(x.p.bat.sr)}` : `${x.p.bowl.w} wkts · econ ${r1(x.p.bowl.econ)}`;
-  body.innerHTML = rows.length ? `<div class="tbl-wrap"><table class="data rb-tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Player</th><th>Rating</th><th>This week</th><th style="text-align:left">Season trend</th><th>Best</th></tr></thead><tbody>
+  // places by week: every jump is a step in the line
+  const weeks = H.map(s => s.W), n = rows.length, CW = 900, top = 26, gap = 30, CH = top + n * gap + 10, L = 40, R = 190, xs = i => L + (weeks.length > 1 ? i / (weeks.length - 1) : 0) * (CW - L - R), ys = r => top + (r - 1) * gap;
+  const bump = `<div class="bump-wrap"><svg class="bump" viewBox="0 0 ${CW} ${CH}" role="img" aria-label="${RK_LABEL[k]} ranking by week">
+    ${weeks.map((w, i) => `<text x="${xs(i).toFixed(1)}" y="14" class="bump-w">${w.issue}</text>`).join("")}
+    ${rows.map(x => { const pts = x.ranks.map((r, i) => r ? [xs(i), ys(r), r, i] : null).filter(Boolean); if (!pts.length) return "";
+      const d = pts.map((q, i) => (i ? "L" : "M") + q[0].toFixed(1) + " " + q[1].toFixed(1)).join(" ");
+      return `<g class="bump-l ${x.p.tm.key}" data-id="${x.id}"><path d="${d}"/>${pts.map(q => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="9"/><text x="${q[0].toFixed(1)}" y="${(q[1] + 3.5).toFixed(1)}" class="bump-n">${q[2]}</text>`).join("")}
+        <text x="${(CW - R + 16).toFixed(1)}" y="${(ys(x.rank) + 4).toFixed(1)}" class="bump-name">${esc(pname(x.id))}${x.season ? ` <tspan class="${x.season > 0 ? "up" : "down"}">${x.season > 0 ? "▲" : "▼"}${Math.abs(x.season)}</tspan>` : ""}</text></g>`; }).join("")}
+    </svg><p class="rank-note">Place after each issue, 1 at the top. ▲▼ beside the names are places moved since each player was first ranked. Hover a line to follow one player.</p></div>`;
+  const recent = 6, path = x => `<span class="rb-path">${x.ranks.slice(-recent).map((r, i, a) => { const prev = i ? a[i - 1] : x.ranks[x.ranks.length - recent - 1] ?? null, c = r && prev ? (r < prev ? "up" : r > prev ? "down" : "") : "", big = r && prev && Math.abs(prev - r) >= 2 ? " big" : "";
+    return `<i class="${c}${big}" title="${r ? `#${r}` : "not ranked"} after issue ${weeks[weeks.length - a.length + i].issue}">${r || "·"}</i>`; }).join("")}</span>`;
+  const seasonCell = x => x.start ? `<span class="rb-season ${x.season > 0 ? "up" : x.season < 0 ? "down" : ""}">${x.season > 0 ? "▲" + x.season : x.season < 0 ? "▼" + -x.season : "="}</span><small>from #${x.start}, issue ${x.startW.issue}</small>` : "–";
+  body.innerHTML = rows.length ? bump + `<div class="tbl-wrap"><table class="data rb-tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Player</th><th>Rating</th><th>This week</th><th style="text-align:left" title="Place after each of the last 6 issues; green is a climb, red a drop">Position by week</th><th title="Places moved since first ranked">Season</th><th style="text-align:left">Rating trend</th><th>Best</th></tr></thead><tbody>
     ${rows.map(x => `<tr class="${x.p.tm.key}${x.rank === 1 ? " top" : ""}"><td class="rk">${x.rank}</td><td>${moveTag(x.move)}</td>
       <td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(x.p)}<span><b>${esc(pname(x.id))}</b><small>${sub(x)}</small></span></a></td>
       <td class="hi rb-rating">${x.rating}</td><td>${deltaTag(x.delta)}</td>
+      <td>${path(x)}</td><td class="rb-sea">${seasonCell(x)}</td>
       <td class="rb-trend">${sparkline(x.series, x.delta > 0 ? "up" : x.delta < 0 ? "down" : "flat")}</td>
       <td class="rb-best">${x.peak}<small>${x.peakAt ? `issue ${x.peakAt.issue}` : ""}</small></td></tr>`).join("")}
     </tbody></table></div>
     <p class="rank-note" style="margin-top:12px">${k === "rAll" ? "All-rounder rating is the batting rating multiplied by the bowling rating, divided by 1,000, so it rewards players who do both. " : ""}Batting combines average and strike rate; bowling combines wickets per over and economy against the league run rate. Ratings scale up with experience: full weight from 15 innings or 30 overs. ▲▼ are places moved since last week; "this week" is the change in rating points. The trend line runs from the first week a player was rated to now.</p>`
     : '<p class="dnb">No ratings yet.</p>';
+  const svg = body.querySelector(".bump");
+  if (svg) { const on = id => svg.classList.toggle("focus", !!id) || svg.querySelectorAll(".bump-l").forEach(g => g.classList.toggle("hot", g.dataset.id === String(id)));
+    svg.querySelectorAll(".bump-l").forEach(g => { g.addEventListener("mouseenter", () => on(g.dataset.id)); g.addEventListener("mouseleave", () => on(null)); });
+    body.querySelectorAll(".rb-tbl tbody tr").forEach((tr, i) => { tr.addEventListener("mouseenter", () => on(rows[i].id)); tr.addEventListener("mouseleave", () => on(null)); }); }
 }
 
 /* ---------------- player page: his ratings week by week ---------------- */
