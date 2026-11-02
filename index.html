@@ -618,7 +618,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
   </div>
 </header>
 <nav class="pagetabs" aria-label="Pages"><div class="wrap">
-  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#rankings" data-p="rankings">Rankings</a><a href="#compare" data-p="compare">Compare</a><a href="#strategy" data-p="strategy">Strategy</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
+  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#teams" data-p="teams">Teams</a><a href="#rankings" data-p="rankings">Rankings</a><a href="#compare" data-p="compare">Compare</a><a href="#strategy" data-p="strategy">Strategy</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
 </div></nav>
 <div class="livebar" id="liveBar" hidden aria-live="polite"></div>
 
@@ -867,6 +867,14 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+
+  <section class="dept players-cover" id="teamhero">
+    <div class="wrap"><div class="tm-switch" id="tmSwitch" role="tablist"></div><div id="teamHeroBody"></div></div>
+  </section>
+
+  <section class="dept" id="teambody">
+    <div class="wrap" id="teamBody"></div>
+  </section>
 
   <section class="dept players-cover" id="rankhero">
     <div class="wrap" id="rankHeroBody"></div>
@@ -1160,7 +1168,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["stratboard","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["teamhero","teambody","teams","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one

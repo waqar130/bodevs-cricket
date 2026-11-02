@@ -367,9 +367,9 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["rankings", "Rankings"], ["compare", "Compare"], ["strategy", "Strategy"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["teams", "Teams"], ["rankings", "Rankings"], ["compare", "Compare"], ["strategy", "Strategy"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
-  stratboard: "strategy", strategy: "strategy", rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
+  teamhero: "teams", teambody: "teams", stratboard: "strategy", strategy: "strategy", rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club" };
@@ -933,6 +933,61 @@ function ratingTrend(p) {
   };
   return `<h2 class="sec-t">Rating trend</h2><div class="rt-grid">${["rBat", "rBowl", "rAll"].map(card).join("")}</div>
     <p class="rank-note" style="margin-top:8px">Ratings rebuilt after every week of the season. ▲▼ are places moved since last week. <a href="#rankings">Full rankings →</a></p>`;
+}
+
+/* ---------------- team pages: one side's season ---------------- */
+const TM = { k: "t" };
+try { const k = localStorage.getItem("bdc-tm"); if (k === "t" || k === "f") TM.k = k; } catch (x) {}
+function renderTeams() {
+  const sw = $("#tmSwitch"); if (!sw || !M?.length) return;
+  const names = {}; M.forEach(m => [m.m.team_a.name, m.m.team_b.name].forEach(n => { const k = team(n).key; if (k) names[k] = n; }));
+  sw.innerHTML = ["t", "f"].filter(k => names[k]).map(k => `<button type="button" role="tab" data-k="${k}" class="${k}">${crest(names[k], "tm-crest")}<span>${esc(team(names[k]).short)}</span></button>`).join("");
+  sw.onclick = ev => { const b = ev.target.closest("[data-k]"); if (!b) return; TM.k = b.dataset.k; try { localStorage.setItem("bdc-tm", TM.k); } catch (x) {} drawTeam(names); };
+  drawTeam(names);
+}
+function drawTeam(names) {
+  const k = TM.k, name = names[k], oth = names[k === "t" ? "f" : "t"]; if (!name) return;
+  $("#tmSwitch").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
+  const ms = M.filter(m => [m.m.team_a.name, m.m.team_b.name].includes(name)).sort((a, b) => a.date - b.date || a.id - b.id), done = ms.filter(m => m.win);
+  const won = done.filter(m => m.win.name === name), lost = done.filter(m => m.win.name !== name), first = m => m.s.scorecards[0]?.batting_team === name;
+  let streak = 0, sk = ""; [...done].reverse().some(m => { const w = m.win.name === name ? "W" : "L"; if (!sk) sk = w; if (w !== sk) return true; streak++; return false; });
+  const last5 = done.slice(-5).reverse();
+  const inns = ms.flatMap(m => m.s.scorecards.filter(sc => sc.batting_team === name).map(sc => ({ sc, m }))), bowled = ms.flatMap(m => m.s.scorecards.filter(sc => sc.bowling_team === name).map(sc => ({ sc, m })));
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0), runs = sum(inns, x => x.sc.runs), bl = sum(inns, x => balls(x.sc.overs)), conc = sum(bowled, x => x.sc.runs), bb = sum(bowled, x => balls(x.sc.overs));
+  const sixes = sum(inns, x => sum(x.sc.batting, b => b.sixes)), wk = sum(bowled, x => x.sc.wickets), ct = sum(bowled, x => sum(x.sc.fielding?.catches || [], c => c.count)), dr = sum(bowled, x => sum(x.sc.fielding?.drops || [], c => c.count || 1));
+  const hi = [...inns].sort((a, b) => b.sc.runs - a.sc.runs)[0], lo = [...inns].filter(x => x.sc.wickets || balls(x.sc.overs) >= (x.m.m.overs || 0) * 6).sort((a, b) => a.sc.runs - b.sc.runs)[0];
+  const bfW = done.filter(m => first(m)), chW = done.filter(m => !first(m)), pc = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
+  const cap = [...P.values()].find(p => p.captain && p.tm.key === k);
+  // players: their record while playing for this side
+  const ps = [...P.values()].map(p => ({ p, s: teamSplit(p)[k] })).filter(x => x.s && x.s.m);
+  // the top three in each, so one dominant player doesn't make every card the same
+  const lead = (f, ok = () => true) => [...ps].filter(ok).sort((a, b) => f(b) - f(a)).slice(0, 3);
+  const L = [["Most runs", lead(x => x.s.r), x => `${x.s.r}`, "runs"], ["Most wickets", lead(x => x.s.w), x => `${x.s.w}`, "wickets"], ["Most sixes", lead(x => x.s.s), x => `${x.s.s}`, "sixes"],
+    ["Most catches", lead(x => x.s.c), x => `${x.s.c}`, "catches"], ["Most points a match", lead(x => x.s.per, x => x.s.m >= 3), x => `${Math.round(x.s.per)}`, "points a match"], ["Most matches", lead(x => x.s.m), x => `${x.s.m}`, "matches"]].filter(l => l[1].length);
+  const res = m => { const w = m.win?.name === name; return `<a class="tm-res ${m.win ? (w ? "w" : "l") : ""}" href="#match-${m.id}"><b>${m.win ? (w ? "W" : "L") : "–"}</b><span>${fmtD(m.date, { day: "numeric", month: "short" })} · ${esc(m.fmt)}</span><small>${m.win ? `${w ? "won" : "lost"} by ${esc(m.margin)}` : esc(m.m.status_label || "")}</small></a>`; };
+  $("#teamHeroBody").innerHTML = `<div class="sh-grid"><div class="sh-copy">
+      <p class="sh-kicker">${esc(name)}${cap ? ` · captain ${esc(pname(cap.id))}` : ""}</p>
+      <h2 class="sh-head">${won.length} won, ${lost.length} lost.</h2>
+      <p class="sh-dek">${done.length ? `${pc(won.length, done.length)} of matches won${streak > 1 ? `, and ${sk === "W" ? "on a run of" : "has lost the last"} ${streak}${sk === "W" ? " wins" : ""}` : ""}.` : "No results yet."} Against the ${esc(team(oth).short)}: ${won.length}–${lost.length}.</p>
+      <div class="sh-stats"><div><b>${pc(bfW.filter(m => m.win.name === name).length, bfW.length)}</b><span>won batting first (${bfW.filter(m => m.win.name === name).length}/${bfW.length})</span></div><div><b>${pc(chW.filter(m => m.win.name === name).length, chW.length)}</b><span>won chasing (${chW.filter(m => m.win.name === name).length}/${chW.length})</span></div><div><b>${r1(runs / bl * 6)}</b><span>runs an over</span></div><div><b>${r1(conc / bb * 6)}</b><span>conceded an over</span></div><div><b>${hi ? `${hi.sc.runs}/${hi.sc.wickets}` : "–"}</b><span>highest total</span></div><div><b>${sixes}</b><span>sixes</span></div></div></div>
+    <div><p class="sh-kicker">Last five</p><div class="tm-last">${last5.map(res).join("")}</div></div></div>`;
+  const avgInn = inns.length ? runs / inns.length : 0, first1 = inns.filter(x => x.sc.innings_no === 1);
+  $("#teamBody").innerHTML = `
+    <div class="dept-head"><div><p class="kicker">${esc(team(name).short)}</p><h2 class="hd">The ${esc(team(name).short)} in numbers</h2></div><p>Everything below counts only matches played for the ${esc(team(name).short)}; players who have turned out for both sides are counted for this side only.</p></div>
+    <div class="tm-nums">
+      ${[["Matches", ms.length], ["Won", won.length], ["Lost", lost.length], ["Average innings", Math.round(avgInn)], ["Average first-innings score", first1.length ? Math.round(sum(first1, x => x.sc.runs) / first1.length) : "–"], ["Lowest completed total", lo ? `${lo.sc.runs}/${lo.sc.wickets}` : "–"],
+        ["Wickets taken", wk], ["Wickets an innings", bowled.length ? r1(wk / bowled.length) : "–"], ["Catches", ct], ["Catch rate", pc(ct, ct + dr)], ["Biggest win", won.length ? esc([...won].sort((a, b) => (parseInt(b.margin) || 0) - (parseInt(a.margin) || 0))[0].margin) : "–"], ["Closest win", won.filter(m => /wicket/.test(m.margin)).sort((a, b) => parseInt(a.margin) - parseInt(b.margin))[0]?.margin || "–"]]
+        .map(([l, v]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}
+    </div>
+    <h3 class="xr-h" style="margin-top:34px">Team leaders</h3>
+    <div class="tm-lead">${L.map(([l, xs, v, u]) => `<div class="tm-lc ${k}"><a href="${purl(xs[0].p.id)}">${miniThumb(xs[0].p)}<span><small>${l}</small><b>${esc(pname(xs[0].p.id))}</b></span><em>${v(xs[0])}<i>${u}</i></em></a>${xs.length > 1 ? `<p>${xs.slice(1).map((x, i) => `${i + 2}. <a href="${purl(x.p.id)}">${esc(pname(x.p.id))}</a> ${v(x)}`).join(" · ")}</p>` : ""}</div>`).join("")}</div>
+    <h3 class="xr-h" style="margin-top:34px">The squad, by all-rounder rating</h3>
+    <div class="tbl-wrap"><table class="data tm-sq"><thead><tr><th style="text-align:left">Player</th><th>M</th><th>Won</th><th>Runs</th><th>SR</th><th>Wkts</th><th>Econ</th><th>Ct</th><th>Pts/m</th><th>Rating</th></tr></thead><tbody>
+      ${ps.sort((a, b) => (b.p.rAll || 0) - (a.p.rAll || 0) || b.s.pts - a.s.pts).map(x => `<tr><td class="nm"><a class="rec-who" href="${purl(x.p.id)}">${miniThumb(x.p)}<span>${esc(pname(x.p.id))}${x.p.tm.key !== k ? ' <small class="label">(guest)</small>' : ""}</span></a></td><td>${x.s.m}</td><td>${x.s.won}</td><td class="hi">${x.s.r}</td><td>${x.s.b ? Math.round(x.s.r / x.s.b * 100) : "–"}</td><td class="hi">${x.s.w}</td><td>${x.s.bb ? r1(x.s.rc / x.s.bb * 6) : "–"}</td><td>${x.s.c}</td><td>${Math.round(x.s.per)}</td><td>${x.p.rAll || "–"}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="rank-note" style="margin-top:8px">Runs, wickets and catches are for this side only. Pts/m: points a match, runs + 20 a wicket + 10 a catch. Rating is the overall all-rounder rating from the <a href="#rankings">Rankings</a>.</p>
+    <h3 class="xr-h" style="margin-top:34px">Every result</h3>
+    <div class="tm-all">${[...done].reverse().map(res).join("")}</div>`;
 }
 
 /* ---------------- strategy: a game plan against one player, from the ball-by-ball matchups ---------------- */
@@ -2078,7 +2133,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
