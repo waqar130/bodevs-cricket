@@ -1686,7 +1686,9 @@ function drawCompare(){
     const best=label==="Best bowling",mx=Math.max(Math.abs(va)||0,Math.abs(vb)||0)||1;
     const w=(v,won)=>isNaN(v)?0:best?(won?100:60):hi?Math.abs(v)/mx*100:Math.min(100,(mx?(1-Math.abs(v)/mx):0)*100+10);
     const head=g!==grp?(grp=g,{g}):"";
-    return [head,`<div class="cmp-row"><span class="cmp-v ca ${aw?"win":""}">${show(va,A)}<i style="width:${w(va,aw)}%"></i></span><span class="cmp-l">${label}</span><span class="cmp-v cb ${bw?"win":""}">${show(vb,B)}<i style="width:${w(vb,bw)}%"></i></span></div>`]})
+    // the better value yellow, the other red (none on a tie)
+    const hl=(s,won,lost)=>won?`<mark class="rv-best">${s}</mark>`:lost?`<mark class="rv-worst">${s}</mark>`:s;
+    return [head,`<div class="cmp-row"><span class="cmp-v ca ${aw?"win":""}">${hl(show(va,A),aw,bw)}<i style="width:${w(va,aw)}%"></i></span><span class="cmp-l">${label}</span><span class="cmp-v cb ${bw?"win":""}">${hl(show(vb,B),bw,aw)}<i style="width:${w(vb,bw)}%"></i></span></div>`]})
     // group headers go in after the loop, once each group's tally is known
     .map(([h,row])=>(h?`<div class="cmp-grp"><span class="ca">${tally[h.g][0]}</span><b>${h.g}</b><span class="cb">${tally[h.g][1]}</span></div>`:"")+row).join("");
   // when they meet: everything the ball-by-ball knows about this batter against this bowler
@@ -2228,15 +2230,15 @@ function rivalries(p){
       ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,x=>[m(x.b/x.s,`a six every ${r1(x.b/x.s)} balls`,1),`${x.r} runs off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`)])}
       ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls faced`)}
       ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`,x=>[`${x.c} held · ${x.d} dropped`,m(x.c/((x.c+x.d)||1)*100,`${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)])}
-      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`,x=>[`${x.c} held · ${x.d} dropped`,m(x.c/((x.c+x.d)||1)*100,`${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`,1)])}
+      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`,x=>[`${x.c} held · ${x.d} dropped`,m(x.c/((x.c+x.d)||1)*100,`${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)])}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
       ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>[hows(x),`for ${x.r} runs off ${x.b} balls`,m(x.b/x.outs,`a wicket every ${r1(x.b/x.outs)} balls`,1),m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`,1)])}
-      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>[`off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`),m(ec(x),`econ ${r1(ec(x))}`)])}
+      ${row("Tormentor",torment,"bat",x=>`${x.r} runs`,x=>[`off ${x.b} balls`,m(sr(x),`SR ${r1(sr(x))}`),m(ec(x),`econ ${r1(ec(x))}`,1)])}
       ${row("Hit for most sixes by",sixer,"bat",x=>`${x.s} sixes`,x=>[m(x.b/x.s,`a six every ${r1(x.b/x.s)} balls`,1),`${x.r} runs off ${x.b}`])}
       ${row("Best economy against",tight,"bat",x=>`Econ ${r1(ec(x))}`,x=>[`${x.r} off ${x.b}`,m(x.outs,`${x.outs} wkt${x.outs===1?"":"s"}`),m(dp(x),`${Math.round(dp(x))}% dots`)])}
-      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>[`${x.r} off ${x.b} · ${x.s} sixes`,x.outs?m(x.b/x.outs,`a wicket every ${r1(x.b/x.outs)} balls`):"no wicket yet",x.outs?m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`):""])}
-      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,x=>{const del=x.b+x.wd,e=x.wd+x.nb;return del?[`${e} of ${del} deliveries`,m(e/del*100,`${Math.round(e/del*100)}%`),m(del/e,`one every ${r1(del/e)} balls`,1)]:[]})}
+      ${row("Doesn't like bowling to",leak,"bat",x=>`Econ ${r1(ec(x))}`,x=>[`${x.r} off ${x.b} · ${x.s} sixes`,x.outs?m(x.b/x.outs,`a wicket every ${r1(x.b/x.outs)} balls`,1):"no wicket yet",x.outs?m(x.r/x.outs,`${r1(x.r/x.outs)} runs a wicket`,1):""])}
+      ${row("Bowls most extras to",wides,"bat",x=>`${x.wd} wd · ${x.nb} nb`,x=>{const del=x.b+x.wd,e=x.wd+x.nb;return del?[`${e} of ${del} deliveries`,m(e/del*100,`${Math.round(e/del*100)}%`,1),m(del/e,`one every ${r1(del/e)} balls`)]:[]})}
       ${asBowl.length?"":'<p class="dnb">Hasn\'t bowled yet.</p>'}
     </div>
   </div>
