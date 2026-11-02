@@ -1690,11 +1690,31 @@ function drawCompare(){
     return [head,`<div class="cmp-row"><span class="cmp-v ca ${aw?"win":""}">${show(va,A)}<i style="width:${w(va,aw)}%"></i></span><span class="cmp-l">${label}</span><span class="cmp-v cb ${bw?"win":""}">${show(vb,B)}<i style="width:${w(vb,bw)}%"></i></span></div>`]})
     // group headers go in after the loop, once each group's tally is known
     .map(([h,row])=>(h?`<div class="cmp-grp"><span class="ca">${tally[h.g][0]}</span><b>${h.g}</b><span class="cb">${tally[h.g][1]}</span></div>`:"")+row).join("");
+  // when they meet: everything the ball-by-ball knows about this batter against this bowler
   const duel=(bat,bowl)=>{const x=H.get(bat.id+"|"+bowl.id);
     if(!x||!x.b)return `<p class="dnb">${esc(bat.full_name||bat.name)} hasn't faced ${esc(bowl.full_name||bowl.name)} yet.</p>`;
-    return `<div class="duel"><p class="kicker">${esc(short(bat.id))} batting v ${esc(short(bowl.id))} bowling</p>
-      <div class="duel-n"><div><b>${x.r}</b><span>runs</span></div><div><b>${x.b}</b><span>balls</span></div><div><b>${Math.round(x.r/x.b*100)}</b><span>strike rate</span></div><div><b>${x.outs}</b><span>times out</span></div><div><b>${x.s}</b><span>sixes</span></div></div>
-      <p class="duel-v">${x.outs?`${esc(short(bowl.id))} has the edge: out every ${r1(x.b/x.outs)} balls.`:`${esc(short(bat.id))} has never been out to ${esc(short(bowl.id))}.`}</p></div>`};
+    const bn=esc(pname(bat.id)),wn=esc(pname(bowl.id)),sr=x.r/x.b*100,usual=bat.bat.sr||0,q=usual?sr/usual:1;
+    const face=q<0.7?"😢":q<0.9?"🙁":q<1.1?"😐":"😊";
+    const HOW={caught:"C","caught behind":"WK",bowled:"B","hit wicket":"HW",lbw:"LBW",stumped:"ST",other:"O"};
+    const hows=Object.entries(x.how||{}).filter(([k,v])=>k!=="run out"&&v).sort((p,r)=>r[1]-p[1]).map(([k,v])=>`${HOW[k]||k} (${v})`).join(" · ");
+    const fx=FX.get(bat.id+"|"+bowl.id)||{c:0,d:0},del=x.b+x.wd,ex=x.wd+x.nb,bnd=x.f+x.s;
+    const cell=(label,val,sub)=>`<div><span>${label}</span><b>${val}</b>${sub?`<small>${sub}</small>`:""}</div>`;
+    const bwSR=bowl.bowl.w?bowl.bowl.b/bowl.bowl.w:0,outEvery=x.outs?x.b/x.outs:0;
+    const verdict=[`${bn} scores at <b>${Math.round(sr)}</b> against ${wn}, ${q>=1.1?"above":q<=0.9?"below":"close to"} his usual ${Math.round(usual)}.`,
+      x.outs?`${wn} gets him out every <b>${r1(outEvery)}</b> balls${bwSR?`, ${outEvery<bwSR?"quicker than":"slower than"} his usual wicket every ${r1(bwSR)}`:""}.`:`${wn} hasn't got him out in ${x.b} balls.`].join(" ");
+    return `<div class="duel"><p class="kicker">${bn} batting v ${wn} bowling</p>
+      <div class="duel-n"><div><b>${x.r}</b><span>runs</span></div><div><b>${x.b}</b><span>balls</span></div><div><b>${Math.round(sr)}</b><span>strike rate ${face}</span></div><div><b>${x.outs}</b><span>times out</span></div><div><b>${x.outs?r1(x.r/x.outs):"–"}</b><span>average</span></div></div>
+      <div class="duel-g">
+        ${cell("Out every",x.outs?`${r1(outEvery)} balls`:"–",hows||(x.outs?"":"never dismissed"))}
+        ${cell("Usually",`SR ${Math.round(usual)}`,`his strike rate against everyone${bwSR?`; ${wn} takes a wicket every ${r1(bwSR)} balls`:""}${x.ro?`. Run out ${x.ro}× in this matchup`:""}`)}
+        ${cell("Sixes",x.s,x.s?`a six every ${r1(x.b/x.s)} balls`:"none yet")}
+        ${cell("Fours",x.f,bnd?`a boundary every ${r1(x.b/bnd)} balls`:"")}
+        ${cell("Dot balls",`${Math.round(x.dots/x.b*100)}%`,`${x.dots} of ${x.b} balls faced`)}
+        ${cell("Economy",r1(x.r/x.b*6),"runs an over for the bowler")}
+        ${cell("Extras",`${x.wd} wd · ${x.nb} nb`,del&&ex?`${Math.round(ex/del*100)}% of deliveries, one every ${r1(del/ex)}`:"none")}
+        ${cell("Catches off him",`${fx.c} held · ${fx.d} dropped`,`by ${wn} in the field`)}
+      </div>
+      <p class="duel-v">${verdict}</p></div>`};
   const head=p=>`<a class="cmp-head ${p.tm.key}" href="${purl(p.id)}">${photo(p,"cmp-ph")}<span><b>${esc(p.full_name||p.name)}</b><small>${esc(p.title||"")} · ${esc(p.tm.short)}</small></span></a>`;
   $("#cmpBody").innerHTML=`<div class="cmp-top">${head(A)}<div class="cmp-score"><b>${wa}</b><span>–</span><b>${wb}</b><small>of ${rows.length} categories won</small></div>${head(B)}</div>
     <div class="cmp-rows">${body}</div>
