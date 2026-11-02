@@ -43,7 +43,7 @@ async function runSync(attempt) {
   syncing = true;
   try {
     const r = await sync({ quiet: true });
-    lastSync = new Date(); lastError = null;
+    lastSync = new Date(); lastError = null; keepSynced();
     console.log(`score sync done: ${r.matches} matches${r.changed ? ", new scores" : ", no changes"}`);
     schedule(nextSlot());
   } catch (e) {
@@ -62,6 +62,21 @@ async function alertSyncFailed(msg) {
   try { await fetch(url, { method: "POST", headers: { "Content-Type": body === text ? "text/plain" : "application/json", Title: "Score sync failed" }, body }); }
   catch (e) { console.error("sync alert failed:", e.message); }
 }
+// A redeploy ships the data file committed in the repo, which can be older than the last sync.
+// Every sync is copied to the storage volume, and on start the newer of the two is used.
+const DATA_FILE = path.join(ROOT, "data", "cricket.json"), KEPT = path.join(STORAGE, "cricket.json");
+const syncedAt = f => { try { return Date.parse(JSON.parse(fs.readFileSync(f, "utf8")).synced_at) || 0; } catch { return 0; } };
+function keepSynced() {
+  try { fs.mkdirSync(STORAGE, { recursive: true }); fs.copyFileSync(DATA_FILE, KEPT + ".tmp"); fs.renameSync(KEPT + ".tmp", KEPT); }
+  catch (e) { console.error("couldn't keep a copy of the synced data:", e.message); }
+}
+function restoreSynced() {
+  if (syncedAt(KEPT) > syncedAt(DATA_FILE)) {
+    try { fs.copyFileSync(KEPT, DATA_FILE + ".tmp"); fs.renameSync(DATA_FILE + ".tmp", DATA_FILE); console.log("restored the last synced data from storage"); }
+    catch (e) { console.error("couldn't restore synced data:", e.message); }
+  }
+}
+restoreSynced();
 // On start (e.g. after a redeploy), catch up if this week's Monday sync hasn't been applied yet.
 function startSync() {
   let synced = 0;
