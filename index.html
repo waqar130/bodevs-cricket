@@ -1514,6 +1514,7 @@ function buildAwards(){
     {k:"Golden Ball",list:rank(p=>p.bowl.w*1000-p.bowl.econ),n:p=>p.bowl.w,v:p=>p.bowl.w,u:"wickets",u1:"wicket",unit:"wickets"},
     {k:"Six King",list:rank(p=>p.bat.s),n:p=>p.bat.s,v:p=>p.bat.s,u:"sixes",u1:"six",unit:"sixes"},
     {k:"Safest Hands",note:"outfield",only:p=>!p.keeper,list:rank(p=>p.fld.c*10-p.fld.drop,p=>!p.keeper),n:p=>p.fld.c,v:p=>p.fld.c,u:"catches",u1:"catch",unit:"catches"},
+    {k:"Surest Hands",note:"10+ chances",need:p=>`${p.fld.c+p.fld.drop} of 10 chances`,ok:p=>p.fld.c+p.fld.drop>=10,list:rank(p=>p.fld.c/(p.fld.c+p.fld.drop)*1000+p.fld.c,p=>p.fld.c+p.fld.drop>=10),n:p=>p.fld.c/(p.fld.c+p.fld.drop)*100,dec:1,v:p=>`${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}%`,u:"of catches held",unit:"percentage points"},
     {k:"Mr Economy",note:"20+ overs",need:p=>`${ovs(p.bowl.b)} of 20 overs bowled`,ok:p=>p.bowl.b>=120,list:rank(p=>-p.bowl.econ,p=>p.bowl.b>=120),n:p=>p.bowl.econ,low:1,dec:1,v:p=>r1(p.bowl.econ),u:"runs an over",unit:"runs an over"},
     {k:"Strike Rate King",note:"150+ balls",need:p=>`${p.bat.b} of 150 balls faced`,ok:p=>p.bat.b>=150,list:rank(p=>p.bat.sr,p=>p.bat.b>=150),n:p=>p.bat.sr,dec:1,v:p=>Math.round(p.bat.sr),u:"strike rate",unit:"points"},
     {k:"Man of the Match",list:rank(p=>p.pomN*1000+p.bat.r),n:p=>p.pomN,v:p=>p.pomN,u:"MOM awards",u1:"MOM award",unit:"MOM"},
@@ -2197,8 +2198,8 @@ function rivalries(p){
       ${row("Most runs off",mostR,"bowl",x=>`${x.r} runs`,x=>`off ${x.b} balls · out ${x.outs}×`)}
       ${row("Most sixes off",mostS,"bowl",x=>`${x.s} sixes`,line)}
       ${row("Dot-ball trap",trap,"bowl",x=>`${Math.round(dp(x))}% dots`,x=>`${x.dots} of ${x.b} balls faced`)}
-      ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`)}
-      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`)}
+      ${row("Usually caught by",catcher,"fld",x=>`${x.c} catch${x.c>1?"es":""}`,x=>`${x.c} held · ${x.d} dropped · ${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)}
+      ${row("Lucky charm",lucky,"fld",x=>`Dropped ${x.d}×`,x=>`${x.c} held · ${x.d} dropped · ${Math.round(x.c/((x.c+x.d)||1)*100)}% catch rate`)}
     </div>
     <div><h3 class="tbl-title">With the ball</h3>
       ${row("Bunny",bunny,"bat",x=>`Out ${x.outs}×`,x=>`${hows(x)} · for ${x.r} runs off ${x.b} balls · a wicket every ${r1(x.b/x.outs)} balls · ${r1(x.r/x.outs)} runs a wicket`)}
@@ -2250,7 +2251,7 @@ function playerPage(id,tab){
     <p class="why">${esc(p.why)}</p>
     ${p.full_name&&!p.full_name.startsWith(p.name)?`<p class="dek">Known on the scorecard as “${esc(p.name)}”.</p>`:""}
     <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} pts</small></a>`:"").join("")}</div>
-    <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
+    <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${p.fld.c+p.fld.drop?`<span><b>${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}%</b> catch rate</span>`:""}${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;
   if(!p.matches)return h+`<p class="dek">No matches yet. The first scorecard will fill this page in.</p>`;
   h+="<!--pane:overview-->"+awardsFor(p)+formChart(p);
@@ -2275,7 +2276,7 @@ function playerPage(id,tab){
     <div><span class="label">Best</span><b>${W.best?`${W.best.w}/${W.best.r}`:"–"}</b><small>${W.best?`<a href="#match-${W.best.mid}">match #${W.best.mid}</a>`:""}</small></div>
     <div><span class="label">Dot balls</span><b>${W.b?Math.round(W.dots/W.b*100):0}%</b><small>${W.dots} dots</small></div>
     <div><span class="label">Extras</span><b>${W.wd+W.nb}</b><small>${W.wd} wides · ${W.nb} no-balls</small></div>
-    <div><span class="label">${p.keeper?"Catches (keeping)":"Catches"}</span><b>${p.fld.c}</b><small>${p.fld.ro} run outs · ${p.fld.drop} drops</small></div>
+    <div><span class="label">${p.keeper?"Catches (keeping)":"Catches"}</span><b>${p.fld.c}</b><small>${p.fld.drop} drops${p.fld.c+p.fld.drop?` · ${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}% caught`:""} · ${p.fld.ro} run outs</small></div>
   </div>
   ${dropsBlock(p)}
   <!--pane:splits-->${splitsBlock(p)}

@@ -955,7 +955,7 @@ function renderSeasonAwards() {
   const GROUPS = [["Honours", ["MVP of the season", "Man of the Match", "Clutch King", "Most Valuable per Ball", "Iron Man"]],
     ["Batting", ["Golden Bat", "Six King", "Strike Rate King", "Powerplay Punisher", "The Wall", "Mr Consistent", "The Finisher", "Over Destroyer", "Partnership King", "The Survivor"]],
     ["Bowling", ["Golden Ball", "Mr Economy", "Death-over Specialist", "Dot-ball Machine", "Comeback Kid"]],
-    ["Fielding & keeping", ["Safest Hands", "Golden Gloves", "Run-out King"]]];
+    ["Fielding & keeping", ["Safest Hands", "Surest Hands", "Golden Gloves", "Run-out King"]]];
   const used = new Set(), groups = GROUPS.map(([g, names]) => { const list = names.map(n => AWARDS.find(a => a.k === n)).filter(Boolean); list.forEach(a => used.add(a)); return [g, list]; });
   const rest = AWARDS.filter(a => !used.has(a)); if (rest.length) groups.push(["More", rest]);
   // milestones across the club: how many have unlocked each, and who leads
@@ -1717,7 +1717,8 @@ function nameSwapper() {
     // nor one that's part of a team name ("Farhan Falcons", "Tassadduq Tigers")
     const teamWords = [...new Set([...P.values()].map(q => q.team).filter(t => t && t.toLowerCase().startsWith(p.src.toLowerCase() + " ")).map(t => rx(t.slice(p.src.length))))];
     const notTeam = teamWords.length ? `(?!${teamWords.join("|")})` : "";
-    return { re: new RegExp(`${pre}\\b${rx(p.src)}\\b${i >= 0 && i + p.src.length < p.name.length ? post : ""}${notTeam}`, "gi"), full: p.name };
+    // and not inside a link or slug ("/p/tassadduq-hussain")
+    return { re: new RegExp(`(?<![-/.])${pre}\\b${rx(p.src)}\\b(?![-/])${i >= 0 && i + p.src.length < p.name.length ? post : ""}${notTeam}`, "gi"), full: p.name };
   });
   return node => {
     const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: t => /^(SCRIPT|STYLE|TEXTAREA)$/.test(t.parentNode?.nodeName) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
