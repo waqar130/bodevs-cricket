@@ -996,3 +996,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .ur-verdict{margin:12px 0 0;padding:10px 14px;background:var(--paper-2);font:400 14px/1.5 var(--f-body);border-left:4px solid var(--muted)}
 .ur-verdict.under{border-left-color:#1f8a4c}.ur-verdict.good{border-left-color:#ffd23f}.ur-verdict.more{border-left-color:var(--red)}
 .ur-verdict a{white-space:nowrap}
+
+/* drops cost 5 points in the MVP race */
+.race-sum .rs.d{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px}
+.race-key .rk-d{background:repeating-linear-gradient(45deg,var(--red) 0 2px,transparent 2px 4px);border:1px solid var(--red)}
