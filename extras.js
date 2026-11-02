@@ -1040,12 +1040,52 @@ function drawStrategy() {
     { h: "Avg", v: x => x.avg, r: rd1, s: r1x, hl: 1 },
     { h: "Ball per bdry", t: "Balls per four or six", v: x => x.bpb, r: rd1, s: r1x, hl: -1 },
     { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: -1 }];
+  /* ---- not enough head-to-head balls: go on each player's season record against his weak spot ---- */
+  const typeName = s => s === "fast" ? "pace" : s === "spin" ? "spin" : "other";
+  // the bowling type he struggles with: lower average against it
+  const weak = isFinite(sAvg("fast")) && isFinite(sAvg("spin")) ? (sAvg("fast") < sAvg("spin") ? "fast" : "spin") : null, strong = weak === "fast" ? "spin" : weak === "spin" ? "fast" : null;
+  const sideBowl = [...side].map(id => P.get(id)).filter(p => p && p.bowl.b >= 36).map(p => ({ id: p.id, p, style: p.bowl_style, bpw: p.bowl.w ? p.bowl.b / p.bowl.w : Infinity, econ: p.bowl.econ, dot: p.bowl.dots / p.bowl.b * 100, ov: p.bowl.b, vs: H.get(t.id + "|" + p.id)?.b || 0 }));
+  const byType = rankBy(sideBowl, [[x => x.bpw, 0], [x => x.econ, 0], [x => x.dot, 1]]).sort((a, b) => (b.style === weak) - (a.style === weak));
+  if (bowlers.length < 3 && sideBowl.length) {
+    const fit = byType.filter(x => x.style === weak), away = byType.filter(x => x.style === strong);
+    batPlan.unshift(`<b>Few of your bowlers have bowled to him</b>, so this goes on their season records and his weak spot${weak ? ` (${typeName(weak)})` : ""}.`);
+    if (fit[0]) batPlan.push(`<b>Bring on ${esc(pname(fit[0].id))}</b> (${typeName(fit[0].style)}): a wicket every ${r1(fit[0].bpw)} balls, ${r1(fit[0].econ)} an over this season${fit[1] ? `. Next: ${esc(pname(fit[1].id))}` : ""}.`);
+    if (away.length && weak) batPlan.push(`<b>Keep ${strong === "spin" ? "spinners" : "pace"} away:</b> ${away.map(x => esc(pname(x.id))).join(", ")}. He averages ${r1(sAvg(strong))} against ${typeName(strong)} at SR ${Math.round(sSR(strong))}.`);
+  }
+  const sideBat = style ? [...side].map(id => P.get(id)).filter(p => p && styleSplit(p)[style].b >= 30).map(p => { const x = styleSplit(p)[style];
+    return { id: p.id, b: x.b, avg: x.o ? x.r / x.o : x.r, sr: x.r / x.b * 100, bpw: x.o ? x.b / x.o : Infinity, bpb: x.f + x.s ? x.b / (x.f + x.s) : Infinity, dot: x.dots / x.b * 100, vs: H.get(p.id + "|" + t.id)?.b || 0 }; }) : [];
+  const batByType = rankBy(sideBat, [[x => x.avg, 1], [x => x.sr, 1], [x => x.bpw, 1], [x => x.dot, 0]]);
+  if (W.b && batters.length < 3 && batByType.length) {
+    bowlPlan.unshift(`<b>Few of your batters have faced him</b>, so this goes on how they bat against ${typeName(style)}, which is what he bowls.`);
+    bowlPlan.splice(1, 0, `<b>Send in ${esc(pname(batByType[0].id))}:</b> averages ${r1(batByType[0].avg)} against ${typeName(style)} at SR ${Math.round(batByType[0].sr)}${batByType[1] ? `. Then ${esc(pname(batByType[1].id))} (avg ${r1(batByType[1].avg)}, SR ${Math.round(batByType[1].sr)})` : ""}.`);
+    const weakest = batByType.at(-1);
+    // the type list would only repeat the lines above
+    bowlPlan.forEach((x, i) => { if (x.startsWith("<b>He bowls")) bowlPlan[i] = `<b>He bowls ${typeName(style)}.</b>`; });
+    if (batByType.length > 2) bowlPlan.splice(2, 0, `<b>Protect ${esc(pname(weakest.id))} from him:</b> averages ${r1(weakest.avg)} against ${typeName(style)}, out every ${r1(weakest.bpw)} balls.`);
+  }
+  const typeBowlCols = [
+    { h: "Type", v: x => x.style, r: v => NaN, s: v => typeName(v) },
+    { h: "Overs", v: x => x.ov, r: v => NaN, s: v => ovs(v) },
+    { h: "Wkt every", t: "Balls per wicket this season", v: x => x.bpw, r: rd1, s: r1x, hl: -1 },
+    { h: "Econ", t: "Economy this season", v: x => x.econ, r: rd1, s: r1x, hl: -1 },
+    { h: "Dot %", t: "Dot balls bowled this season", v: x => x.dot, r: rd0, s: pc, hl: 1 },
+    { h: "Balls v him", t: "Balls bowled to him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" }];
+  const typeBatCols = [
+    { h: "Balls", t: `Balls faced against ${typeName(style)}`, v: x => x.b, r: v => NaN, s: v => v },
+    { h: "Avg", t: `Average against ${typeName(style)}`, v: x => x.avg, r: rd1, s: r1x, hl: 1 },
+    { h: "SR", t: `Strike rate against ${typeName(style)}`, v: x => x.sr, r: rd0, s: v => Math.round(v), hl: 1 },
+    { h: "Out every", t: `Balls per dismissal against ${typeName(style)}`, v: x => x.bpw, r: rd1, s: r1x, hl: 1 },
+    { h: "Ball per bdry", t: `Balls per four or six against ${typeName(style)}`, v: x => x.bpb, r: rd1, s: r1x, hl: -1 },
+    { h: "Dot %", t: `Dots faced against ${typeName(style)}`, v: x => x.dot, r: rd0, s: pc, hl: -1 },
+    { h: "Balls v him", t: "Balls faced from him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" }];
+  const bowlFallback = bowlers.length < 3 && byType.length ? `<h4 class="tbl-title">Your bowlers on season form${weak ? `, ${typeName(weak)} first (his weak spot)` : ""}</h4>${board(byType, typeBowlCols, "Bowler")}` : "";
+  const batFallback = W.b && batters.length < 3 && batByType.length ? `<h4 class="tbl-title">Your batters against ${typeName(style)}, best first</h4>${board(batByType, typeBatCols, "Batter")}` : "";
   el.innerHTML = `<div class="sg-head ${t.tm.key}">${miniThumb(t)}<div><p class="kicker">Game plan against</p><h2>${tn}</h2><p class="sg-sub">${esc(t.tm.short)} · ${t.bat.r} runs at SR ${Math.round(t.bat.sr)} · ${t.bowl.w} wickets at ${r1(t.bowl.econ)} an over</p></div></div>
     <div class="sg-grid">
       <article class="sg-col"><h3 class="xr-h">When ${first(t.id)} bats</h3><ul class="sg-plan">${batPlan.map(x => `<li>${x}</li>`).join("") || "<li>Not enough balls against your side yet.</li>"}</ul>
-        <h4 class="tbl-title">Your bowlers against him, best first</h4>${board(bowlers, bowlCols, "Bowler")}${fewNote(few, "bowl")}</article>
+        ${bowlers.length ? `<h4 class="tbl-title">Your bowlers against him, best first</h4>${board(bowlers, bowlCols, "Bowler")}` : ""}${fewNote(few, "bowl")}${bowlFallback}${!bowlers.length && !bowlFallback ? '<p class="dnb">None of your side has bowled enough this season to plan with.</p>' : ""}</article>
       <article class="sg-col"><h3 class="xr-h">When ${first(t.id)} bowls</h3><ul class="sg-plan">${bowlPlan.map(x => `<li>${x}</li>`).join("")}</ul>
-        ${W.b ? `<h4 class="tbl-title">Your batters against him, best first</h4>${board(batters, batCols, "Batter")}${fewNote(fewB, "bat")}` : ""}</article>
+        ${W.b ? `${batters.length ? `<h4 class="tbl-title">Your batters against him, best first</h4>${board(batters, batCols, "Batter")}` : ""}${fewNote(fewB, "bat")}${batFallback}` : ""}</article>
     </div>
     <p class="rank-note" style="margin-top:14px">Built from the ball-by-ball commentary. A matchup needs 12 balls to be ranked. "Best first" weighs every column together: for bowlers, quick wickets, few runs a wicket, low economy, few boundaries and many dots; for batters, the reverse. Yellow is best in each column, pale yellow second, red worst.</p>`;
 }
