@@ -1674,8 +1674,7 @@ function drawCompare(){
     ["Bowling","Dot balls bowled",p=>q(p.bowl.b>=36,p.bowl.dots/p.bowl.b*100),pct,1],
     ["Bowling","Balls per boundary conceded",p=>q(p.bowl.b>=36&&ext(p).bnd>0,p.bowl.b/ext(p).bnd),d1,1],
     ["Bowling","Extras per over",p=>q(p.bowl.b>=36,(p.bowl.wd+p.bowl.nb)/p.bowl.b*6),d1,0],
-    ["Fielding","Catches",p=>p.fld.c,n,1],["Fielding","Catch rate",p=>q(chances(p)>=3,p.fld.c/chances(p)*100),pct,1],
-    ["Fielding","Catch drop %",p=>q(chances(p)>=3,p.fld.drop/chances(p)*100),pct,0],
+    ["Fielding","Catches + run outs",p=>p.fld.c+p.fld.ro,(v,p)=>`${v} <small>(${p.fld.c} ct, ${p.fld.ro} ro)</small>`,1],["Fielding","Catch rate",p=>q(chances(p)>=3,p.fld.c/chances(p)*100),pct,1],
     ["Fielding","Run out %",p=>q(p.matches>0,ext(p).roM/p.matches*100),pct,1],
     ["Overall","Match attendance %",p=>M.length?p.matches/M.length*100:NaN,pct,1],["Overall","Win %",p=>q(p.matches>0,ext(p).won/p.matches*100),pct,1],
     ["Overall","MVP awards",p=>p.mvpN,n,1],["Overall","Man of the Match",p=>p.pomN,n,1],
@@ -1718,7 +1717,7 @@ function drawCompare(){
   const head=p=>`<a class="cmp-head ${p.tm.key}" href="${purl(p.id)}">${photo(p,"cmp-ph")}<span><b>${esc(p.full_name||p.name)}</b><small>${esc(p.title||"")} · ${esc(p.tm.short)}</small></span></a>`;
   $("#cmpBody").innerHTML=`<div class="cmp-top">${head(A)}<div class="cmp-score"><b>${wa}</b><span>–</span><b>${wb}</b><small>of ${rows.length} categories won</small></div>${head(B)}</div>
     <div class="cmp-rows">${body}</div>
-    <p class="rank-note" style="margin-top:12px">Rate stats need enough of a sample to count: strike rate, balls per boundary and dot balls 30+ balls faced; bowling rates 6+ overs; catch rate and drop % 3+ chances. Run out % is the share of his matches with at least one run out. Match attendance is matches played out of all ${M.length} this season.</p>
+    <p class="rank-note" style="margin-top:12px">Rate stats need enough of a sample to count: strike rate, balls per boundary and dot balls 30+ balls faced; bowling rates 6+ overs; catch rate 3+ chances. Run out % is the share of his matches with at least one run out. Match attendance is matches played out of all ${M.length} this season.</p>
     ${A.id===B.id?"":`<h3 class="tbl-title" style="margin-top:34px">When they meet</h3><div class="duels">${duel(A,B)}${duel(B,A)}</div>`}`;
 }
 

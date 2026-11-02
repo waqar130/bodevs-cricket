@@ -809,3 +809,4 @@ main{counter-reset:spage tpage ppage cpage kpage}
 .duel-g b{font:800 20px/1.1 var(--f-display);text-transform:uppercase}
 .duel-g small{font:400 12px/1.35 var(--f-data);color:var(--muted)}
 .duel-v b{font-weight:800}
+.cmp-v small{font-size:.75em;color:var(--muted);font-weight:400}
