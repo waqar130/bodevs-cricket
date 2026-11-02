@@ -862,3 +862,7 @@ main{counter-reset:spage tpage ppage cpage kpage rpage}
 .rt-svg{width:100%;height:auto;display:block}
 .rt-axis{display:flex;justify-content:space-between;font:400 10px var(--f-data);color:var(--muted);margin:0}
 .rt-none{font:600 14px var(--f-body);color:var(--muted)}
+#tables .tables{grid-template-columns:1fr!important;gap:30px}
+#tables .data td mark{white-space:nowrap}
+/* wide stat tables: the player column stays put while the rest scrolls */
+#tables .data th:first-child,#tables .data td:first-child{position:sticky;left:0;z-index:1;background:var(--paper);box-shadow:1px 0 0 var(--rule)}

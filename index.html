@@ -1448,11 +1448,46 @@ function render(){
 
   // tables
   const bats=all.filter(p=>p.bat.inns).sort((a,b)=>b.bat.r-a.bat.r);
-  $("#batTable").innerHTML=`<thead><tr><th>Player</th><th>M</th><th>Inns</th><th title="Not out">NO</th><th title="Did not bat">DNB</th><th>Runs</th><th>HS</th><th>Avg</th><th>SR</th><th>50</th><th>4s</th><th>6s</th></tr></thead><tbody>${bats.map(p=>{const B=p.bat;
-    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)} ${honours(p,"inline")}</td><td>${p.matches}</td><td>${B.inns}</td><td>${B.no}</td><td>${B.dnb}</td><td class="hi">${B.r}</td><td>${B.hs.r}${B.hs.no?"*":""}</td><td>${r1(B.avg)}</td><td>${r1(B.sr)}</td><td>${B.fifty+B.hundred}</td><td>${B.f}</td><td>${B.s}</td></tr>`}).join("")}</tbody>`;
+  // career tables: every column a stat; yellow marks the best and red the worst among players with enough of a sample
+  const bndC=new Map();M.forEach(mm=>mm.s.scorecards.forEach(sc=>sc.bowling.forEach(x=>bndC.set(x.id,(bndC.get(x.id)||0)+(x.fours||0)+(x.sixes||0)))));
+  const s30=p=>[...p.log.values()].reduce((s,l)=>s+l.bat.filter(x=>x.r>=30).length,0),outs=p=>p.bat.inns-p.bat.no,ch=p=>p.fld.c+p.fld.drop;
+  const nan=NaN,f1=v=>isNaN(v)?"–":r1(v),f0=v=>isNaN(v)?"–":Math.round(v).toLocaleString(),pc=v=>isNaN(v)?"–":Math.round(v)+"%",f2=v=>isNaN(v)?"–":v.toFixed(2);
+  const sty=(p,k,fn)=>{const x=styleSplit(p)[k];return fn(x)};
+  const table=(rows,cols,first)=>{
+    const ext=cols.map(c=>{if(!c.hl)return null;const vs=rows.filter(p=>!c.q||c.q(p)).map(c.v).filter(v=>isFinite(v));if(vs.length<2)return null;
+      const hi=Math.max(...vs),lo=Math.min(...vs);return hi===lo?null:{best:c.hl>0?hi:lo,worst:c.hl>0?lo:hi}});
+    const cell=(c,i,p)=>{const v=c.v(p),s=c.show?c.show(v,p):v,e=ext[i],ok=e&&(!c.q||c.q(p))&&isFinite(v);
+      return `<td class="${c.cls||""}">${ok&&v===e.best?`<mark class="rv-best">${s}</mark>`:ok&&v===e.worst?`<mark class="rv-worst">${s}</mark>`:s}</td>`};
+    return `<thead><tr><th>Player</th>${cols.map(c=>`<th${c.t?` title="${c.t}"`:""}>${c.h}</th>`).join("")}</tr></thead><tbody>${rows.map(p=>`<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)}${first?" "+honours(p,"inline"):""}</td>${cols.map((c,i)=>cell(c,i,p)).join("")}</tr>`).join("")}</tbody>`};
+  const qB=p=>p.bat.b>=30,qO=p=>outs(p)>=2,qW=p=>p.bowl.b>=36;
+  $("#batTable").innerHTML=table(bats,[
+    {h:"M",v:p=>p.matches},{h:"Inns",v:p=>p.bat.inns},{h:"NO",t:"Not out",v:p=>p.bat.no},{h:"DNB",t:"Did not bat",v:p=>p.bat.dnb},
+    {h:"Runs",v:p=>p.bat.r,show:f0,hl:1,cls:"hi"},{h:"HS",v:p=>p.bat.hs?p.bat.hs.r:nan,show:(v,p)=>p.bat.hs?`${p.bat.hs.r}${p.bat.hs.no?"*":""}`:"–",hl:1},
+    {h:"Avg",v:p=>outs(p)>0?p.bat.avg:nan,show:f1,hl:1,q:qO},{h:"SR",v:p=>p.bat.b?p.bat.sr:nan,show:f1,hl:1,q:qB},
+    {h:"B/out",t:"Balls faced per dismissal",v:p=>outs(p)>0?p.bat.b/outs(p):nan,show:f1,hl:1,q:qO},
+    {h:"30+",t:"Scores of 30 or more",v:s30,hl:1},{h:"50+",t:"Fifties and hundreds",v:p=>p.bat.fifty+p.bat.hundred,hl:1},
+    {h:"4s",v:p=>p.bat.f,hl:1},{h:"6s",v:p=>p.bat.s,hl:1},
+    {h:"B/bdry",t:"Balls per boundary (four or six)",v:p=>p.bat.f+p.bat.s?p.bat.b/(p.bat.f+p.bat.s):nan,show:f1,hl:-1,q:qB},
+    {h:"B/6",t:"Balls per six",v:p=>p.bat.s?p.bat.b/p.bat.s:nan,show:f1,hl:-1,q:qB},
+    {h:"Dot %",t:"Dot balls faced",v:p=>p.bat.b?p.bat.dots/p.bat.b*100:nan,show:pc,hl:-1,q:qB},
+    {h:"Duck %",t:"Ducks per innings",v:p=>p.bat.inns?p.bat.ducks/p.bat.inns*100:nan,show:pc,hl:-1,q:p=>p.bat.inns>=5},
+    {h:"Avg v pace",v:p=>sty(p,"fast",x=>x.o?x.r/x.o:nan),show:f1,hl:1,q:p=>styleSplit(p).fast.o>=2},
+    {h:"Avg v spin",v:p=>sty(p,"spin",x=>x.o?x.r/x.o:nan),show:f1,hl:1,q:p=>styleSplit(p).spin.o>=2},
+    {h:"SR v pace",v:p=>sty(p,"fast",x=>x.b?x.r/x.b*100:nan),show:f1,hl:1,q:p=>styleSplit(p).fast.b>=30},
+    {h:"SR v spin",v:p=>sty(p,"spin",x=>x.b?x.r/x.b*100:nan),show:f1,hl:1,q:p=>styleSplit(p).spin.b>=30},
+  ],1);
   const bowls=all.filter(p=>p.bowl.b).sort((a,b)=>b.bowl.w-a.bowl.w||a.bowl.econ-b.bowl.econ);
-  $("#bowlTable").innerHTML=`<thead><tr><th>Player</th><th>Inns</th><th title="Did not bowl">DNB</th><th>Ov</th><th>Wkts</th><th>Runs</th><th>Best</th><th>Econ</th><th>Avg</th><th>Ct</th></tr></thead><tbody>${bowls.map(p=>{const W=p.bowl;
-    return `<tr><td class="nm ${p.tm.key}"><span class="chip"></span>${plink(p.id,p.name)}</td><td>${W.inns}</td><td>${W.dnb}</td><td>${ovs(W.b)}</td><td class="hi">${W.w}</td><td>${W.r}</td><td>${W.best.w}/${W.best.r}</td><td>${r1(W.econ)}</td><td>${r1(W.avg)}</td><td>${p.fld.c}</td></tr>`}).join("")}</tbody>`;
+  $("#bowlTable").innerHTML=table(bowls,[
+    {h:"Inns",v:p=>p.bowl.inns},{h:"DNB",t:"Did not bowl",v:p=>p.bowl.dnb},{h:"Ov",v:p=>p.bowl.b,show:(v,p)=>ovs(p.bowl.b)},
+    {h:"Wkts",v:p=>p.bowl.w,hl:1,cls:"hi"},{h:"Wkts/m",t:"Wickets per match",v:p=>p.matches?p.bowl.w/p.matches:nan,show:f2,hl:1},
+    {h:"Runs",v:p=>p.bowl.r},{h:"Best",v:p=>p.bowl.best?p.bowl.best.w*1000-p.bowl.best.r:nan,show:(v,p)=>p.bowl.best?`${p.bowl.best.w}/${p.bowl.best.r}`:"–",hl:1},
+    {h:"Econ",v:p=>p.bowl.b?p.bowl.econ:nan,show:f1,hl:-1,q:qW},{h:"Avg",v:p=>p.bowl.w?p.bowl.avg:nan,show:f1,hl:-1,q:p=>qW(p)&&p.bowl.w>=2},
+    {h:"SR",t:"Balls per wicket",v:p=>p.bowl.w?p.bowl.b/p.bowl.w:nan,show:f1,hl:-1,q:p=>qW(p)&&p.bowl.w>=2},
+    {h:"Dot %",t:"Dot balls bowled",v:p=>p.bowl.b?p.bowl.dots/p.bowl.b*100:nan,show:pc,hl:1,q:qW},
+    {h:"B/bdry",t:"Balls per boundary conceded",v:p=>bndC.get(p.id)?p.bowl.b/bndC.get(p.id):nan,show:f1,hl:1,q:qW},
+    {h:"Ex/ov",t:"Wides and no-balls per over",v:p=>p.bowl.b?(p.bowl.wd+p.bowl.nb)/p.bowl.b*6:nan,show:f1,hl:-1,q:qW},
+    {h:"Ct+RO",t:"Catches and run outs",v:p=>p.fld.c+p.fld.ro,hl:1},{h:"Catch %",t:"Catches held out of chances",v:p=>ch(p)?p.fld.c/ch(p)*100:nan,show:pc,hl:1,q:p=>ch(p)>=5},
+  ]);
 
   const thumb=p=>`<span class="thumb ${p.tm.key}">${p.photo?`<img src="${p.photo}" alt="" loading="lazy">`:`<b>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</b>`}</span>`;
   const rankCol=(title,r,k,sub)=>{const list=[...P.values()].filter(p=>p[k]).sort((a,b)=>a[k]-b[k]),top=list[0]?.[r]||1;
