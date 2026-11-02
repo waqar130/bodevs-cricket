@@ -813,3 +813,4 @@ main{counter-reset:spage tpage ppage cpage kpage}
 
 /* rivalries: the best number in each column */
 .rv-best{background:#ffd23f;color:#141413;font-weight:700;padding:0 3px;border-radius:2px}
+.rv-worst{background:#d42a1f;color:#fff;font-weight:700;padding:0 3px;border-radius:2px}

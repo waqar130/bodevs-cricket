@@ -2181,10 +2181,10 @@ function rivalries(p){
   const row=(label,list,who,stat,note)=>{if(!list.length)return "";
     const [L,...rest]=list,lid=L[who],lp=P.get(lid);
     // the best number in each column of the detail line is highlighted
-    const parts=new Map(list.map(x=>[x,note?[].concat(note(x)):[]])),best=[];
+    const parts=new Map(list.map(x=>[x,note?[].concat(note(x)):[]])),best=[],worst=[];
     // only matchups with enough balls can win a highlight
-    if(list.length>1)parts.forEach((ps,x)=>!(x.b<MINB)&&ps.forEach((v,i)=>{if(v&&typeof v==="object"&&isFinite(v.v)&&(best[i]===undefined||(v.lo?v.v<best[i]:v.v>best[i])))best[i]=v.v}));
-    const nt=x=>{const ps=parts.get(x);if(!ps.some(v=>v!==""&&v!=null))return "";return `<span class="rv-note">${ps.map((v,i)=>typeof v==="object"?(isFinite(v.v)&&v.v===best[i]?`<mark class="rv-best">${v.t}</mark>`:v.t):v).filter(v=>v!==""&&v!=null).join(" · ")}</span>`};
+    if(list.length>1)parts.forEach((ps,x)=>!(x.b<MINB)&&ps.forEach((v,i)=>{if(!v||typeof v!=="object"||!isFinite(v.v))return;if(best[i]===undefined||(v.lo?v.v<best[i]:v.v>best[i]))best[i]=v.v;if(worst[i]===undefined||(v.lo?v.v>worst[i]:v.v<worst[i]))worst[i]=v.v}));
+    const nt=x=>{const ps=parts.get(x);if(!ps.some(v=>v!==""&&v!=null))return "";return `<span class="rv-note">${ps.map((v,i)=>typeof v==="object"?(isFinite(v.v)&&v.v===best[i]&&best[i]!==worst[i]?`<mark class="rv-best">${v.t}</mark>`:isFinite(v.v)&&v.v===worst[i]&&best[i]!==worst[i]?`<mark class="rv-worst">${v.t}</mark>`:v.t):v).filter(v=>v!==""&&v!=null).join(" · ")}</span>`};
     return `<section class="rv"><header class="rv-h"><span>${label}</span><small>${list.length} ${who==="bowl"?"bowler":who==="fld"?"fielder":"batter"}${list.length>1?"s":""}</small></header>
       <div class="rv-lead ${lp?.tm.key||""}"><a href="${purl(lid)}">${miniThumb(lp)}</a><div><a class="rv-name" href="${purl(lid)}">${esc(pname(lid))}</a>${nt(L)}</div><em class="rv-stat">${stat(L)}</em></div>
       ${rest.length?`<ol class="rv-list" start="2">${rest.map(x=>{const oid=x[who];return `<li class="${P.get(oid)?.tm.key||""}"><a class="rv-name" href="${purl(oid)}">${esc(pname(oid))}</a><em class="rv-stat">${stat(x)}</em>${nt(x)}</li>`}).join("")}</ol>`:""}</section>`};
