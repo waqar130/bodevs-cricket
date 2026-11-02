@@ -666,20 +666,56 @@ function oppBlock(p) {
     ${cell("Share of overs bowled", pct0(o.bowlSh), "of his side's overs while he played")}
     ${cell("Impact rate", pct0(o.impact), `${o.impactN} of ${p.matches} matches with 10+ runs, a wicket or a catch`)}
     ${cell("Value per chance", r1(o.value), `points per 10 balls involved · club ${r1(mv)}`)}
-  </div>`;
+  </div>${(() => { const { ps, ms } = underratedList(), i = ps.findIndex(x => x.p.id === p.id); if (i < 0) return "";
+    const x = ps[i], verdict = x.under && x.vs >= 1 ? ["under", "Underrated", `no more than the club median share of the game (${pct0(x.o.share)}, median ${pct0(ms)}) and above-average value. Worth more balls.`]
+      : !x.under && x.vs >= 1 ? ["good", "Value for his chances", `plenty of the game (${pct0(x.o.share)}) and above-average value from it.`]
+      : x.under ? ["quiet", "Quiet share", `a small share (${pct0(x.o.share)}) and below-average value so far.`] : ["more", "Plenty of chances", `more of the game than most (${pct0(x.o.share)}) for below-average value.`];
+    return `<p class="ur-verdict ${verdict[0]}"><b>${verdict[1]}.</b> #${i + 1} of ${ps.length} for value: ${verdict[2]} <a href="#underrated">Underrated list →</a></p>`; })()}`;
 }
 function renderUnderrated() {
   const el = $("#underratedBody"); if (!el || !M?.length) return;
-  const { ps, mv, ms } = underratedList(), top3 = ps.filter(x => x.under).slice(0, 3);
-  el.innerHTML = `${top3.length ? `<div class="ur-grid">${top3.map((x, i) => `<article class="ur-card ${x.p.tm.key}"><p class="kicker">${["Most underrated", "Underrated", "Underrated"][i]}</p>
+  // underrated: a small share of the game and above-average value for it
+  const { ps, mv, ms } = underratedList(), top3 = ps.filter(x => x.under && x.vs >= 1).slice(0, 3);
+  const outs = p => p.bat.inns - p.bat.no;
+  // each player's rate stats, and where they rank in the club on each
+  const R = { sr: p => p.bat.b >= 30 ? p.bat.sr : NaN, bpo: p => outs(p) >= 2 ? p.bat.b / outs(p) : NaN, bpw: p => p.bowl.b >= 36 && p.bowl.w >= 2 ? p.bowl.b / p.bowl.w : NaN, econ: p => p.bowl.b >= 36 ? p.bowl.econ : NaN };
+  const LBL = { sr: ["strike rate", 1, v => Math.round(v)], bpo: ["balls per dismissal", 1, v => r1(v)], bpw: ["balls per wicket", -1, v => r1(v)], econ: ["economy", -1, v => r1(v)] };
+  const all = [...P.values()].filter(p => p.matches);
+  const rankOn = (k, p) => { const v = R[k](p); if (!isFinite(v)) return null; const vs = all.map(R[k]).filter(isFinite); return 1 + vs.filter(x => LBL[k][1] > 0 ? x > v : x < v).length; };
+  const strengths = p => Object.keys(R).map(k => ({ k, r: rankOn(k, p), v: R[k](p) })).filter(x => x.r).sort((a, b) => a.r - b.r).slice(0, 2);
+  const ord = n => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10 < 4 ? n % 10 : 0] || "th");
+  const card = (x, i) => { const st = strengths(x.p);
+    return `<article class="ur-card ${x.p.tm.key}"><p class="kicker">${["Most underrated", "Underrated", "Underrated"][i]}</p>
       <a class="ur-who" href="${purl(x.p.id)}">${miniThumb(x.p)}<b>${esc(pname(x.p.id))}</b></a>
-      <div class="ur-big">${r1(x.o.value)}<small>pts per 10 balls</small></div>
-      <p class="ur-line">Gets ${pct0(x.o.share)} of his side's balls (club median ${pct0(ms)}) and returns ${x.vs >= 1 ? `${r1(x.vs)}× the club's value per chance` : `${pct0(x.vs)} of the club's value per chance`}.${i ? "" : " The best of anyone on a small share."} Makes an impact in ${pct0(x.o.impact)} of matches.</p></article>`).join("")}</div>` : ""}
+      <div class="ur-big">${r1(x.o.value)}<small>points per 10 balls · club ${r1(mv)}</small></div>
+      <p class="ur-line">Gets ${pct0(x.o.share)} of his side's balls (club median ${pct0(ms)}) and returns ${x.vs >= 1 ? `${r1(x.vs)}× the club's value per ball` : `${pct0(x.vs)} of the club's value per ball`}. Makes an impact in ${pct0(x.o.impact)} of matches.</p>
+      ${st.length ? `<ul class="ur-st">${st.map(s => `<li><b>${ord(s.r)}</b> in the club for ${LBL[s.k][0]} <span>(${LBL[s.k][2](s.v)})</span></li>`).join("")}</ul>` : ""}
+      <p class="ur-ask">${i === 0 ? "Give him more of the game." : "Worth more balls."}</p></article>`; };
+  // the full table, every rate column highlighted best / second / worst
+  const cols = [
+    { h: "M", v: x => x.p.matches },
+    { h: "Bat chance", t: "Share of his side's innings he batted in", v: x => x.o.batCh * 100, f: v => Math.round(v) + "%" },
+    { h: "Bowl chance", t: "Share of his side's innings he bowled in", v: x => x.o.bowlCh * 100, f: v => Math.round(v) + "%" },
+    { h: "Balls faced", t: "His share of his side's balls faced", v: x => x.o.faceSh * 100, f: v => Math.round(v) + "%" },
+    { h: "Overs bowled", t: "His share of his side's overs", v: x => x.o.bowlSh * 100, f: v => Math.round(v) + "%" },
+    { h: "Impact", t: "Matches with 10+ runs, a wicket or a catch", v: x => x.o.impact * 100, f: v => Math.round(v) + "%", hl: 1 },
+    { h: "Value", t: "Points per 10 balls faced or bowled", v: x => x.o.value, f: v => r1(v), hl: 1, cls: "hi" },
+    { h: "v club", t: "Value against the club average", v: x => x.vs, f: v => r1(v) + "×", hl: 1 },
+    { h: "SR", t: "Strike rate", v: x => R.sr(x.p), f: v => Math.round(v), hl: 1 },
+    { h: "B/out", t: "Balls faced per dismissal", v: x => R.bpo(x.p), f: v => r1(v), hl: 1 },
+    { h: "B/wkt", t: "Balls bowled per wicket", v: x => R.bpw(x.p), f: v => r1(v), hl: -1 },
+    { h: "Econ", t: "Economy", v: x => R.econ(x.p), f: v => r1(v), hl: -1 }];
+  const rnd = (c, v) => isFinite(v) ? Math.round(v * 10) / 10 : NaN;
+  const ext = cols.map(c => { if (!c.hl) return null; const u = [...new Set(ps.map(x => rnd(c, c.v(x))).filter(isFinite))].sort((a, b) => c.hl > 0 ? b - a : a - b); return u.length < 2 ? null : { best: u[0], second: u.length > 2 ? u[1] : null, worst: u.at(-1) }; });
+  const cell = (c, i, x) => { const raw = c.v(x), v = rnd(c, raw), s = isFinite(raw) ? (c.f ? c.f(raw) : raw) : "–", e = ext[i];
+    const m = e && isFinite(v) ? v === e.best ? "rv-best" : v === e.second ? "rv-second" : v === e.worst ? "rv-worst" : "" : ""; return `<td class="${c.cls || ""}">${m ? `<mark class="${m}">${s}</mark>` : s}</td>`; };
+  el.innerHTML = `${top3.length ? `<div class="ur-grid">${top3.map(card).join("")}</div>` : ""}
+    <div class="ur-how"><b>Who counts as underrated?</b> A player who gets <b>no more than the club's median share of the game</b> (${pct0(ms)} of their side's balls, batting and bowling together) and still returns <b>more than the club average</b> for it. Value is points (runs, 20 a wicket, 10 a catch or run out) for every 10 balls they face or bowl; the club average is ${r1(mv)}. Players with a small share but below-average value are tagged "small share".</div>
     <h3 class="tbl-title" style="margin-top:30px">Everyone: chance and value</h3>
-    <div class="tbl-wrap"><table class="data"><thead><tr><th>Player</th><th>M</th><th>Bat chance</th><th>Bowl chance</th><th>Balls faced</th><th>Overs bowled</th><th>Impact rate</th><th>Value</th><th>v club</th></tr></thead><tbody>
-    ${ps.map(x => `<tr><td class="nm ${x.p.tm.key}"><span class="chip"></span>${plink(x.p.id, x.p.name)}${x.under && top3.includes(x) ? ` <span class="ur-tag">Underrated</span>` : ""}</td><td>${x.p.matches}</td><td>${pct0(x.o.batCh)}</td><td>${pct0(x.o.bowlCh)}</td><td>${pct0(x.o.faceSh)}</td><td>${pct0(x.o.bowlSh)}</td><td>${pct0(x.o.impact)}</td><td class="hi">${r1(x.o.value)}</td><td>${r1(x.vs)}×</td></tr>`).join("")}
+    <div class="tbl-wrap"><table class="data ur-tbl"><thead><tr><th>Player</th>${cols.map(c => `<th${c.t ? ` title="${c.t}"` : ""}>${c.h}</th>`).join("")}</tr></thead><tbody>
+    ${ps.map(x => `<tr><td class="nm ${x.p.tm.key}"><span class="chip"></span>${plink(x.p.id, x.p.name)}${x.under ? ` <span class="ur-tag">${top3.includes(x) ? "Underrated" : "Small share"}</span>` : ""}</td>${cols.map((c, i) => cell(c, i, x)).join("")}</tr>`).join("")}
     </tbody></table></div>
-    <p class="rank-note" style="margin-top:12px">Value = points (runs + 20 per wicket + 10 per catch or run out) per 10 balls he faced or bowled; the club average is ${r1(mv)}. Balls faced and overs bowled are his share of his side's while he played. Underrated: a share of the game at or below the club median (${pct0(ms)}), ranked by value. Five matches and 30 balls or more.</p>`;
+    <p class="rank-note" style="margin-top:12px">Chances and shares are of his side's innings, balls and overs in the matches he played. Rate columns need 30 balls faced, 2 dismissals or 6 overs bowled. Five matches and 30 balls involved to be listed. Yellow is best in each column, pale yellow second, red worst.</p>`;
 }
 
 /* ---------------- the rivalry: tale of the tape ---------------- */

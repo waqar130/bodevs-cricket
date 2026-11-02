@@ -986,3 +986,13 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .subtabs a{font:800 15px/1 var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:11px 0 9px;border-bottom:3px solid transparent;white-space:nowrap}
 .subtabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--red)}
 .subtabs a:hover{color:var(--ink)}
+
+/* underrated: strengths, how it works, verdicts */
+.ur-st{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:3px;font:400 13px var(--f-body)}
+.ur-st b{font:800 14px var(--f-display);color:var(--red)}.ur-st span{color:var(--muted);font:400 12px var(--f-data)}
+.ur-ask{margin:10px 0 0;font:700 11px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:#1f8a4c}
+.ur-how{margin-top:22px;background:var(--paper-2);border-left:4px solid var(--red);padding:12px 16px;font:400 15px/1.5 var(--f-body);max-width:80ch}
+.ur-tbl th:first-child,.ur-tbl td:first-child{position:sticky;left:0;z-index:1;background:var(--paper);box-shadow:1px 0 0 var(--rule)}
+.ur-verdict{margin:12px 0 0;padding:10px 14px;background:var(--paper-2);font:400 14px/1.5 var(--f-body);border-left:4px solid var(--muted)}
+.ur-verdict.under{border-left-color:#1f8a4c}.ur-verdict.good{border-left-color:#ffd23f}.ur-verdict.more{border-left-color:var(--red)}
+.ur-verdict a{white-space:nowrap}

@@ -899,7 +899,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <p>Player rankings first, then every run, wicket and catch since the first match, worked out from the ball-by-ball scorecards.</p>
       </div>
       <div class="rankings" id="rankings"></div>
-      <p class="rank-note">How the ratings work: batting combines average and strike rate. Bowling combines wickets per over and economy, measured against the league run rate. All-rounder multiplies the two. Ratings are scaled for experience, so players need 15 innings or 30 overs bowled to count fully.</p>
+      <p class="rank-note"><a href="#rankings"><b>Full rankings, position chart and how each rating is worked out →</b></a> How the ratings work: batting combines average and strike rate. Bowling combines wickets per over and economy, measured against the league run rate. All-rounder multiplies the two. Ratings are scaled for experience, so players need 15 innings or 30 overs bowled to count fully.</p>
       <div class="tables">
         <div><h3 class="tbl-title">Batting</h3><div class="tbl-wrap"><table class="data" id="batTable"></table></div></div>
         <div><h3 class="tbl-title">Bowling</h3><div class="tbl-wrap"><table class="data" id="bowlTable"></table></div></div>
@@ -1249,6 +1249,8 @@ function model(){
   BySlug=new Map();P.forEach(p=>{let sl=slugify(p.full_name||p.name)||"player-"+p.id;if(RESERVED.has(sl)||BySlug.has(sl)||/^match-/.test(sl))sl+="-"+p.id;p.slug=sl;BySlug.set(sl,p.id)});
   // old links by scorecard name (#mazhar) still open the player
   P.forEach(p=>{const al=slugify(p.src||p.name);if(al&&!BySlug.has(al)&&!RESERVED.has(al))BySlug.set(al,p.id)});
+  // links shared under earlier spellings of a name
+  [["fahad-butt","Butt Sb"],["fahad-naveed-butt","Butt Sb"]].forEach(([sl,src])=>{const p=[...P.values()].find(q=>q.src===src);if(p&&!BySlug.has(sl))BySlug.set(sl,p.id)});
 
   // head to head from the commentary: batter x bowler, plus fielder catches/drops per batter
   H=new Map();FX=new Map();
@@ -1673,26 +1675,30 @@ const MS=[
   {k:"s",name:"sixes",steps:[50,100,150,200,250,300,400,500],near:30},
   {k:"c",name:"catches",steps:[10,20,25,30,40,50,75,100],near:5},
   {k:"m",name:"matches",steps:[10,20,25,30,40,50,75,100],near:3},
+  {k:"t",name:"scores of 30+",steps:[5,10,15,20,25,30,40,50],near:2},
+  {k:"d",name:"catches and run outs",steps:[10,20,25,30,40,50,75,100],near:4},
 ];
 function renderMilestones(){
   let next=[];const done=[];
   P.forEach(p=>{
     const log=[...p.log.values()].sort((a,b)=>a.mm.date-b.mm.date||a.mm.id-b.mm.id);
-    const tot={r:0,w:0,s:0,c:0,m:0};
+    const tot={r:0,w:0,s:0,c:0,m:0,t:0,d:0};
     log.forEach(l=>{const before={...tot};
-      tot.r+=l.bat.reduce((a,x)=>a+x.r,0);tot.s+=l.bat.reduce((a,x)=>a+x.s,0);tot.w+=l.bowl.reduce((a,x)=>a+x.w,0);tot.c+=l.c;tot.m++;
+      tot.r+=l.bat.reduce((a,x)=>a+x.r,0);tot.s+=l.bat.reduce((a,x)=>a+x.s,0);tot.w+=l.bowl.reduce((a,x)=>a+x.w,0);tot.c+=l.c;tot.m++;tot.t+=l.bat.filter(x=>x.r>=30).length;
+      tot.d+=l.c+l.mm.s.scorecards.reduce((a,sc)=>a+(sc.bowling_team===l.team?(sc.fielding?.runouts||[]).filter(x=>x.id===p.id).reduce((s,x)=>s+(x.count||1),0):0),0);
       MS.forEach(m=>m.steps.forEach(st=>{if(before[m.k]<st&&tot[m.k]>=st)done.push({p,m,st,mm:l.mm})}))});
     MS.forEach(m=>{const st=m.steps.find(x=>x>tot[m.k]);if(!st)return;const prev=[0,...m.steps].filter(x=>x<=tot[m.k]).pop();
-      if(st-tot[m.k]<=m.near&&tot.m>0)next.push({p,m,st,cur:tot[m.k],prev,gap:st-tot[m.k],ratio:(st-tot[m.k])/m.near})});
+      const rate=tot.m?tot[m.k]/tot.m:0,eta=rate?Math.max(1,Math.ceil((st-tot[m.k])/rate)):null;
+      if(st-tot[m.k]<=m.near&&tot.m>0)next.push({p,m,st,cur:tot[m.k],prev,gap:st-tot[m.k],ratio:(st-tot[m.k])/m.near,eta})});
   });
   // "Nth match" milestones are grouped into one line; the list itself is for runs, wickets, sixes and catches
   const games=next.filter(x=>x.m.k==="m"&&x.gap===1),gameSt=games[0]?.st;
   next=next.filter(x=>x.m.k!=="m");
   next.sort((a,b)=>a.ratio-b.ratio);done.sort((a,b)=>b.mm.date-a.mm.date||b.mm.id-a.mm.id||b.st-a.st);
-  $("#msNext").innerHTML=(next.length?next.slice(0,8).map(x=>`<a class="ms-row ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}
+  $("#msNext").innerHTML=(next.length?next.slice(0,10).map(x=>`<a class="ms-row ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}
       <span class="ms-txt"><b>${esc(x.p.full_name||x.p.name)}</b> needs <em>${x.gap.toLocaleString()}</em> more for <strong>${x.st.toLocaleString()} ${x.m.name}</strong>
       <span class="ms-bar" role="progressbar" aria-valuemin="${x.prev}" aria-valuemax="${x.st}" aria-valuenow="${x.cur}" aria-label="${x.cur} of ${x.st} ${x.m.name}"><i style="width:${Math.round((x.cur-x.prev)/(x.st-x.prev)*100)}%"></i></span>
-      <small>${x.cur.toLocaleString()} / ${x.st.toLocaleString()}</small></span></a>`).join(""):`<p class="dnb">Nobody is close to a milestone right now.</p>`)
+      <small>${x.cur.toLocaleString()} / ${x.st.toLocaleString()}${x.eta&&x.m.k!=="m"?` · about ${x.eta} match${x.eta>1?"es":""} at his rate`:""}</small></span></a>`).join(""):`<p class="dnb">Nobody is close to a milestone right now.</p>`)
     +(games.length?`<p class="dnb ms-games"><b>Next match:</b> ${games.filter(x=>x.st===gameSt).map(x=>plink(x.p.id)).join(", ")} ${games.filter(x=>x.st===gameSt).length>1?"each play":"plays"} their ${gameSt}th match.</p>`:"");
   $("#msDone").innerHTML=done.slice(0,12).map(x=>`<li class="${x.p.tm.key}"><span class="ms-st">${x.st.toLocaleString()}</span><span><b>${plink(x.p.id)}</b> reached ${x.st.toLocaleString()} ${x.m.name}<small><a href="#match-${x.mm.id}">Match #${x.mm.id} · ${fmtD(x.mm.date,{day:"numeric",month:"short"})}</a></small></span></li>`).join("");
 }
