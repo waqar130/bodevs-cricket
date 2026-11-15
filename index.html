@@ -613,7 +613,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
         <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
-      <a class="live" href="https://tassadduq.com/cricket/" target="_blank" rel="noopener"><span class="dot"></span>Live</a>
+      <a class="live" href="https://scorenama.com/g/7142662p6r2u" target="_blank" rel="noopener"><span class="dot"></span>Live</a>
     </nav>
   </div>
 </header>
@@ -1102,7 +1102,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 <footer>
   <div class="wrap">
     <img src="assets/logo.png" alt="BoDevs">
-    <span>BoDevs Cricket is played by the team at <a href="https://bodevs.com/" target="_blank" rel="noopener">BoDevs</a>. Scores from <a href="https://tassadduq.com/cricket/" target="_blank" rel="noopener">Scorecard</a>. Player photos: BoDevs. Ball photos: <a href="https://tildecricket.com/" target="_blank" rel="noopener">Tilde Cricket</a>.</span>
+    <span>BoDevs Cricket is played by the team at <a href="https://bodevs.com/" target="_blank" rel="noopener">BoDevs</a>. Scores from <a href="https://scorenama.com/g/7142662p6r2u" target="_blank" rel="noopener">Scorecard</a>. Player photos: BoDevs. Ball photos: <a href="https://tildecricket.com/" target="_blank" rel="noopener">Tilde Cricket</a>.</span>
     <span id="synced"></span>
   </div>
 </footer>
@@ -1581,7 +1581,7 @@ function matchPage(id,tab){
     <p class="dnb"><b>Fielding:</b> ${[...(sc.fielding?.catches||[]).map(c=>`${esc(c.name)} ${c.count} catch${c.count>1?"es":""}`),...(sc.fielding?.runouts||[]).map(c=>`${esc(c.name)} run out`),...(sc.fielding?.drops||[]).map(c=>`${esc(c.name)} dropped ${c.count}`)].join(" · ")||"Nothing to report."}</p>
     ${sc.commentary?.length?`<details class="overs"><summary>Over by over</summary>${sc.commentary.filter(c=>c.type==="over").map(c=>`<div class="ovr"><span>Over ${c.over_no}</span><span>${esc(c.text)} · ${esc(c.score)}</span><span>${esc(c.bowler)}</span></div>`).join("")}</details>`:""}
     </section>`});
-  return h+`<p class="src">Source: <a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Scorecard, match #${m.id} ↗</a></p>`;
+  return h+`<p class="src">Source: <a href="https://scorenama.com/g/7142662p6r2u/m/${m.id}" target="_blank" rel="noopener">Scorenama, match #${m.id}: scorecard, ball by ball and share image ↗</a></p>`;
 }
 
 /* ---------- season awards: each player's page shows where they stand in every race ---------- */
@@ -2418,7 +2418,7 @@ function playerPage(id,tab){
     const bowl=l.bowl.map(x=>`${x.w}/${x.r} (${ovs(x.b)})`).join(" & ")||"–";
     return `<tr><td>${fmtD(l.mm.date,{day:"numeric",month:"short"})}</td><td class="nm"><a href="#match-${l.mm.id}">#${l.mm.id} · ${esc(l.mm.fmt)} for ${esc(team(l.team).short)}</a></td><td>${bat}</td><td>${bowl}</td><td>${l.c||"–"}</td><td class="mp ${cls}">${mp}</td><td>${l.mm.win?`<span class="wl ${won?"w":"l"}">${won?"W":"L"}</span>`:"–"}</td></tr>`}).join("")}
   </tbody></table></div>`;
-  return playerTabs(p,h,tab)+`<p class="src">Source: <a href="https://tassadduq.com/cricket/player?id=${p.id}" target="_blank" rel="noopener">Scorecard, player profile ↗</a></p>`;
+  return playerTabs(p,h,tab)+`<p class="src">Source: <a href="https://scorenama.com/g/7142662p6r2u" target="_blank" rel="noopener">Scorenama, BoDevs group ↗</a></p>`;
 }
 
 // When served by our own server, check every 2 minutes for new scores and offer a refresh (no effect inside Claude).

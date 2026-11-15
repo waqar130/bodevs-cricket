@@ -990,3 +990,11 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 /* drops cost 5 points in the MVP race */
 .race-sum .rs.d{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px}
 .race-key .rk-d{background:repeating-linear-gradient(45deg,var(--red) 0 2px,transparent 2px 4px);border:1px solid var(--red)}
+
+/* match page: Scorenama's awards */
+.sn-aw{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:6px 0 4px}
+.sn-a{display:grid;grid-template-columns:30px 1fr;gap:0 10px;align-items:center;background:var(--paper-2);padding:10px 12px;border-top:3px solid var(--ink)}
+.sn-i{grid-row:1/4;font-size:20px;text-align:center}
+.sn-a small{font:700 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+.sn-a b{font:800 18px/1.1 var(--f-display);text-transform:uppercase}.sn-a b a{color:inherit;text-decoration:none}
+.sn-a em{font:400 12px var(--f-data);font-style:normal;color:var(--muted)}

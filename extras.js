@@ -356,7 +356,7 @@ async function checkLive() {
   bar.innerHTML = `<div class="wrap">${live.map(m => { const sc = m.state.scorecards || [], cur = sc[sc.length - 1];
     const at = cur ? cur.batting.filter(b => b.at_crease).map(b => `${esc(b.name)} ${b.runs}${b.on_strike ? "*" : ""} (${b.balls})`).join(" · ") : "";
     const bw = cur ? cur.bowling.find(b => b.current) : null;
-    return `<a class="live-m" href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener"><span class="live-tag"><span class="dot"></span>Live · #${m.id}</span>
+    return `<a class="live-m" href="https://scorenama.com/g/7142662p6r2u/m/${m.id}" target="_blank" rel="noopener"><span class="live-tag"><span class="dot"></span>Live · #${m.id}</span>
       <b>${cur ? `${esc(team(cur.batting_team).short)} ${cur.runs}/${cur.wickets} (${esc(cur.overs)} ov)` : esc(m.label)}</b>
       ${cur && cur.target ? `<span>Need ${cur.need} off ${cur.balls_left} balls</span>` : cur ? `<span>RR ${esc(cur.crr)}</span>` : ""}${at ? `<span>${at}</span>` : ""}${bw ? `<span>${esc(bw.name)} ${bw.wickets}/${bw.runs}</span>` : ""}</a>`; }).join("")}<span class="live-note">Updates every 30 seconds while a match is on</span></div>`;
   if (!liveTimer) liveTimer = setInterval(checkLive, 30e3);
@@ -1822,7 +1822,10 @@ function matchExtras(mm) {
   if (last?.target) { const maxB = (mm.m.overs || 0) * 6;
     const rows = (last.commentary || []).filter(c => c.type === "over").map(c => { const m = String(c.score).match(/(\d+)\/(\d+)\s*$/); if (!m) return null; const need = last.target - +m[1], left = maxB - c.over_no * 6; if (need <= 0 || left <= 0) return null; return { o: c.over_no, need, left, ...oddsAt(need, left) }; }).filter(Boolean).sort((a, b) => a.o - b.o);
     if (rows.length) odds = `<h3 class="tbl-title" style="margin-top:22px">Chase odds</h3><div class="tbl-wrap"><table class="data"><thead><tr><th>After over</th><th>Needed</th><th>Req. rate</th><th>Teams in this spot won</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.o}</td><td>${r.need} off ${r.left}</td><td>${r1(r.need / r.left * 6)}</td><td class="hi">${r.n ? `${Math.round(r.w / r.n * 100)}% <small class="label">(${r.w} of ${r.n})</small>` : "–"}</td></tr>`).join("")}</tbody></table></div>`; }
-  return `<section class="mx"><h2 class="sec-t">Match report</h2><div class="mx-grid"><div class="mx-rep">${lines.map(l => `<p>${l}</p>`).join("")}</div><div>${worm(mm)}</div></div>
+  // the scorers' awards from Scorenama (players named as on the scoresheet; the page shows full names)
+  const aw = mm.m.awards || [], icon = { "Player of the match": "★", "Best batter": "🏏", "Best bowler": "●", "Best fielder": "✋" };
+  const awards = aw.length ? `<div class="sn-aw">${aw.map(a => { const id = byName.get(a.player); return `<div class="sn-a"><span class="sn-i">${icon[a.title] || "★"}</span><small>${esc(a.title)}</small><b>${id ? plink(id) : esc(a.player)}</b><em>${esc(a.reason)}</em></div>`; }).join("")}</div><p class="rank-note">Awards as picked by Scorenama for this match. The site's own Man of the Match uses its points system, so the two can differ.</p>` : "";
+  return `<section class="mx"><h2 class="sec-t">Match report</h2>${awards}<div class="mx-grid"><div class="mx-rep">${lines.map(l => `<p>${l}</p>`).join("")}</div><div>${worm(mm)}</div></div>
     <h2 class="sec-t">Win probability</h2>${wpChart(mm)}
     <h2 class="sec-t">Runs per over</h2>${manhattan(mm)}${odds}</section>`;
 }
@@ -2062,7 +2065,7 @@ function renderLiveCentre(j) {
       <div class="lc-grid"><div><h3 class="tbl-title">At the crease</h3><ul class="lc-list">${(cur.batting || []).filter(b => b.at_crease).map(b => `<li><b>${esc(b.name)}${b.on_strike ? " *" : ""}</b><span>${b.runs} (${b.balls}) · ${b.fours || 0}×4 ${b.sixes || 0}×6</span></li>`).join("")}</ul><p class="lc-line">Partnership: <b>${ps}</b></p></div>
         <div><h3 class="tbl-title">Bowling</h3>${bw ? `<ul class="lc-list"><li><b>${esc(bw.name)}</b><span>${esc(bw.overs)}-${bw.runs}-${bw.wickets} · econ ${esc(bw.econ || "")}</span></li></ul>` : `<p class="dnb">Between overs.</p>`}
         <h3 class="tbl-title" style="margin-top:14px">Last balls</h3><div class="balls lc-balls">${recent.map(c => `<span class="b ${c.badge.kind}" title="${esc(c.text)}">${esc(c.badge.mark)}</span>`).join("")}</div></div></div>
-      ${worm(fake)}<p class="lc-line"><a href="https://tassadduq.com/cricket/match?id=${m.id}" target="_blank" rel="noopener">Full ball-by-ball on the scoring site ↗</a></p></article>`; }).join("");
+      ${worm(fake)}<p class="lc-line"><a href="https://scorenama.com/g/7142662p6r2u/m/${m.id}" target="_blank" rel="noopener">Full ball by ball on Scorenama ↗</a></p></article>`; }).join("");
 }
 
 /* ---------------- install as an app ---------------- */
