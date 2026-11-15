@@ -1,9 +1,10 @@
-// Pulls every match, scorecard and player from the Scorecard site into data/cricket.json,
-// and saves its logo to assets/logo.png. Run: node sync.js
+// Pulls every match, scorecard and player from Scorenama (the BoDevs group) into data/cricket.json,
+// in the shape the site was built on. Run: node sync.js
 const fs = require("fs");
 const path = require("path");
+const { getJSON, toState, GROUP_URL } = require("./scorenama");
 
-const SOURCE = "https://tassadduq.com/cricket/";
+const SOURCE = "https://scorenama.com/g/" + (process.env.SCORENAMA_GROUP || "7142662p6r2u");
 const OUT_DIR = path.join(__dirname, "data");
 const ASSET_DIR = path.join(__dirname, "assets");
 
@@ -43,33 +44,41 @@ const TILDE = {
   "indoor-nets.jpg": "https://tildecricket.com/wp-content/uploads/2026/09/tilde-indoor-nets-astro-turf.jpg",
 };
 
-// Fields only the umpire console uses; dropped from the stored copy.
-const UMPIRE_ONLY = ["umpire_open", "needs", "next_innings", "available_batsmen", "available_bowlers", "available_fielders"];
+// The site's player ids, kept from before the move to Scorenama (photos and page links use them).
+// A new player gets 100 + their Scorenama id, so it never changes between syncs.
+const SITE_IDS = { "Tassadduq": 1, "Waqar": 2, "Asad": 3, "Fawad": 4, "Borni": 5, "Farhan": 6, "Saad Zubairi": 7, "Abdullah": 8, "Mazhar": 9, "Butt Sb": 10, "Ahsan": 11, "Qari sb": 12 };
 
 // opts.quiet: no per-item logging. opts.refreshAssets: re-download images even if present (CLI default).
 async function sync(opts = {}) {
   const log = opts.quiet ? () => {} : console.log;
   const refresh = opts.refreshAssets ?? !opts.quiet;
   const saveImg = async (file, url) => { if (refresh || !fs.existsSync(file)) fs.writeFileSync(file, await get(url, "buffer")); };
-  // Match ids from the public match list
-  const index = await get(SOURCE + "index");
-  const ids = [...new Set([...index.matchAll(/match\?id=(\d+)/g)].map(m => +m[1]))].sort((a, b) => a - b);
+  // Previous file: who we already know, and which team they play for
+  const file = path.join(OUT_DIR, "cricket.json");
+  let prev = { players: [] }; try { prev = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* first run */ }
+  const known = new Map((prev.players || []).map(p => [p.name, p]));
+  // Players and their Scorenama ids
+  const sn = (await getJSON("/players")).players || [];
+  const idOf = name => SITE_IDS[name] ?? known.get(name)?.id ?? (100 + (sn.find(p => p.name === name)?.id ?? 900));
+  const TEAM_IDS = { "Farhan Falcons": 1, "Tassadduq Tigers": 2 }, teamId = name => TEAM_IDS[name] ?? 3;
 
-  const matches = [];
-  for (const id of ids) {
-    const state = await get(`${SOURCE}api/state.php?match_id=${id}`, "json");
-    if (!state.ok) { console.warn(`match ${id}: not ok, skipped`); continue; }
-    UMPIRE_ONLY.forEach(k => delete state[k]);
-    if (state.match) delete state.match.umpire_open;
-    delete state.ok;
-    matches.push(state);
-    log(`match ${id}: ${state.match.result || state.match.status_label}`);
+  // Every match, newest first in the list; each one fetched in full with its balls
+  const list = (await getJSON("/matches?limit=200")).matches || [];
+  const matches = [], sides = new Map();
+  for (const item of list.slice().sort((x, y) => x.number - y.number)) {
+    const full = (await getJSON(`/matches/${item.number}?balls=1`)).match;
+    if (!full) { console.warn(`match ${item.number}: no data, skipped`); continue; }
+    matches.push(toState(full, idOf, teamId));
+    // which side each player turned out for, for new players' teams
+    for (const k of ["a", "b"]) (full.squads?.[k] || []).forEach(n => { const t = full.teams[k].name, m = sides.get(n) || {}; m[t] = (m[t] || 0) + 1; sides.set(n, m); });
+    log(`match ${item.number}: ${full.result?.text || full.status}`);
+    await new Promise(r => setTimeout(r, 150)); // gentle on Scorenama
   }
 
-  // Players: id, name and listed team from the players page
-  const playersHtml = await get(SOURCE + "players");
-  const players = [...playersHtml.matchAll(/href="player\?id=(\d+)">\s*<strong>([^<]+)<\/strong>\s*<span class="card__sub">([^<]*)<\/span>/g)]
-    .map(m => ({ id: +m[1], name: decode(m[2]), team: decode(m[3]) }));
+  // Everyone who has played, plus anyone we already had who hasn't yet (e.g. a new signing)
+  const names = new Set([...sn.map(p => p.name), ...sides.keys(), ...(prev.players || []).map(p => p.name)]);
+  const players = [...names].map(name => { const k = known.get(name), seen = Object.entries(sides.get(name) || {}).sort((x, y) => y[1] - x[1]);
+    return { id: idOf(name), name, team: k?.team || seen[0]?.[0] || "" }; }).sort((x, y) => x.id - y.id);
   log(`${players.length} players`);
 
   // Player photos and profile details from bodevs.com
@@ -121,16 +130,7 @@ async function sync(opts = {}) {
   }
   log(`${Object.keys(TILDE).length} Tilde photos`);
 
-  // Logo
-  fs.mkdirSync(ASSET_DIR, { recursive: true });
-  const logoMatch = index.match(/src="(img\/logo[^"?]*\.(?:png|svg|webp|jpg))/);
-  if (logoMatch) {
-    await saveImg(path.join(ASSET_DIR, "logo" + path.extname(logoMatch[1])), SOURCE + logoMatch[1]);
-    log(`logo from ${logoMatch[1]}`);
-  }
-
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const file = path.join(OUT_DIR, "cricket.json");
   // Never replace good data with fewer matches: a source that is down, or has been retired, comes back empty.
   try {
     const prev = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -151,5 +151,5 @@ async function sync(opts = {}) {
   return { changed: true, matches: matches.length };
 }
 
-module.exports = { sync, SOURCE };
+module.exports = { sync, SOURCE, GROUP_URL };
 if (require.main === module) sync().catch(err => { console.error(err.message); process.exit(1); });

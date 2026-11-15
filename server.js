@@ -1,6 +1,6 @@
 // BoDevs Cricket server: serves the magazine and keeps scores fresh by syncing from Scorecard on a timer.
 // Runs locally (node server.js -> http://localhost:8765) or on any Node host that sets PORT.
-// Production: Railway (cricket.waqarahmed.net) runs this server; it syncs scores every Monday at 2:00 AM Pakistan time.
+// Production: Railway (cricket.waqarahmed.net) runs this server; it syncs scores from Scorenama every Monday at 2:00 AM Pakistan time.
 // index.html is written as a page body (it also publishes as a Claude artifact), so build.js wraps it in a full document.
 const http = require("http");
 const zlib = require("zlib");
@@ -9,6 +9,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { page } = require("./build");
 const { sync, SOURCE } = require("./sync");
+const { getJSON, toState } = require("./scorenama");
 
 const PORT = Number(process.env.PORT) || 8765;
 const ROOT = __dirname;
@@ -132,18 +133,23 @@ function previewFor(url, req) {
 let liveCache = { at: 0, body: null };
 async function live() {
   if (Date.now() - liveCache.at < 30e3 && liveCache.body) return liveCache.body;
-  const html = await (await fetch(SOURCE + "index", { headers: { "User-Agent": "BoDevsCricketLive/1.0" } })).text();
-  const cards = [...html.matchAll(/match\?id=(\d+)">\s*<div class="card__top">[\s\S]*?badge--([\w-]+)">([^<]*)</g)]
-    .map(x => ({ id: +x[1], status: x[2], label: x[3].trim() })).filter(c => c.status !== "completed");
+  // matches in play on Scorenama (including the break between innings)
+  const listed = (await getJSON("/matches?status=live&limit=5")).matches || [];
+  const known = new Map((data().players || []).map(p => [p.name, p.id]));
+  const idOf = n => known.get(n) ?? null, teamId = n => /Tigers/.test(n) ? 2 : /Falcons/.test(n) ? 1 : 3;
   const matches = [];
-  for (const c of cards.slice(0, 3)) {
+  for (const item of listed.slice(0, 3)) {
+    const c = { id: item.number, status: item.status === "innings_break" ? "innings-break" : "live", label: item.status === "innings_break" ? "Innings break" : "Live" };
     let state = null;
-    if (!/upcoming|scheduled|not_started/.test(c.status)) {
-      try {
-        const s = await (await fetch(`${SOURCE}api/state.php?match_id=${c.id}`)).json();
-        state = { match: s.match, scorecards: (s.scorecards || []).map(sc => ({ label: sc.label, batting_team: sc.batting_team, runs: sc.runs, wickets: sc.wickets, overs: sc.overs, crr: sc.crr, target: sc.target, need: sc.need, balls_left: sc.balls_left, batting: sc.batting.map(b => ({ name: b.name, runs: b.runs, balls: b.balls, out: !!b.out, at_crease: b.at_crease, on_strike: b.on_strike })), bowling: sc.bowling.map(b => ({ name: b.name, overs: b.overs, runs: b.runs, wickets: b.wickets, current: b.current })) })) };
-      } catch { /* show the card without detail */ }
-    }
+    try {
+      const full = (await getJSON(`/matches/${item.number}?balls=1`)).match, s = toState(full, idOf, teamId);
+      state = { match: s.match, scorecards: s.scorecards.map((sc, i, all) => {
+        // who's at the crease and bowling: the not-out batters and the last ball's bowler of the innings in progress
+        const now = i === all.length - 1 && item.status === "live", lastBall = sc.commentary.find(x => x.type === "ball"), striker = lastBall ? lastBall.text.split(" TO ")[1]?.split(",")[0] : null, bowlerUp = lastBall ? lastBall.text.split(" TO ")[0] : null;
+        return { label: sc.label, batting_team: sc.batting_team, runs: sc.runs, wickets: sc.wickets, overs: sc.overs, crr: sc.crr, target: sc.target, need: sc.need, balls_left: sc.balls_left,
+          batting: sc.batting.map(b => ({ name: b.name, runs: b.runs, balls: b.balls, out: !!b.out, at_crease: now && !b.out, on_strike: now && !b.out && b.name.toUpperCase() === striker })),
+          bowling: sc.bowling.map(b => ({ name: b.name, overs: b.overs, runs: b.runs, wickets: b.wickets, current: now && b.name.toUpperCase() === bowlerUp })) }; }) };
+    } catch { /* show the card without detail */ }
     matches.push({ ...c, state });
   }
   liveCache = { at: Date.now(), body: JSON.stringify({ checked_at: new Date().toISOString(), matches }) };
