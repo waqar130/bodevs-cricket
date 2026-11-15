@@ -131,6 +131,11 @@ async function sync(opts = {}) {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const file = path.join(OUT_DIR, "cricket.json");
+  // Never replace good data with fewer matches: a source that is down, or has been retired, comes back empty.
+  try {
+    const prev = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (matches.length < (prev.matches || []).length) throw new Error(`refusing to save ${matches.length} matches over the ${prev.matches.length} already stored`);
+  } catch (e) { if (String(e.message).startsWith("refusing")) throw e; }
   // Keep the old file (and its timestamp) when nothing changed, so scheduled runs don't commit empty updates.
   try {
     const old = JSON.parse(fs.readFileSync(file, "utf8"));

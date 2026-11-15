@@ -65,13 +65,16 @@ async function alertSyncFailed(msg) {
 // A redeploy ships the data file committed in the repo, which can be older than the last sync.
 // Every sync is copied to the storage volume, and on start the newer of the two is used.
 const DATA_FILE = path.join(ROOT, "data", "cricket.json"), KEPT = path.join(STORAGE, "cricket.json");
-const syncedAt = f => { try { return Date.parse(JSON.parse(fs.readFileSync(f, "utf8")).synced_at) || 0; } catch { return 0; } };
+// a file's sync time, or 0 if it has no matches (an empty sync is never preferred over real data)
+const syncedAt = f => { try { const d = JSON.parse(fs.readFileSync(f, "utf8")); return d.matches?.length ? Date.parse(d.synced_at) || 0 : 0; } catch { return 0; } };
+const matchCount = f => { try { return JSON.parse(fs.readFileSync(f, "utf8")).matches?.length || 0; } catch { return 0; } };
 function keepSynced() {
+  if (!matchCount(DATA_FILE)) return;
   try { fs.mkdirSync(STORAGE, { recursive: true }); fs.copyFileSync(DATA_FILE, KEPT + ".tmp"); fs.renameSync(KEPT + ".tmp", KEPT); }
   catch (e) { console.error("couldn't keep a copy of the synced data:", e.message); }
 }
 function restoreSynced() {
-  if (syncedAt(KEPT) > syncedAt(DATA_FILE)) {
+  if (syncedAt(KEPT) > syncedAt(DATA_FILE) && matchCount(KEPT) >= matchCount(DATA_FILE)) {
     try { fs.copyFileSync(KEPT, DATA_FILE + ".tmp"); fs.renameSync(DATA_FILE + ".tmp", DATA_FILE); console.log("restored the last synced data from storage"); }
     catch (e) { console.error("couldn't restore synced data:", e.message); }
   }
