@@ -1048,3 +1048,11 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .pp-s.big{background:#ffd23f;color:#141413}.pp-s.keep{background:#2b7a99;font-size:11px}.pp-s.drop{background:#5b2320;color:#ff9b93}
 .pp-l{font:600 13px/1.25 var(--f-body)}.pp-l small{display:block;font:400 11px var(--f-data);color:#a9a49a}
 .pts-pop li b{font:800 16px var(--f-display)}.pts-pop li b.pos{color:#7ee0a2}.pts-pop li b.neg{color:#ff8a80}
+
+/* points card: group headings; leader boxes' points button */
+.pts-pop li.pp-g{display:flex;justify-content:space-between;border-top:1px solid #3a3935;padding-top:6px;margin-top:2px;font:700 10px var(--f-data);letter-spacing:.1em;text-transform:uppercase;color:#ffd23f}
+.pts-pop li.pp-g:first-child{border-top:0;padding-top:0;margin-top:0}.pts-pop li.pp-g b{font:800 13px var(--f-display);color:#fff}
+.pts-pop{max-height:70vh;overflow:auto}
+.lb-pts{white-space:nowrap;justify-self:start;align-self:end;margin-top:8px;background:none;border:1px solid var(--rule);border-radius:999px;padding:3px 10px;font:600 11px var(--f-data);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.lb-pts i{font:700 9px var(--f-data);font-style:normal;width:14px;height:14px;border-radius:50%;background:var(--ink);color:var(--paper);display:inline-flex;align-items:center;justify-content:center}
+.lb-pts:hover,.lb-pts:focus-visible{border-color:var(--ink);background:var(--paper)}

@@ -811,7 +811,9 @@ function renderWeekLines() {
   const bnd = best(E.filter(x => x.f + x.s), (p, q) => (q.f + q.s) - (p.f + p.s) || q.s - p.s), fld = best(E.filter(x => x.c + x.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro) || q.c - p.c);
   const dot = best(E.filter(x => x.bb >= 12), (p, q) => q.db / q.bb - p.db / p.bb);
   const fours = E.reduce((s, x) => s + x.f, 0), bls = W.WM.reduce((s, m) => s + m.inns.reduce((x, i) => x + i.b, 0), 0);
-  const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span></a>`;
+  // a player's box gets a button that opens his week's points card
+  const ptsBtn = href => { const id = BySlug.get(String(href).slice(1)), x = id != null && E.find(y => y.id === id); return x ? `<button type="button" class="lb-pts" data-pts='${ptsAll(x, "Weekly points · " + pname(x.id))}'>${ptsN(x.pts)} pts this week <i>i</i></button>` : ""; };
+  const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span>${href !== "#weeknumbers" ? ptsBtn(href) : ""}</a>`;
   const bi = bat && innOf(bat.id), bs = bowl && spellOf(bowl.id);
   el.innerHTML = [
     box(`The week · issue ${W.issue}`, W.WM.length, res, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),

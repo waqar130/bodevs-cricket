@@ -1720,6 +1720,19 @@ function renderMilestones(){
 
 /* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
 // "Bat 102 runs +9 1-3s +6 fours +36 sixes −3 dots = 150 · Bowl …" (only the parts that apply)
+// the breakdown rows for a player's week: [symbol, symbol style, label, count, points each]
+function ptsGroups(x){
+  return [["r","Batting",x.parts.bat,[["👟","emo","Runs",x.r,1],["1·2·3","run","Running shots, 1 to 3",x.sh,1],["4","four","Fours",x.f,2],["6","six","Sixes",x.s,3],["6","six hot","Six after two dots",x.sad,1],["66","six hot","Sixes in a row",x.ss,1],["•","dot","Dot balls faced",x.df,-1],["••","dot","Dots in a row",x.dfr,-1]]],
+    ["w","Bowling",x.parts.bowl,[["W","wkt","Wickets",x.w,20],["W+","wkt","2nd, 3rd and 4th wicket in a spell",x.h3,10],["6→W","wkt","Wicket straight after a six",x.was,5],["•","dot good","Dot balls",x.db,1],["••","dot good","Dots in a row",x.dbr,1],["M","mdn","Maidens",x.md,10],["wd","xtra","Wides and no-balls",x.ex,-1]]],
+    ["c","Fielding",x.parts.fld,[["🧤","emo","Catches",x.c,10],["★","big","Big catch (batter on 20+)",x.bc,5],["WK","keep","Keeper catch",x.kc,5],["⚡","emo","Run outs",x.ro,15],["✗","drop","Dropped catches",x.dr,-5]]]];
+}
+const ptsN=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t};
+const ptsRows=items=>items.filter(i=>i[3]).map(([sym,st,l,c,each])=>[sym,st,l,c,(each>0?"+":"−")+Math.abs(each),ptsN(c*each)]);
+// all three parts in one card, with a heading row for each
+function ptsAll(x,title){
+  const rows=[];ptsGroups(x).forEach(([,lab,tot,items])=>{const r=ptsRows(items);if(r.length){rows.push(["",lab,ptsN(tot)]);rows.push(...r)}});
+  return esc(JSON.stringify({t:title,tot:ptsN(x.pts),rows}));
+}
 function raceSum(x){
   const n=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t};
   // [symbol, symbol style, label, count, points each, points]
@@ -1735,13 +1748,13 @@ function raceSum(x){
 (function(){let pop,open=null;
   const close=()=>{if(pop){pop.hidden=true;open=null}};
   const show=btn=>{const d=JSON.parse(btn.dataset.pts);if(!pop){pop=document.createElement("div");pop.className="pts-pop";pop.setAttribute("role","tooltip");document.body.appendChild(pop)}
-    pop.innerHTML=`<p class="pp-h">${d.t}<b>${d.tot}<small> pts</small></b></p><ul>${d.rows.map(([sym,st,l,c,each,p])=>`<li><span class="pp-s ${st}">${sym}</span><span class="pp-l">${l}<small>${c} × ${each}</small></span><b class="${String(p).startsWith("−")?"neg":"pos"}">${String(p).startsWith("−")?p:"+"+p}</b></li>`).join("")}</ul>`;
+    pop.innerHTML=`<p class="pp-h">${d.t}<b>${d.tot}<small> pts</small></b></p><ul>${d.rows.map(r=>r.length===3?`<li class="pp-g"><span>${r[1]}</span><b>${r[2]}</b></li>`:(([sym,st,l,c,each,p])=>`<li><span class="pp-s ${st}">${sym}</span><span class="pp-l">${l}<small>${c} × ${each}</small></span><b class="${String(p).startsWith("−")?"neg":"pos"}">${String(p).startsWith("−")?p:"+"+p}</b></li>`)(r)).join("")}</ul>`;
     pop.hidden=false;const r=btn.getBoundingClientRect(),w=pop.offsetWidth,hgt=pop.offsetHeight;
     let left=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8),top=r.top-hgt-10;if(top<70)top=r.bottom+10;
     pop.style.left=left+scrollX+"px";pop.style.top=top+scrollY+"px";open=btn};
-  document.addEventListener("mouseover",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b&&b!==open)show(b)});
-  document.addEventListener("mouseout",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b&&!b.contains(ev.relatedTarget))close()});
-  document.addEventListener("click",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b){ev.preventDefault();b===open?close():show(b)}else if(!ev.target.closest?.(".pts-pop"))close()});
+  document.addEventListener("mouseover",ev=>{const b=ev.target.closest?.("[data-pts]");if(b&&b!==open)show(b)});
+  document.addEventListener("mouseout",ev=>{const b=ev.target.closest?.("[data-pts]");if(b&&!b.contains(ev.relatedTarget))close()});
+  document.addEventListener("click",ev=>{const b=ev.target.closest?.("[data-pts]");if(b){ev.preventDefault();b===open?close():show(b)}else if(!ev.target.closest?.(".pts-pop"))close()});
   document.addEventListener("keydown",ev=>{if(ev.key==="Escape")close()});
   addEventListener("scroll",close,{passive:true});})();
 function initMvp(){
