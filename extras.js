@@ -1697,6 +1697,7 @@ function playerExtras(p) {
     <p class="fc-key"><span><i class="fc-k-bar ${p.tm.key}"></i>Runs</span><span><i class="fc-k-w" style="border-radius:0"></i>Wickets</span><span>by issue</span></p></div>
     ${ms.length ? `<ul class="tl-ms">${ms.map(x => `<li><b>${esc(x.what)}</b> <span>Issue ${x.w.issue}</span></li>`).join("")}</ul>` : ""}`;
   out.overview = dnaRadar(p) + ratingTrend(p) + tl;
+  out.points = playerRace(p);
   out.overviewEnd = careerTables(p);
   // best and worst
   const inns = log.flatMap(l => l.bat.map(b => ({ l, b }))), spells = log.flatMap(l => l.bowl.map(b => ({ l, b })));
@@ -2438,4 +2439,30 @@ function weekAngles(W, now) {
   const mvc = new Map(); upto.forEach(w => w.mvps.forEach(z => mvc.set(z.id, (mvc.get(z.id) || 0) + 1))); const lead = [...mvc].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const c7 = card("The season after the week", `<p class="wa2-big">${t}–${f}<small> Tigers v Falcons after issue ${W.issue}</small></p><p class="wa2-line">MVP race: ${lead.map(([id, n]) => `<a href="${purl(id)}">${nm(id)}</a> ${n}`).join(" · ")}</p>`);
   return c1 + c2 + c3 + c4 + c5 + c6 + c7;
+}
+
+/* ---------------- player page: his points race, week by week and match by match ---------------- */
+const PRACE = new Map();
+function playerRace(p) {
+  const weeks = WEEKS.map(W => { const j = W.ranked.findIndex(e => e.id === p.id); return j < 0 ? null : { W, e: W.ranked[j], pos: j + 1, of: W.ranked.length, role: W.podium.find(z => z.id === p.id)?.role }; }).filter(Boolean);
+  if (!weeks.length) return "";
+  const mx = Math.max(1, ...weeks.map(w => Math.max(0, w.e.parts.bat) + Math.max(0, w.e.parts.bowl) + Math.max(0, w.e.parts.fld)));
+  const bar = (e, m) => { const pc = v => (Math.max(0, v) / m * 100).toFixed(2) + "%"; return `<div class="race-fill" role="img" aria-label="batting ${e.parts.bat}, bowling ${e.parts.bowl}, fielding ${e.parts.fld}"><i class="rk-r" style="width:${pc(e.parts.bat)}"></i><i class="rk-w" style="width:${pc(e.parts.bowl)}"></i><i class="rk-c" style="width:${pc(e.parts.fld)}"></i></div>`; };
+  const row = (cls, n, lab, sub, e, m, title) => `<li class="${p.tm.key}${cls}"><span class="race-n">${n}</span><span class="race-who pr-who"><span><small>${lab}</small><b>${sub}</b></span></span>
+    <div class="race-bar">${bar(e, m)}<p class="race-sum">${raceSum(e)}<button type="button" class="rs all" data-pts='${ptsAll(e, title)}'>Full card <b>= ${ptsN(e.pts)}</b></button></p></div>
+    <span class="race-pts"><b>${ptsN(e.pts)}</b> pts</span></li>`;
+  const wk = weeks.map(w => row(w.role && /MVP/.test(w.role) ? " win" : "", w.pos, `${w.role || "In the running"}${w.e.snMvp ? ' <span class="sn-tag">Scorenama MVP</span>' : ""}`,
+    `Issue ${w.W.issue} · ${esc(weekRange(w.W))} · #${w.pos} of ${w.of}`, w.e, mx, `Issue ${w.W.issue} · ${pname(p.id)}`)).join("");
+  // match by match, on the same points (worked out once per match and kept)
+  const mt = [...M].filter(mm => mm.s.scorecards.some(sc => sc.batting.some(b => b.id === p.id) || sc.bowling.some(b => b.id === p.id))).sort((a, b) => b.date - a.date || b.id - a.id).map(mm => {
+    if (!PRACE.has(mm.id)) PRACE.set(mm.id, weekStats([mm], 0).ranked); const R = PRACE.get(mm.id), j = R.findIndex(e => e.id === p.id); return j < 0 ? null : { mm, e: R[j], pos: j + 1, of: R.length, mom: (mm.poms || []).find(z => z.id === p.id) }; }).filter(Boolean);
+  const mxm = Math.max(1, ...mt.map(w => Math.max(0, w.e.parts.bat) + Math.max(0, w.e.parts.bowl) + Math.max(0, w.e.parts.fld)));
+  const mr = mt.map(w => row(w.mom ? " win" : "", w.pos, `${w.mom ? ((w.mm.poms || []).length > 1 ? "Joint man of the match" : "Man of the match") : (w.mm.win ? (w.mm.win.key === p.tm.key ? "Won" : "Lost") : "")}${w.mom?.snPom ? ' <span class="sn-tag">Scorenama POM</span>' : ""}`,
+    `<a href="#match-${w.mm.id}">Match #${w.mm.id}</a> · ${fmtD(w.mm.date, { day: "numeric", month: "short" })} · #${w.pos} of ${w.of}`, w.e, mxm, `Match #${w.mm.id} · ${pname(p.id)}`)).join("");
+  const best = [...weeks].sort((a, b) => b.e.pts - a.e.pts)[0], avg = Math.round(weeks.reduce((s, w) => s + w.e.pts, 0) / weeks.length);
+  return `<h2 class="sec-t">Points race</h2>
+    <div class="pr-facts"><div><b>${weeks.filter(w => /MVP/.test(w.role || "")).length}</b><span>MVP weeks</span></div><div><b>${avg}</b><span>points a week</span></div><div><b>${best.e.pts}</b><span>best week, issue ${best.W.issue}</span></div><div><b>${mt.filter(w => w.mom).length}</b><span>man of the match</span></div></div>
+    <h3 class="tbl-title">Week by week</h3><ol class="race-list pr-race">${wk}</ol>
+    <h3 class="tbl-title" style="margin-top:26px">Match by match</h3><ol class="race-list pr-race">${mr}</ol>
+    <p class="rank-note">The same points as the weekly MVP race; match points are worked out for each match alone. Tap Bat, Bowl, Field or Full card for the breakdown.</p>`;
 }

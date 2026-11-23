@@ -1199,3 +1199,9 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .wa2-duel{font:800 20px/1.15 var(--f-display);text-transform:uppercase;margin:0 0 6px}.wa2-duel a{color:var(--ink);text-decoration:none}.wa2-duel span{color:var(--red);margin:0 4px}
 .wa2-big{font:900 40px/1 var(--f-display);margin:4px 0 6px}.wa2-big small{font:500 13px var(--f-body);color:var(--muted)}.wa2-big a{color:var(--ink);text-decoration:none}
 .wa2-line{font:400 14px/1.5 var(--f-body);margin:0}
+
+/* player page: points race */
+.pr-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:3px solid var(--ink);margin:6px 0 18px}
+@media(max-width:620px){.pr-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pr-facts div{padding:10px 10px 0 0}.pr-facts b{display:block;font:900 clamp(28px,3vw,40px)/1 var(--f-display)}.pr-facts span{font:500 11px var(--f-data);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pr-who b{font-size:15px}.pr-who b a{color:var(--ink)}

@@ -2483,7 +2483,7 @@ function rivalries(p){
   <p class="rank-note" style="margin-top:12px">Rate-based rivalries need at least ${MINB} balls in the matchup. Built from the ball-by-ball commentary.</p>`;
 }
 // player sub-pages: the header stays, each block group gets its own tab and link (#slug/batting)
-const PTABS=[["overview","Overview"],["batting","Batting"],["bowling","Bowling & fielding"],["splits","Splits & impact"],["scouting","Strengths & patterns"],["rivalries","Rivalries"],["matches","Matches"]];
+const PTABS=[["overview","Overview"],["points","Points"],["batting","Batting"],["bowling","Bowling & fielding"],["splits","Splits & impact"],["scouting","Strengths & patterns"],["rivalries","Rivalries"],["matches","Matches"]];
 function playerTabs(p,h,tab){
   const parts=h.split(/<!--pane:(\w+)-->/),panes={};
   for(let i=1;i<parts.length;i+=2)panes[parts[i]]=(panes[parts[i]]||"")+parts[i+1];
