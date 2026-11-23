@@ -1530,17 +1530,28 @@ function weekMore(W, now) {
   // turning points of a match: big overs, costly drops, big wickets, double-wicket overs and the finish; the three biggest
   const byNick = nm => { const k = String(nm || "").trim().toLowerCase(); return [...P.values()].find(p => String(p.src || p.name).toLowerCase() === k || String(p.name).toLowerCase() === k); };
   const turns = mm => { const tp = [], nm = id => esc(short(id));
-    X.overBat.filter(x => x.mm === mm && x.r >= 20).forEach(x => tp.push({ w: x.r, t: `${nm(x.id)} took ${x.r} off over ${x.ov}${x.bw ? ` from ${nm(x.bw)}` : ""}.` }));
+    X.overBat.filter(x => x.mm === mm && x.r >= 18).forEach(x => tp.push({ w: x.r, t: `${nm(x.id)} took ${x.r} off over ${x.ov}${x.bw ? ` from ${nm(x.bw)}` : ""}.` }));
     DROPS.filter(d => d.mm === mm && d.r >= 15).forEach(d => tp.push({ w: d.r, t: `${d.fl ? nm(d.fl) : "A fielder"} dropped ${nm(d.bt)} in over ${String(d.over).split(".")[0]}; it cost ${d.r} more runs.` }));
     mm.s.scorecards.forEach(sc => {
       sc.batting.filter(x => x.out && x.runs >= 25).forEach(x => { const h = String(x.how || ""), b = (h.match(/(?:^|\s)b (.+?)(?: ·|$)/) || [])[1], bp = !/run out/i.test(h) && b && byNick(b);
         tp.push({ w: x.runs, t: bp ? `${nm(bp.id)} removed ${nm(x.id)} for ${x.runs}.` : `${nm(x.id)} was run out for ${x.runs}.` }); });
-      sc.bowling.forEach(x => (x.spell || []).forEach(o => { const k = (o.balls || []).filter(b => b.kind === "wicket").length; if (k >= 2) tp.push({ w: 15 * k, t: `${nm(x.id)} took ${k} wickets in over ${o.over}.` }); }));
+      sc.bowling.forEach(x => (x.spell || []).forEach(o => { const bl = o.balls || [], k = bl.filter(b => b.kind === "wicket").length; if (k >= 2) tp.push({ w: 15 * k, t: `${nm(x.id)} took ${k} wickets in over ${o.over}.` });
+        if (bl.length >= 6 && bl.every(b => b.kind === "dot" || b.kind === "wicket" || (b.kind === "drop" && b.mark === "•"))) tp.push({ w: 20, t: `${nm(x.id)} bowled a maiden in over ${o.over}.` }); }));
+      // fifties, and sixes in a row, from each batter's ball by ball
+      sc.batting.forEach(x => { let c = 0, run = 0, best = 0; (x.timeline || []).forEach((t, i) => { const v = t.kind === "six" ? 6 : t.kind === "four" ? 4 : (parseInt(t.mark, 10) || 0); const p = c; c += t.kind === "wide" || t.kind === "noball" ? 0 : v;
+          if (p < 50 && c >= 50) tp.push({ w: 26, t: `${nm(x.id)} reached 50 off ${i + 1} balls.` }); if (t.kind === "six") { run++; best = Math.max(best, run); } else run = 0; });
+        if (best >= 3) tp.push({ k: "sixes", w: 7 * best, t: `${nm(x.id)} hit ${best} sixes in a row.` }); });
+      // stands and collapses, from the fall of wickets
+      const fow = sc.fow || []; let prev = 0;
+      fow.forEach((f, i) => { const stand = f.score - prev; if (stand >= 30) tp.push({ k: "stand", w: Math.round(stand / 2), t: `A ${stand}-run stand for the ${["1st", "2nd", "3rd", "4th", "5th"][i] || (i + 1) + "th"} wicket ended when ${esc(f.player)} fell in over ${String(f.over).split(".")[0] * 1 + 1}.` }); prev = f.score;
+        if (i >= 2) { const base = i >= 3 ? fow[i - 3].score : 0, lost = f.score - base; if (lost < 15) tp.push({ w: 24, t: `${esc(team(sc.batting_team).short)} lost 3 wickets for ${lost} runs.` }); } });
+      const last = sc.runs - prev; if (last >= 30 && sc.wickets < (sc.batting.length || 99)) tp.push({ k: "stand", w: Math.round(last / 2.5), t: `An unbroken ${last}-run stand to finish the ${esc(sc.label)} innings.` });
     });
     const ch = [...mm.s.scorecards].reverse().find(s => s.target), last = ch && (ch.commentary || []).find(b => b.type === "ball"), m = last && String(last.text).match(/^(.+?) TO (.+?),/);
     if (m && mm.win) { if (mm.win.name === ch.batting_team) { const p = byNick(m[2]); if (p) tp.push({ w: 22, t: `${nm(p.id)} hit the winning runs to finish the chase.` }); }
       else { const p = byNick(m[1]); if (p) tp.push({ w: 22, t: `${nm(p.id)} defended the last over; won by ${ch.target - 1 - ch.runs} run${ch.target - 1 - ch.runs === 1 ? "" : "s"}.` }); } }
-    return tp.sort((a, b) => b.w - a.w).slice(0, 3); };
+    // the biggest five, no more than two of any one kind
+    const seen = new Set(), per = new Map(); return tp.sort((a, b) => b.w - a.w).filter(t => { if (seen.has(t.t)) return false; seen.add(t.t); const k = t.k || t.t.split(" ").slice(1, 3).join(" "), n = per.get(k) || 0; if (t.k && n >= 2) return false; per.set(k, n + 1); return true; }).slice(0, 5); };
   // match recaps
   const recap = mm => { const perf = mm.perf || [], bat = [...perf].sort((a, b) => b.r - a.r)[0], bowl = [...perf].filter(e => e.w).sort((a, b) => b.w - a.w || a.rc - b.rc)[0];
     const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0], k = mm.win?.key || "";
