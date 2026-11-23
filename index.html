@@ -1426,12 +1426,8 @@ function render(){
       <div class="mvp-track" id="mvpTrack" tabindex="0">${WEEKS.map(slide).join("")}</div>
       <div class="mvp-dots" role="tablist" aria-label="Choose a week">${WEEKS.map((Wk,i)=>`<button type="button" role="tab" data-i="${i}" aria-selected="${!i}" aria-label="Issue ${Wk.issue}: ${Wk.mvps.map(x=>esc(pname(x.id))).join(" & ")}"><span>${Wk.issue}</span><i>${Wk.mvps.map(x=>esc(short(x.id))).join(" & ")}</i></button>`).join("")}</div>
     </div>
-    <div class="coverlines cl-row">
-      <a class="coverline" href="#rivalry"><div><span class="kicker">The rivalry</span><div class="cl-h">${lead[0]} lead ${lead[1]}–${lead[3]}</div></div><span class="cl-n">${M.length}</span><span class="cl-p">matches played since ${fmtD(M[M.length-1].date,{day:"numeric",month:"short"})}</span></a>
-      <a class="coverline" href="${purl(hs.id)}"><div><span class="kicker">Record</span><div class="cl-h">${esc(hs.name)}'s ${hs.bat.hs.r} off ${hs.bat.hs.b}</div></div><span class="cl-n">${Math.round(hs.bat.hs.r/hs.bat.hs.b*100)}</span><span class="cl-p">strike rate in the season's top score</span></a>
-      <a class="coverline" href="#matches"><div><span class="kicker">Inside</span><div class="cl-h">Every scorecard, ball by ball</div></div><span class="cl-n">${r1(totalRuns/totalBalls*6)}</span><span class="cl-p">runs an over across the season</span></a>
-      <a class="coverline" href="#records"><div><span class="kicker">Record book</span><div class="cl-h">Fastest fifties, best spells</div></div><span class="cl-n">↗</span><span class="cl-p">top 10 in 12 categories</span></a>
-    </div>`;
+    <div class="coverlines cl-row" id="weekLines"></div>
+`;
   initMvp();
 
   // ticker

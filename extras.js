@@ -793,6 +793,18 @@ function weekResult(W) {
     <div class="wr-score"><span class="${a.k}">${esc(team(a.n).short)}</span><b>${a.w}–${b.w}</b><span class="${b.k}">${esc(team(b.n).short)}</span></div>
     <p class="wr-say">${drawn ? "Drawn week" : `${esc(team(lead.n).short)} win the week`}</p></div>`;
 }
+// the four lines under the cover: the selected week's result, best knock, best spell and pace
+function renderWeekLines() {
+  const el = $("#weekLines"); if (!el || !WEEK) return;
+  const W = selW(), t = Object.entries(W.tw || {}).sort((a, b) => (team(a[0]).key === "t" ? -1 : 1) - (team(b[0]).key === "t" ? -1 : 1));
+  const res = t.length === 2 ? (t[0][1].w === t[1][1].w ? `Drawn ${t[0][1].w}–${t[1][1].w}` : `${esc(team((t[0][1].w > t[1][1].w ? t[0] : t[1])[0]).short)} win ${Math.max(t[0][1].w, t[1][1].w)}–${Math.min(t[0][1].w, t[1][1].w)}`) : "—";
+  const k = W.knock, s = W.spell, balls = W.WM.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.b, 0), 0), line = (href, kick, head, num, sub) => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span></a>`;
+  el.innerHTML = [
+    line("#weeknumbers", `The week · issue ${W.issue}`, res, W.WM.length, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),
+    k ? line(purl(k.id), "Top score", `${esc(pname(k.id))}'s ${k.r}${k.no ? "*" : ""} off ${k.b}`, Math.round(k.r / Math.max(1, k.b) * 100), `strike rate · ${k.s} six${k.s === 1 ? "" : "es"}`) : "",
+    s ? line(purl(s.id), "Best spell", `${esc(pname(s.id))}'s ${s.w}/${s.r}`, `${s.w}/${s.r}`, `in ${s.ov} overs`) : "",
+    line("#weeknumbers", "The pace", `${W.sixes} sixes, ${W.wkts} wickets`, balls ? r1(W.runs / balls * 6) : "–", `runs an over that week · ${W.runs.toLocaleString()} runs`)].join("");
+}
 // the ticker: only the selected week
 function renderTicker() {
   const el = $("#ticker"); if (!el || !WEEK) return;
@@ -2186,12 +2198,12 @@ function updateWeekBar() {
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
-window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderTicker(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); renderPoster(); updateWeekBar(); };
+window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderTicker(); renderWeekLines(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); renderPoster(); updateWeekBar(); };
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderTicker(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderTicker(); renderWeekLines(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };
