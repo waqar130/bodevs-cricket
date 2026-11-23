@@ -1190,3 +1190,12 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 @media(max-width:520px){.ml-lines .wl-grid{grid-template-columns:1fr}.ml-lines .wl-grid .coverline{border-right:0!important;padding-left:0}}
 .ml-lines{display:block!important;border-top:0!important;margin-bottom:28px}
 .ml-lines .wl-g:first-child{margin-top:8px}
+
+/* the week from more angles */
+.wa2-side{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--rule);text-decoration:none;color:var(--ink)}
+.wa2-side small{display:block;font:700 10px var(--f-data);letter-spacing:.12em;text-transform:uppercase;color:var(--team,var(--red))}.wa2-side.t{--team:var(--tiger)}.wa2-side.f{--team:var(--falcon)}
+.wa2-side b{display:block;font:800 17px var(--f-display);text-transform:uppercase}.wa2-side i{font:400 12px var(--f-data);color:var(--muted);font-style:normal}
+.wa2-side em{font:900 26px var(--f-display);font-style:normal}.wa2-side em small{display:inline;font:600 10px var(--f-data);color:var(--muted);margin-left:2px;letter-spacing:0}
+.wa2-duel{font:800 20px/1.15 var(--f-display);text-transform:uppercase;margin:0 0 6px}.wa2-duel a{color:var(--ink);text-decoration:none}.wa2-duel span{color:var(--red);margin:0 4px}
+.wa2-big{font:900 40px/1 var(--f-display);margin:4px 0 6px}.wa2-big small{font:500 13px var(--f-body);color:var(--muted)}.wa2-big a{color:var(--ink);text-decoration:none}
+.wa2-line{font:400 14px/1.5 var(--f-body);margin:0}

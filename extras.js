@@ -1556,7 +1556,8 @@ function weekMore(W, now) {
   if (prev) { const a = stat(W), b = stat(prev), rows = [["Matches", "m"], ["Runs", "runs"], ["Average innings", "avg"], ["Sixes", "sixes"], ["Wickets", "wkts"], ["Extras", "extras"], ["Drops", "drops"]];
     vs = `<div class="xr-card"><h3 class="tbl-title">${now ? "This week" : `Issue ${W.issue}`} v issue ${prev.issue}</h3><ul class="wvw">${rows.map(([l, k]) => { const d = a[k] - b[k];
       return `<li><span>${l}</span><b>${a[k]}</b><small class="${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "▲" : d < 0 ? "▼" : "="} ${Math.abs(d) || ""}</small><i>${b[k]}</i></li>`; }).join("")}</ul></div>`; }
-  return { recaps, more: `<h3 class="xr-h">More from the week</h3><div class="xr-grid">${movers}${msHtml}${vs}${weekQuiz(W, now)}${onThisDay(W)}</div>` };
+  const angles = weekAngles(W, now);
+  return { recaps, more: `<h3 class="xr-h">More from the week</h3><div class="xr-grid">${angles}${movers}${msHtml}${vs}${weekQuiz(W, now)}${onThisDay(W)}</div>` };
 }
 
 /* ---------------- player notables: batting, bowling and fielding ---------------- */
@@ -2394,4 +2395,47 @@ function matchLeaders(mm) {
       ss && box("Back-to-back sixes", ss.ss, ss.id, `times he hit a six straight after a six${ss.stl >= 2 ? ` · longest run ${ss.stl}` : ""}`),
       fin && box("Chase finisher", (fin.cfl || [])[0] || "✓", fin.id, "on strike for the winning ball, not out"), def && box("Defended the last over", "✓", def.id, (def.dll || [])[0] || "")])}
   </div>`;
+}
+
+/* ---------------- the week from more angles: Scorenama points, best of each side, the duel, the closest finish, the toss, powerplay v death, the season after ---------------- */
+function weekAngles(W, now) {
+  const nm = id => esc(pname(id)), card = (t, body) => `<div class="xr-card wa2"><h3 class="tbl-title">${t}</h3>${body}</div>`, wk = now ? "this week" : "that week";
+  const up = new Map(); P.forEach(p => { up.set(String(p.src || p.name).toUpperCase(), p.id); up.set(String(p.name).toUpperCase(), p.id); });
+  const scs = W.WM.flatMap(mm => mm.s.scorecards.map(sc => ({ mm, sc })));
+  // 1. Scorenama points
+  const sn = [...W.ranked].filter(e => e.sn > 0).sort((a, b) => b.sn - a.sn).slice(0, 5);
+  const c1 = card("Scorenama points", `<ol class="sn-board">${sn.map((e, i) => `<li><span class="sn-n">${i + 1}</span><a class="sn-who ${P.get(e.id)?.tm.key || ""}" href="${purl(e.id)}">${miniThumb(P.get(e.id))}<b>${nm(e.id)}</b></a><span class="sn-v">${e.sn}<small>pts</small></span></li>`).join("")}</ol><p class="sn-note">Runs, +2 a four, +3 a six, 20 a wicket, 10 a catch or run out, −5 a drop. <a href="#scorenama">More on Scorenama</a>.</p>`);
+  // 2. best of each side (on our points)
+  const side = k => W.ranked.find(e => P.get(e.id)?.tm.key === k);
+  const bt = side("t"), bf = side("f"), sideRow = (e, lab) => e ? `<a class="wa2-side ${P.get(e.id).tm.key}" href="${purl(e.id)}">${miniThumb(P.get(e.id))}<span><small>${lab}</small><b>${nm(e.id)}</b><i>${e.r} runs · ${e.w} wkt${e.w === 1 ? "" : "s"} · ${e.c} ct</i></span><em>${ptsN(e.pts)}<small>pts</small></em></a>` : "";
+  const c2 = card("Best Tiger, best Falcon", sideRow(bt, "Tigers") + sideRow(bf, "Falcons"));
+  // ball by ball: who bowled to whom, and how many runs each ball was worth
+  const ballRuns = b => { const k = b.badge?.kind, m = String(b.badge?.mark || ""); if (k === "six") return 6; if (k === "four") return 4; const d = parseInt(m, 10); return isNaN(d) ? (k === "wide" || k === "noball" ? 1 : 0) : d + (k === "wide" || k === "noball" ? 1 : 0); };
+  const duels = new Map(), phase = {};
+  scs.forEach(({ sc }) => { const balls = (sc.commentary || []).filter(c => c.type === "ball").reverse(), lastOv = Math.max(0, ...balls.map(b => parseInt(String(b.over), 10) || 0));
+    balls.forEach(b => { const t = String(b.text).match(/^(.+?) TO (.+?),/); const ov = parseInt(String(b.over), 10) || 0, r = ballRuns(b);
+      const tk = team(sc.batting_team).key; phase[tk] = phase[tk] || { pp: 0, ppb: 0, de: 0, deb: 0 };
+      if (ov < 2) { phase[tk].pp += r; phase[tk].ppb++; } else if (ov >= lastOv - 1) { phase[tk].de += r; phase[tk].deb++; }
+      if (!t) return; const bw = up.get(t[1].trim()), ba = up.get(t[2].trim()); if (bw == null || ba == null) return;
+      const k = ba + "|" + bw, d = duels.get(k) || { ba, bw, b: 0, r: 0, out: 0 }; if (b.badge?.kind !== "wide") d.b++; d.r += b.badge?.kind === "wide" ? 0 : r; if (b.badge?.kind === "wicket") d.out++; duels.set(k, d); }); });
+  // 3. duel of the week: the batter v bowler pairing with the most balls
+  const du = [...duels.values()].sort((a, b) => b.b - a.b || b.r - a.r)[0];
+  const c3 = du ? card("Duel of the week", `<p class="wa2-duel"><a href="${purl(du.ba)}">${nm(du.ba)}</a> <span>v</span> <a href="${purl(du.bw)}">${nm(du.bw)}</a></p>
+    <p class="wa2-big">${du.r}<small> runs off ${du.b} balls${du.out ? `, out ${du.out} time${du.out === 1 ? "" : "s"}` : ", never out"}</small></p>
+    <p class="sn-note">${du.out ? "Round to the bowler." : du.r / Math.max(1, du.b) * 100 >= 150 ? "Round to the batter." : "Honours even."} The most balls any batter faced from one bowler ${wk}.</p>`) : "";
+  // 4. closest finish: the smallest runs margin, or the chase won with fewest balls left
+  const fin = W.WM.map(mm => { const ch = [...mm.s.scorecards].reverse().find(s => s.target); if (!ch || !mm.win) return null;
+    return mm.win.name === ch.batting_team ? { mm, k: (ch.balls_left ?? 99) / 6 * 10, t: `${esc(mm.win.short)} chased it down with ${ch.balls_left ?? "?"} ball${ch.balls_left === 1 ? "" : "s"} to spare` } : { mm, k: ch.target - 1 - ch.runs, t: `${esc(mm.win.short)} held on by ${ch.target - 1 - ch.runs} run${ch.target - 1 - ch.runs === 1 ? "" : "s"}` }; }).filter(Boolean).sort((a, b) => a.k - b.k)[0];
+  const c4 = fin ? card("Closest finish", `<p class="wa2-big"><a href="#match-${fin.mm.id}">#${fin.mm.id}</a></p><p class="wa2-line">${fin.t}.</p>`) : "";
+  // 5. toss check
+  const tossed = W.WM.filter(mm => mm.m.toss_winner && mm.win), tw = tossed.filter(mm => mm.m.toss_winner === mm.win.name).length;
+  const c5 = tossed.length ? card("Toss check", `<p class="wa2-big">${tw}<small> of ${tossed.length}</small></p><p class="wa2-line">matches ${wk} went to the side that won the toss.${tossed.length ? " " + (tw * 2 > tossed.length ? "Call it right and you're halfway there." : tw * 2 < tossed.length ? "Winning the toss didn't help much." : "Even split.") : ""}</p>`) : "";
+  // 6. powerplay v death: runs an over in the first two overs and the last two of each innings
+  const rr = (r, b) => b ? r1(r / b * 6) : "–", ph = Object.entries(phase);
+  const c6 = ph.length ? card("Powerplay v death", `<ul class="wvw">${ph.map(([k, v]) => `<li><span>${k === "t" ? "Tigers" : "Falcons"}</span><b>${rr(v.pp, v.ppb)}</b><small>first 2 overs</small><i>${rr(v.de, v.deb)} last 2</i></li>`).join("")}</ul><p class="sn-note">Runs an over ${wk}, from the ball by ball.</p>`) : "";
+  // 7. the season after this week
+  const upto = WEEKS.filter(w => w.issue <= W.issue), ms = upto.flatMap(w => w.WM), t = ms.filter(m => m.win?.key === "t").length, f = ms.filter(m => m.win?.key === "f").length;
+  const mvc = new Map(); upto.forEach(w => w.mvps.forEach(z => mvc.set(z.id, (mvc.get(z.id) || 0) + 1))); const lead = [...mvc].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const c7 = card("The season after the week", `<p class="wa2-big">${t}–${f}<small> Tigers v Falcons after issue ${W.issue}</small></p><p class="wa2-line">MVP race: ${lead.map(([id, n]) => `<a href="${purl(id)}">${nm(id)}</a> ${n}`).join(" · ")}</p>`);
+  return c1 + c2 + c3 + c4 + c5 + c6 + c7;
 }
