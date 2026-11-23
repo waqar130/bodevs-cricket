@@ -1199,7 +1199,8 @@ function drawStrategy() {
     { h: "Econ", v: x => x.econ, r: rd1, s: r1x, hl: -1 },
     { h: "Ball per bdry", t: "Balls per four or six conceded", v: x => x.bpb, r: rd1, s: r1x, hl: 1 },
     { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: 1 },
-    { h: "His SR", t: "His strike rate against this bowler", v: x => x.sr, r: rd0, s: v => Math.round(v), hl: -1 }];
+    { h: "His SR", t: "His strike rate against this bowler", v: x => x.sr, r: rd0, s: v => Math.round(v), hl: -1 },
+    { h: "Bowl rank", t: "Bowling ranking right now", v: x => P.get(x.id)?.kBowl || NaN, r: v => v, s: v => isFinite(v) ? "#" + v : "–", hl: -1 }];
   const batCols = [
     { h: "Balls", v: x => x.b, r: v => v, s: v => v },
     { h: "Runs", v: x => x.r, r: v => v, s: v => v, hl: 1 },
@@ -1208,7 +1209,8 @@ function drawStrategy() {
     { h: "Out every", t: "Balls per dismissal", v: x => x.bpw, r: rd1, s: r1x, hl: 1 },
     { h: "Avg", v: x => x.avg, r: rd1, s: r1x, hl: 1 },
     { h: "Ball per bdry", t: "Balls per four or six", v: x => x.bpb, r: rd1, s: r1x, hl: -1 },
-    { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: -1 }];
+    { h: "Dot %", v: x => x.dot, r: rd0, s: pc, hl: -1 },
+    { h: "Bat rank", t: "Batting ranking right now", v: x => P.get(x.id)?.kBat || NaN, r: v => v, s: v => isFinite(v) ? "#" + v : "–", hl: -1 }];
   /* ---- not enough head-to-head balls: go on each player's season record against his weak spot ---- */
   const typeName = s => s === "fast" ? "pace" : s === "spin" ? "spin" : "other";
   // the bowling type he struggles with: lower average against it
@@ -1238,7 +1240,8 @@ function drawStrategy() {
     { h: "Wkt every", t: "Balls per wicket this season", v: x => x.bpw, r: rd1, s: r1x, hl: -1 },
     { h: "Econ", t: "Economy this season", v: x => x.econ, r: rd1, s: r1x, hl: -1 },
     { h: "Dot %", t: "Dot balls bowled this season", v: x => x.dot, r: rd0, s: pc, hl: 1 },
-    { h: "Balls v him", t: "Balls bowled to him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" }];
+    { h: "Balls v him", t: "Balls bowled to him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" },
+    { h: "Bowl rank", t: "Bowling ranking right now", v: x => P.get(x.id)?.kBowl || NaN, r: v => v, s: v => isFinite(v) ? "#" + v : "–", hl: -1 }];
   const typeBatCols = [
     { h: "Balls", t: `Balls faced against ${typeName(style)}`, v: x => x.b, r: v => NaN, s: v => v },
     { h: "Avg", t: `Average against ${typeName(style)}`, v: x => x.avg, r: rd1, s: r1x, hl: 1 },
@@ -1246,10 +1249,12 @@ function drawStrategy() {
     { h: "Out every", t: `Balls per dismissal against ${typeName(style)}`, v: x => x.bpw, r: rd1, s: r1x, hl: 1 },
     { h: "Ball per bdry", t: `Balls per four or six against ${typeName(style)}`, v: x => x.bpb, r: rd1, s: r1x, hl: -1 },
     { h: "Dot %", t: `Dots faced against ${typeName(style)}`, v: x => x.dot, r: rd0, s: pc, hl: -1 },
-    { h: "Balls v him", t: "Balls faced from him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" }];
+    { h: "Balls v him", t: "Balls faced from him so far", v: x => x.vs, r: v => NaN, s: v => v || "–" },
+    { h: "Bat rank", t: "Batting ranking right now", v: x => P.get(x.id)?.kBat || NaN, r: v => v, s: v => isFinite(v) ? "#" + v : "–", hl: -1 }];
   const bowlFallback = bowlers.length < 3 && byType.length ? `<h4 class="tbl-title">Your bowlers on season form${weak ? `, ${typeName(weak)} first (his weak spot)` : ""}</h4>${board(byType, typeBowlCols, "Bowler")}` : "";
   const batFallback = W.b && batters.length < 3 && batByType.length ? `<h4 class="tbl-title">Your batters against ${typeName(style)}, best first</h4>${board(batByType, typeBatCols, "Batter")}` : "";
-  el.innerHTML = `<div class="sg-head ${t.tm.key}">${miniThumb(t)}<div><p class="kicker">Game plan against</p><h2>${tn}</h2><p class="sg-sub">${esc(t.tm.short)} · ${t.bat.r} runs at SR ${Math.round(t.bat.sr)} · ${t.bowl.w} wickets at ${r1(t.bowl.econ)} an over</p></div></div>
+  const tRanks = [["Bat", "kBat", "Batting"], ["Bowl", "kBowl", "Bowling"], ["All", "kAll", "All-rounder"], ["Fld", "kFld", "Fielding"], ["Imp", "kImp", "Impact"]].filter(([, k]) => t[k]).map(([l, k, n]) => `<span title="${n} rank"><small>${l}</small>#${t[k]}</span>`).join("");
+  el.innerHTML = `<div class="sg-head ${t.tm.key}">${miniThumb(t)}<div><p class="kicker">Game plan against</p><h2>${tn}</h2>${tRanks ? `<div class="cg-ranks sg-ranks">${tRanks}</div>` : ""}<p class="sg-sub">${esc(t.tm.short)} · ${t.bat.r} runs at SR ${Math.round(t.bat.sr)} · ${t.bowl.w} wickets at ${r1(t.bowl.econ)} an over</p></div></div>
     <div class="sg-grid">
       <article class="sg-col"><h3 class="xr-h">When ${first(t.id)} bats</h3><ul class="sg-plan">${batPlan.map(x => `<li>${x}</li>`).join("") || "<li>Not enough balls against your side yet.</li>"}</ul>
         ${bowlers.length ? `<h4 class="tbl-title">Your bowlers against him, best first</h4>${board(bowlers, bowlCols, "Bowler")}` : ""}${fewNote(few, "bowl")}${bowlFallback}${!bowlers.length && !bowlFallback ? '<p class="dnb">None of your side has bowled enough this season to plan with.</p>' : ""}</article>
