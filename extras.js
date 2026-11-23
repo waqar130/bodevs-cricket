@@ -783,6 +783,28 @@ function renderTape() {
 }
 
 /* ---------------- the week in numbers: team of the week, above his usual, overs, drops, stands, rivalry swing ---------------- */
+// "Tigers 2–1 Falcons" for the week, or a drawn week
+function weekResult(W) {
+  const t = Object.entries(W.tw || {}).map(([n, r]) => ({ n, k: team(n).key, w: r.w, l: r.l })).sort((a, b) => (a.k === "t" ? -1 : 1) - (b.k === "t" ? -1 : 1));
+  if (t.length < 2) return "";
+  const [a, b] = t, drawn = a.w === b.w, lead = a.w > b.w ? a : b, played = W.WM.length;
+  return `<div class="wr ${drawn ? "drawn" : lead.k}">
+    <p class="wr-k">The week's result · ${played} match${played === 1 ? "" : "es"}</p>
+    <div class="wr-score"><span class="${a.k}">${esc(team(a.n).short)}</span><b>${a.w}–${b.w}</b><span class="${b.k}">${esc(team(b.n).short)}</span></div>
+    <p class="wr-say">${drawn ? "Drawn week" : `${esc(team(lead.n).short)} win the week`}</p></div>`;
+}
+// the ticker: only the selected week
+function renderTicker() {
+  const el = $("#ticker"); if (!el || !WEEK) return;
+  const W = selW(), t = Object.entries(W.tw || {}).sort((a, b) => (team(a[0]).key === "t" ? -1 : 1) - (team(b[0]).key === "t" ? -1 : 1)), items = [];
+  if (t.length === 2) { const [[n1, r1], [n2, r2]] = t; items.push(`<b>Issue ${W.issue}</b> · ${esc(team(n1).short)} ${r1.w}–${r2.w} ${esc(team(n2).short)}${r1.w === r2.w ? ", drawn week" : ""}`); }
+  if (W.mvps?.length) items.push(`<b>${W.joint ? "Joint MVPs" : "MVP"}</b> ${W.mvps.map(x => esc(pname(x.id))).join(" & ")}`);
+  [...W.WM].sort((x, y) => x.date - y.date || x.id - y.id).forEach(m => items.push(`#${m.id} · ${m.inns.map(i => `${esc(team(i.team).short)} ${i.runs}/${i.wk}`).join(", ")} · <b>${m.win ? esc(m.win.short) : "—"}</b> won by ${esc(m.margin)}`));
+  const top = (k, u) => { const x = [...W.ranked].sort((p, q) => q[k] - p[k])[0]; return x && x[k] ? `<b>Top ${u}</b> ${esc(pname(x.id))} ${x[k]}` : null; };
+  [top("r", "runs"), top("w", "wickets"), top("s", "sixes")].filter(Boolean).forEach(x => items.push(x));
+  const tk = items.map(x => `<span>${x}</span>`).join("");
+  el.innerHTML = tk + tk;
+}
 function renderWeekNumbers() {
   const el = $("#weekNumbersBody"); if (!el || !WEEK) return;
   const W = selW(), now = W === WEEK, ids = new Set(W.WM.map(m => m.id)), inW = mm => ids.has(mm.id), X = buildXR().raw;
@@ -815,7 +837,7 @@ function renderWeekNumbers() {
   const wm = weekMore(W, now);
   const H3 = (n, t) => `<h3 class="iw-h"><span>${String(n).padStart(2, "0")}</span>${t}</h3>`;
   const tile = (cls, t, inner) => `<article class="iw-card ${cls}"><h4 class="iw-ck">${t}</h4>${inner}</article>`;
-  el.innerHTML = `<div class="iw">
+  el.innerHTML = `<div class="iw">${weekResult(W)}
     ${H3(1, "The matches")}${wm.recaps}
     </div><div class="iw-band"><div class="wrap">${H3(2, "Team of the week")}
       <div class="iw-xi">${xi.map((x, i) => `<a class="iw-pl ${x.p.tm.key}" href="${purl(x.p.id)}"><span class="iw-pn">${i + 1}</span><span class="iw-ph">${x.p.photo ? `<img src="${x.p.photo}" alt="" loading="lazy">` : `<b>${esc((x.p.full_name || x.p.name).split(" ").map(w => w[0]).join("").slice(0, 2))}</b>`}</span>
@@ -2164,12 +2186,12 @@ function updateWeekBar() {
 /* ---------------- the week picked in the MVP slider drives the weekly home sections ---------------- */
 let SELW = null;
 const selW = () => SELW || WEEK;
-window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); renderPoster(); updateWeekBar(); };
+window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW = W; renderTicker(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderDigest(); renderPoster(); updateWeekBar(); };
 
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderTicker(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); checkLive();
 };

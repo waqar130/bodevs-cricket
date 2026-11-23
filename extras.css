@@ -1015,3 +1015,13 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .race-sum .rs.r i,.race-legend .rk-r{background:var(--ink)}.race-sum .rs.w i,.race-legend .rk-w{background:var(--red)}
 .race-sum .rs.c i,.race-legend .rk-c{background:#b9b3a6}.race-sum .rs.x i,.race-legend .rk-x{background:#1f8a4c}
 .race-sum .rs b{font:800 15px var(--f-display);color:var(--ink)}
+
+/* Inside the week: the week's result */
+.wr{text-align:center;padding:26px 0 30px;border-bottom:6px solid var(--ink);margin-bottom:26px}
+.wr.t{--wc:var(--tiger)}.wr.f{--wc:var(--falcon)}.wr.drawn{--wc:var(--ink)}
+.wr-k{font:700 12px var(--f-data);letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin:0 0 6px}
+.wr-score{display:flex;justify-content:center;align-items:center;gap:clamp(14px,3vw,36px);flex-wrap:wrap}
+.wr-score span{font:900 clamp(32px,5vw,64px)/1 var(--f-display);text-transform:uppercase}
+.wr-score span.t{color:var(--tiger)}.wr-score span.f{color:var(--falcon)}
+.wr-score b{font:900 clamp(84px,14vw,180px)/.85 var(--f-display);color:var(--ink)}
+.wr-say{font:900 clamp(22px,3vw,34px)/1 var(--f-display);text-transform:uppercase;color:var(--wc);margin:8px 0 0}
