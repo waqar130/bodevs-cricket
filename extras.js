@@ -828,7 +828,9 @@ function renderWeekLines() {
   const ovs = b => `${Math.floor(b / 6)}${b % 6 ? "." + (b % 6) : ""}`;
   // a player's box gets a button that opens his week's points card
   const ptsBtn = href => { const id = BySlug.get(String(href).slice(1)), x = id != null && E.find(y => y.id === id); return x ? `<button type="button" class="lb-pts" data-pts='${ptsAll(x, "Weekly points · " + pname(x.id))}'>${ptsN(x.pts)} pts this week <i>i</i></button>` : ""; };
-  const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span>${href !== "#weeknumbers" ? ptsBtn(href) : ""}</a>`;
+  // Scorenama MVP of the week gets the blue tag in every box he leads
+  const snTag = href => { const id = BySlug.get(String(href).slice(1)), x = id != null && E.find(y => y.id === id); return x && x.snMvp ? ` <span class="sn-tag" title="Most points on Scorenama this week: ${x.sn}">Scorenama MVP</span>` : ""; };
+  const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}${snTag(href)}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span>${href !== "#weeknumbers" ? ptsBtn(href) : ""}</a>`;
   const who = (x, kick, num, sub) => x ? box(kick, num, nm(x.id), sub, purl(x.id)) : "";
   const group = (title, cls, boxes) => { const b = boxes.filter(Boolean); return b.length ? `<section class="wl-g ${cls}"><h3 class="wl-h">${title}</h3><div class="wl-grid">${b.join("")}</div></section>` : ""; };
   const bi = bat && innOf(bat.id), bs = bowl && spellOf(bowl.id);
