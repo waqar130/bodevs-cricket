@@ -1514,7 +1514,7 @@ function render(){
     const name=ps[0]?.team||"";const wins=key==="t"?tWins:fWins;
     return `<div class="${key}"><div class="sheet-head">${crest(name)}<h3>${esc(name)}</h3><span class="label">${ps.length} players<br>${wins} wins</span></div>
     <div class="roster">${ps.map(p=>`<a class="pcard ${p.tm.key}" href="${purl(p.id)}">${photo(p)}
-      <div><h4>${esc(p.full_name||p.name)}</h4><p class="pbadges sm">${p.title?`<span class="pb cric">${esc(p.title)}</span>`:""}${p.job?`<span class="pb pjob">${esc(p.job)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
+      <div><h4>${esc(p.full_name||p.name)}</h4><p class="pbadges sm">${p.title?`<span class="pb cric" title="${esc(p.title)}">${esc(p.title)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
       <div class="line">${p.matches?`${p.bat.r} runs · ${p.bowl.w} wkts · ${p.fld.c} ct`:"Yet to play"}</div></a>`).join("")}</div></div>`};
   $("#sheets").innerHTML=sheet("t")+sheet("f");
 

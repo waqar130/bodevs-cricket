@@ -1205,3 +1205,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 @media(max-width:620px){.pr-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pr-facts div{padding:10px 10px 0 0}.pr-facts b{display:block;font:900 clamp(28px,3vw,40px)/1 var(--f-display)}.pr-facts span{font:500 11px var(--f-data);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .pr-who b{font-size:15px}.pr-who b a{color:var(--ink)}
+/* player cards: the cricketing title only, as a one-line pill */
+.pbadges.sm{flex-wrap:nowrap;min-width:0}
+.pbadges.sm .pb.cric{border-radius:999px;padding:4px 10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:inline-block;font-size:10px;letter-spacing:.03em}
+.pbadges.sm{align-items:center}.pbadges.sm .pb.role{border-radius:999px;padding:4px 10px;font-size:10px}
