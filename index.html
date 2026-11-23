@@ -1145,25 +1145,27 @@ const moments=balls=>{const b=balls||[];let sad=0,ss=0,was=0,st=0,run=0;b.forEac
 function weekStats(WM,issue){
   const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
   const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,st:0,was:0,md:0,bc:0,kc:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,st:0,was:0,md:0,bc:0,bc2:0,kc:0,cb:0,mc:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
   // "at": when he last added to his points, so equal totals go to whoever got there first
   const order=[...WM].sort((a,b)=>a.date-b.date||a.id-b.id),when=new Map(order.map((m,i)=>[m.id,i]));
   const scored=(id,key)=>{const e=ent(id);e.at=Math.max(e.at,key)};
   WM.forEach(mm=>{const mk=when.get(mm.id)*100;
     // what each player did in this match, and for which side, for the win bonus
     const did=new Map(),add=(id,team,k,v)=>{const d=did.get(id)||{team,r:0,w:0,f:0};d[k]+=v;did.set(id,d)};
+    const mcat=new Map();
     const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
       if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
       sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;e.dfr+=dotRuns(x.timeline);{const q=moments(x.timeline);e.sad+=q.sad;e.ss+=q.ss;e.st+=q.st}
         if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
       sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.dbr+=dotRuns((x.spell||[]).flatMap(o=>o.balls));e.was+=moments((x.spell||[]).flatMap(o=>o.balls)).was;e.md+=x.maidens||0;e.ex+=(x.wides||0)+(x.noballs||0);e.h3+=Math.min(3,Math.max(0,x.wickets-1));e.m.add(mm.id);
         if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
-      (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
+      (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;mcat.set(x.id,(mcat.get(x.id)||0)+x.count);scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
       (sc.fielding?.runouts||[]).forEach(x=>{ent(x.id).ro+=x.count||1;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count||1)});
       (sc.fielding?.drops||[]).forEach(x=>{const id=x.id||byName.get(x.name);if(id)ent(id).dr+=x.count||1});
       // who took each catch: a set batter (20+) is a big catch; a catch by the keeper counts extra too
       sc.batting.forEach(x=>{const m=String(x.how||"").match(/^c (.+?) b (.+?)(?: ·|$)/);if(!m)return;const fid=byName.get(m[1]==="&"?m[2]:m[1]);if(!fid)return;
-        if(x.runs>=20)ent(fid).bc++;if(P.get(fid)?.keeper)ent(fid).kc++;});});
+        if(x.runs>=20)ent(fid).bc++;if(x.runs>=40)ent(fid).bc2++;if(P.get(fid)?.keeper)ent(fid).kc++;if(m[1]==="&")ent(fid).cb++;});});
+    mcat.forEach((n,id)=>{if(n>1)ent(id).mc+=n-1});
     // win bonus: on the winning side and played a part (10+ runs, a wicket, a catch or a run out)
     if(mm.win)did.forEach((d,id)=>{if(d.team===mm.win.name&&(d.r>=10||d.w>0||d.f>0)){ent(id).wb++;scored(id,mk+99)}});
     const names=Object.keys(tot);names.forEach(n=>{tw[n]=tw[n]||{w:0,l:0,for:0,against:0};tw[n].for+=tot[n];names.filter(o=>o!==n).forEach(o=>tw[n].against+=tot[o]);
@@ -1172,8 +1174,8 @@ function weekStats(WM,issue){
   // MVP points, in four parts. #1 MVP, #2 Impact Player, #3 Game Changer.
   // batting: 1 a run, plus a shot bonus equal to its runs (2 +2, four +4, six +6, six after a six +7), +1 a six after two dots, streak bonus for 3/4/5/6+ sixes in a row (+1/+3/+5/+10), -1 a dot ball faced, -1 more for each dot straight after a dot
   // bowling: 20 a wicket (+5 if straight after being hit for six), +10 for each 2nd, 3rd and 4th wicket in a spell, +1 a dot ball, +1 more for each dot straight after a dot, +10 a maiden, -1 a wide or no-ball
-  // fielding: 10 a catch (+5 if the batter had 20+, +5 for the keeper), 15 a run out, -5 a dropped catch (wins no longer score)
-  const parts=e=>({bat:2*e.r+e.sad+e.ss+e.st-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md,fld:10*e.c+5*e.bc+5*e.kc+15*e.ro-5*e.dr,win:0});
+  // fielding: 20 a catch (+10 batter on 20+, +10 more on 40+, +5 keeper, +10 caught and bowled, +5 each extra catch in a match), +10 safe hands (2+ catches, no drops in the week), 25 a run out, -5 a drop (wins no longer score)
+  const parts=e=>({bat:2*e.r+e.sad+e.ss+e.st-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md,fld:20*e.c+10*e.bc+10*e.bc2+5*e.kc+10*e.cb+5*e.mc+(e.c>=2&&!e.dr?10:0)+25*e.ro-5*e.dr,win:0});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld};
   // most points first; level on points, whoever got there first. Within 10 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
@@ -1384,7 +1386,7 @@ function render(){
       <dl class="race-legend">
         <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · plus a shot bonus equal to its runs: a 2 +2, a four +4, a six +6, a six straight after another six +7 · +1 more for a six straight after two dots · sixes in a row: +1 for 3, +3 for 4, +5 for 5, +10 for 6 · −1 a dot ball, −1 more for each dot straight after a dot</dd></div>
         <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket, +5 more straight after being hit for six · +10 more for each 2nd, 3rd and 4th wicket in a spell · +1 a dot ball, +1 more for each dot straight after a dot · +10 a maiden · −1 a wide or no-ball</dd></div>
-        <div><dt><i class="rk-c"></i>Field</dt><dd>10 a catch, +5 more if the batter had 20+, +5 more for the keeper · 15 a run out · −5 a dropped catch</dd></div>
+        <div><dt><i class="rk-c"></i>Field</dt><dd>20 a catch · +10 more if the batter had 20+, +10 more again if 40+ · +5 for the keeper · +10 for caught and bowled · +5 for each catch after the first in a match · +10 safe hands (2+ catches in the week, no drops) · 25 a run out · −5 a dropped catch</dd></div>
       </dl>
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
@@ -1726,7 +1728,7 @@ function ptsGroups(x){
   // [icon, tone, label, count, points each]
   return [["r","Batting",x.parts.bat,[["bat","","Runs",x.r,1],["run","","Running runs bonus",Math.max(0,x.r-4*x.f-6*x.s),1],["four","","Fours bonus",x.f,4],["six","","Sixes bonus",x.s,6],["sixsix","hot","Six straight after a six (+7)",x.ss,1],["flame","hot","Six streak bonus (3+ in a row)",x.st||0,1],["sixdots","hot","Six after two dots",x.sad,1],["dot","bad","Dot balls faced",x.df,-1],["dots","bad","Dots in a row",x.dfr,-1]]],
     ["w","Bowling",x.parts.bowl,[["stumps","","Wickets",x.w,20],["stumpsplus","hot","Spell bonus, 2nd–4th wicket",x.h3,10],["stumpssix","hot","Wicket straight after a six",x.was,5],["dot","","Dot balls",x.db,1],["dots","","Dots in a row",x.dbr,1],["over","hot","Maidens",x.md,10],["wide","bad","Wides and no-balls",x.ex,-1]]],
-    ["c","Fielding",x.parts.fld,[["hands","","Catches",x.c,10],["star","hot","Big catch (batter on 20+)",x.bc,5],["glove","","Keeper catch",x.kc,5],["bolt","","Run outs",x.ro,15],["drop","bad","Dropped catches",x.dr,-5]]]];
+    ["c","Fielding",x.parts.fld,[["hands","","Catches",x.c,20],["star","hot","Set batter caught (20+)",x.bc,10],["star","hot","Big fish caught (40+)",x.bc2,10],["glove","","Keeper catch",x.kc,5],["handsball","hot","Caught and bowled",x.cb,10],["handsplus","hot","Extra catch in a match",x.mc,5],["shield","hot","Safe hands (2+ catches, no drops)",x.c>=2&&!x.dr?1:0,10],["bolt","","Run outs",x.ro,25],["drop","bad","Dropped catches",x.dr,-5]]]];
 }
 const ptsN=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t};
 const ptsRows=items=>items.filter(i=>i[3]).map(([sym,st,l,c,each])=>[sym,st,l,c,(each>0?"+":"−")+Math.abs(each),ptsN(c*each)]);
@@ -1741,6 +1743,9 @@ function raceSum(x){
 }
 // line icons for the points card (24px grid, drawn in currentColor)
 const PICON={
+  handsball:'<path d="M7 21V9M12 21V9M17 21V9" opacity=".55"/><circle cx="12" cy="5" r="2.6"/><path d="M3 12c0 4 2.5 6.5 5 7M21 12c0 4-2.5 6.5-5 7"/>',
+  handsplus:'<circle cx="10" cy="6.5" r="2.8"/><path d="M2.5 11c0 5.6 3.4 9 7.5 9s7.5-3.4 7.5-9"/><path d="M19.5 2.5v6M16.5 5.5h6"/>',
+  shield:'<path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
   bat:'<path d="M14.5 3.5l6 6-9.5 9.5-3-3z"/><path d="M8 16l-4.5 4.5"/><circle cx="18.5" cy="18.5" r="2.3"/>',
   run:'<path d="M4 4v16M20 4v16"/><path d="M7 9h10l-3-3M17 15H7l3 3"/>',
   four:'<path d="M2 20h15"/><path d="M20 4v16" stroke-dasharray="2 2.2"/><circle cx="11" cy="16" r="3.2"/><path d="M3 13.5h3.5M2 17h3"/>',
