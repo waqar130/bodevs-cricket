@@ -1138,7 +1138,7 @@ let WEEKS=[];
 function weekStats(WM,issue){
   const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
   const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,w:0,rc:0,bb:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
   // "at": when he last added to his points, so equal totals go to whoever got there first
   const order=[...WM].sort((a,b)=>a.date-b.date||a.id-b.id),when=new Map(order.map((m,i)=>[m.id,i]));
   const scored=(id,key)=>{const e=ent(id);e.at=Math.max(e.at,key)};
@@ -1147,9 +1147,9 @@ function weekStats(WM,issue){
     const did=new Map(),add=(id,team,k,v)=>{const d=did.get(id)||{team,r:0,w:0,f:0};d[k]+=v;did.set(id,d)};
     const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
       if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
-      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;
+      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;
         if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
-      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.m.add(mm.id);
+      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.ex+=(x.wides||0)+(x.noballs||0);if(x.wickets>=3)e.h3++;e.m.add(mm.id);
         if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
       (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
       (sc.fielding?.runouts||[]).forEach(x=>{ent(x.id).ro+=x.count||1;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count||1)});
@@ -1159,11 +1159,15 @@ function weekStats(WM,issue){
     const names=Object.keys(tot);names.forEach(n=>{tw[n]=tw[n]||{w:0,l:0,for:0,against:0};tw[n].for+=tot[n];names.filter(o=>o!==n).forEach(o=>tw[n].against+=tot[o]);
       if(mm.win)mm.win.name===n?tw[n].w++:tw[n].l++;});
   });
-  // MVP points: runs + 20 per wicket + 10 per catch or run out + 10 per win he helped make, minus 5 per dropped catch. #1 MVP, #2 Impact Player, #3 Game Changer.
-  const pts=e=>e.r+20*e.w+10*(e.c+e.ro)+10*e.wb-5*e.dr;
+  // MVP points, in four parts. #1 MVP, #2 Impact Player, #3 Game Changer.
+  // batting: runs, +1 for each 1-3, +2 a four, +3 a six, -0.5 a dot ball faced
+  // bowling: 20 a wicket, +1 a dot ball, -1 a wide or no-ball, +10 for three or more wickets in a spell
+  // fielding: 10 a catch or run out, -5 a dropped catch; victories: +5 for each win he played a part in
+  const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s-0.5*e.df,bowl:20*e.w+e.db-e.ex+10*e.h3,fld:10*(e.c+e.ro)-5*e.dr,win:5*e.wb});
+  const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld+q.win};
   // most points first; level on points, whoever got there first. Within 5 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
-  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
+  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e),parts:parts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
   const mvps=ranked.filter(e=>pow.pts-e.pts<=5).slice(0,2),joint=mvps.length>1,rest=ranked.slice(mvps.length);
   const podium=[...mvps.map(e=>({...e,role:joint?"Joint MVP":"MVP",n:1})),...rest.slice(0,2).map((e,j)=>({...e,role:j?"Game Changer":"Impact Player",n:mvps.length+j+1}))];
   return{WM,ws,we,pow,mvps,joint,isMvp:id=>mvps.some(e=>e.id===id),podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
@@ -1366,13 +1370,13 @@ function render(){
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
-        <p class="race-rule"><b>How it's scored:</b> runs + 20 a wicket + 10 a catch or run out + 10 for each win he played a part in (10+ runs, a wicket, a catch or a run out), minus 5 for each dropped catch. Most points is MVP; within 5 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
-      <div class="race-key"><span><i class="rk-r"></i>R · Runs</span><span><i class="rk-w"></i>W · Wickets × 20</span><span><i class="rk-c"></i>CT · Catches, RO · Run outs × 10</span><span><i class="rk-x"></i>V · Victories × 10</span><span><i class="rk-d"></i>DR · Drops × −5</span></div>
-      <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),pc=v=>(v/top*100).toFixed(2)+"%";
+        <p class="race-rule"><b>How it's scored:</b> runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −0.5 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for three wickets in a spell; 10 a catch or run out, −5 a dropped catch; +5 for each win he played a part in (10+ runs, a wicket, a catch or a run out). Most points is MVP; within 5 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
+      <div class="race-key"><span><i class="rk-r"></i>Batting</span><span><i class="rk-w"></i>Bowling</span><span><i class="rk-c"></i>Fielding</span><span><i class="rk-x"></i>Victories × 5</span><span><i class="rk-d"></i>Minus points</span></div>
+      <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)+y.parts.win),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
           <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}</small><b>${esc(pname(q.id))}</b></span></a>
-          <div class="race-bar"><div class="race-fill" role="img" aria-label="${x.r} runs, ${x.w} wickets, ${x.c} catches, ${x.ro} run outs, ${x.wb} wins${x.dr?`, ${x.dr} drops`:""}"><i class="rk-r" style="width:${pc(x.r)}"></i><i class="rk-w" style="width:${pc(x.w*20)}"></i><i class="rk-c" style="width:${pc((x.c+x.ro)*10)}"></i><i class="rk-x" style="width:${pc(x.wb*10)}"></i></div>
-            <p class="race-sum"><span class="rs r">${x.r} R</span> + <span class="rs w">${x.w} W ×20</span> + <span class="rs c">${x.c} CT ×10</span>${x.ro?` + <span class="rs c">${x.ro} RO ×10</span>`:""} + <span class="rs x">${x.wb} V ×10</span>${x.dr?` − <span class="rs d">${x.dr} DR ×5</span>`:""}</p></div>
+          <div class="race-bar"><div class="race-fill" role="img" aria-label="batting ${x.parts.bat}, bowling ${x.parts.bowl}, fielding ${x.parts.fld}, victories ${x.parts.win}"><i class="rk-r" style="width:${pc(Math.max(0,x.parts.bat))}"></i><i class="rk-w" style="width:${pc(Math.max(0,x.parts.bowl))}"></i><i class="rk-c" style="width:${pc(Math.max(0,x.parts.fld))}"></i><i class="rk-x" style="width:${pc(x.parts.win)}"></i></div>
+            <p class="race-sum">${raceSum(x)}</p></div>
           <span class="race-pts"><b>${x.pts}</b> pts</span></li>`}).join("")}</ol>
     </section>`};
   // the cover: who won, why, and what each MVP did. Same shape for one MVP or a tie of two or three.
@@ -1706,6 +1710,14 @@ function renderMilestones(){
 }
 
 /* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
+// "Bat 102 runs +9 1-3s +6 fours +36 sixes −3 dots = 150 · Bowl …" (only the parts that apply)
+function raceSum(x){
+  const n=v=>Number.isInteger(v)?v:v.toFixed(1),g=(cls,lab,items,tot)=>{const it=items.filter(([v])=>v);return it.length?`<span class="rs ${cls}"><b>${lab} ${tot<0?"−"+n(-tot):n(tot)}</b> ${it.map(([v,t])=>`${v<0?"−":"+"}${n(Math.abs(v))} ${t}`).join(" ")}</span>`:""};
+  return [g("r","Bat",[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[-0.5*x.df,"dots"]],x.parts.bat),
+    g("w","Bowl",[[20*x.w,"wickets"],[x.db,"dots"],[-x.ex,"extras"],[10*x.h3,"3-wkt spell"]],x.parts.bowl),
+    g("c","Field",[[10*x.c,"catches"],[10*x.ro,"run outs"],[-5*x.dr,"drops"]],x.parts.fld),
+    g("x","Win",[[5*x.wb,"victories"]],x.parts.win)].filter(Boolean).join(" · ");
+}
 function initMvp(){
   const track=$("#mvpTrack"),slides=[...track.children],dots=[...document.querySelectorAll(".mvp-dots button")],n=slides.length;
   let cur=0;

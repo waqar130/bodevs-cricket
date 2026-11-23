@@ -998,3 +998,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .sn-a small{font:700 10px var(--f-data);letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
 .sn-a b{font:800 18px/1.1 var(--f-display);text-transform:uppercase}.sn-a b a{color:inherit;text-decoration:none}
 .sn-a em{font:400 12px var(--f-data);font-style:normal;color:var(--muted)}
+
+/* MVP race: grouped breakdown */
+.race-sum .rs b{font-weight:800}
+.race-sum .rs{white-space:normal}
