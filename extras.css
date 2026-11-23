@@ -1230,3 +1230,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 
 /* strategy: the opponent's ranks */
 .sg-ranks{margin:6px 0 4px}
+
+/* teams: top-3 places held */
+.tm-top3{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin:6px 0 10px;font:500 13px var(--f-data)}
+.tm-top3 b{font:900 22px var(--f-display);margin-right:3px}
