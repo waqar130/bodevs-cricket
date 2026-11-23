@@ -502,7 +502,7 @@ function renderWeekAwards() {
     ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
       return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
       : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
-    <p class="rank-note" style="margin-top:12px">Weekly points: 1 a run, plus a shot bonus equal to its runs (a 2 +2, a four +4, a six +6; a six straight after a six +7), +1 more for a six straight after two dots, a streak bonus for sixes in a row (+1 for 3, +3 for 4, +5 for 5, +10 for 6), −1 a dot ball faced, −1 more for each dot straight after a dot; 20 a wicket (+5 more straight after being hit for six), +10 a maiden, +1 a dot ball bowled, +1 more for each dot straight after a dot, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 20 a catch (+10 more if the batter had 20+, +10 more again if 40+, +5 for the keeper, +10 for caught and bowled, +5 for each catch after the first in a match), +10 for safe hands (2+ catches in the week, no drops), 25 a run out, −5 a dropped catch. The podium on the cover uses the same points.</p>`;
+    <p class="rank-note" style="margin-top:12px">Weekly points: 1 a run, plus a shot bonus equal to its runs (a 2 +2, a four +4, a six +6; a six straight after a six +7), +1 more for a six straight after two dots, a streak bonus for sixes in a row (+1 for 3, +3 for 4, +5 for 5, +10 for 6), −1 a dot ball faced, −1 more for each dot straight after a dot; 20 a wicket (+5 more straight after being hit for six), +10 a maiden, +1 a dot ball bowled, +1 more for each dot straight after a dot, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 20 a catch (+10 more if the batter had 20+, +10 more again if 40+, +5 for the keeper, +10 for caught and bowled, +5 for each catch after the first in a match), +10 for safe hands (2+ catches in the week, no drops), 25 a run out, −5 a dropped catch (−5 more if it went for six). The podium on the cover uses the same points.</p>`;
   el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
 }
 
@@ -798,39 +798,69 @@ function renderWeekLines() {
   const el = $("#weekLines"); if (!el || !WEEK) return;
   const W = selW(), t = Object.entries(W.tw || {}).sort((a, b) => (team(a[0]).key === "t" ? -1 : 1) - (team(b[0]).key === "t" ? -1 : 1));
   const res = t.length === 2 ? (t[0][1].w === t[1][1].w ? `Drawn ${t[0][1].w}–${t[1][1].w}` : `${esc(team((t[0][1].w > t[1][1].w ? t[0] : t[1])[0]).short)} win ${Math.max(t[0][1].w, t[1][1].w)}–${Math.min(t[0][1].w, t[1][1].w)}`) : "—";
-  // every innings and spell of the week
-  const inns = [], spells = [];
+  // every innings and spell of the week, plus team sixes and the highest total
+  const inns = [], spells = [], teamSix = {}; let hi = null;
   W.WM.forEach(mm => mm.s.scorecards.forEach(sc => {
+    teamSix[sc.batting_team] = (teamSix[sc.batting_team] || 0) + sc.batting.reduce((a, x) => a + (x.sixes || 0), 0);
+    if (!hi || sc.runs > hi.runs) hi = { team: sc.batting_team, runs: sc.runs, wk: sc.wickets, ov: sc.overs };
     sc.batting.forEach(x => inns.push({ id: x.id, r: x.runs, b: x.balls, no: !x.out }));
     sc.bowling.forEach(x => spells.push({ id: x.id, w: x.wickets, r: x.runs, b: balls(x.overs), ov: x.overs, dots: x.dots || 0 })); }));
   const best = (arr, cmp) => [...arr].sort(cmp)[0];
-  const nm = id => esc(pname(id)), pl = (id, s) => `<a href="${purl(id)}">${nm(id)}</a>${s ? " " + s : ""}`;
-  const E = W.ranked, bat = best(E.filter(x => x.r), (p, q) => q.r - p.r || p.b - q.b), bowl = best(E.filter(x => x.w), (p, q) => q.w - p.w || p.rc - q.rc);
+  const nm = id => esc(pname(id)), pl = n => (n === 1 ? "" : "s");
+  const E = W.ranked, outs = id => inns.filter(x => x.id === id && !x.no).length;
   const innOf = id => best(inns.filter(x => x.id === id), (p, q) => q.r - p.r || p.b - q.b), spellOf = id => best(spells.filter(x => x.id === id), (p, q) => q.w - p.w || p.r - q.r);
+  // batting
+  const bat = best(E.filter(x => x.r), (p, q) => q.r - p.r || p.b - q.b);
+  const six = best(E.filter(x => x.s), (p, q) => q.s - p.s || q.r - p.r);
+  const bsr = best(E.filter(x => x.b >= 15), (p, q) => q.r / q.b - p.r / p.b || q.r - p.r);
+  const bav = best(E.filter(x => x.b >= 15 && outs(x.id)).map(x => ({ ...x, o: outs(x.id) })), (p, q) => q.r / q.o - p.r / p.o || q.r - p.r);
+  // bowling (2+ overs in the week for the rates)
+  const bowl = best(E.filter(x => x.w), (p, q) => q.w - p.w || p.rc - q.rc);
+  const econ = best(E.filter(x => x.bb >= 12), (p, q) => p.rc / p.bb - q.rc / q.bb || q.w - p.w);
+  const wsr = best(E.filter(x => x.bb >= 12 && x.w), (p, q) => p.bb / p.w - q.bb / q.w || q.w - p.w);
+  const wav = best(E.filter(x => x.bb >= 12 && x.w), (p, q) => p.rc / p.w - q.rc / q.w || q.w - p.w);
+  // spells and fielding
   const topSpell = best(spells.filter(x => x.w), (p, q) => q.w - p.w || p.r - q.r || p.b - q.b), eco = best(spells.filter(x => x.b >= 12), (p, q) => p.r / p.b - q.r / q.b || q.w - p.w);
-  const bnd = best(E.filter(x => x.f + x.s), (p, q) => (q.f + q.s) - (p.f + p.s) || q.s - p.s), fld = best(E.filter(x => x.c + x.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro) || q.c - p.c);
   const dot = best(E.filter(x => x.bb >= 12), (p, q) => q.db / q.bb - p.db / p.bb);
-  const fours = E.reduce((s, x) => s + x.f, 0), bls = W.WM.reduce((s, m) => s + m.inns.reduce((x, i) => x + i.b, 0), 0);
+  const fld = best(E.filter(x => x.c + x.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro) || q.c - p.c);
+  const bnd = best(E.filter(x => x.f + x.s), (p, q) => (q.f + q.s) - (p.f + p.s) || q.s - p.s);
+  const fours = E.reduce((a, x) => a + x.f, 0), bls = W.WM.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.b, 0), 0);
+  const ovs = b => `${Math.floor(b / 6)}${b % 6 ? "." + (b % 6) : ""}`;
   // a player's box gets a button that opens his week's points card
   const ptsBtn = href => { const id = BySlug.get(String(href).slice(1)), x = id != null && E.find(y => y.id === id); return x ? `<button type="button" class="lb-pts" data-pts='${ptsAll(x, "Weekly points · " + pname(x.id))}'>${ptsN(x.pts)} pts this week <i>i</i></button>` : ""; };
   const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span>${href !== "#weeknumbers" ? ptsBtn(href) : ""}</a>`;
+  const who = (x, kick, num, sub) => x ? box(kick, num, nm(x.id), sub, purl(x.id)) : "";
+  const group = (title, cls, boxes) => { const b = boxes.filter(Boolean); return b.length ? `<section class="wl-g ${cls}"><h3 class="wl-h">${title}</h3><div class="wl-grid">${b.join("")}</div></section>` : ""; };
   const bi = bat && innOf(bat.id), bs = bowl && spellOf(bowl.id);
+  const sixSplit = t.map(([n]) => `${esc(team(n).short)} ${teamSix[n] || 0}`).join(" · ");
   el.innerHTML = [
-    box(`The week · issue ${W.issue}`, W.WM.length, res, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),
-    bat ? box("Best batter", bat.r, `${nm(bat.id)}`, `runs this week · best innings ${bi.r}${bi.no ? "*" : ""} off ${bi.b}`, purl(bat.id)) : "",
-    bowl ? box("Best bowler", bowl.w, `${nm(bowl.id)}`, `wickets this week · best ${bs.w}/${bs.r} in ${bs.ov} overs`, purl(bowl.id)) : "",
-    topSpell ? box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `in ${topSpell.ov} overs`, purl(topSpell.id)) : "",
-    eco ? box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over · ${eco.w}/${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)) : "",
-    bnd ? box("Most boundaries", bnd.f + bnd.s, nm(bnd.id), `${bnd.s} six${bnd.s === 1 ? "" : "es"} · ${bnd.f} four${bnd.f === 1 ? "" : "s"}`, purl(bnd.id)) : "",
-    fld ? box("Best fielder", fld.c + fld.ro, nm(fld.id), `${fld.c} catch${fld.c === 1 ? "" : "es"} · ${fld.ro} run out${fld.ro === 1 ? "" : "s"}`, purl(fld.id)) : "",
-    box("Sixes &amp; boundaries", W.sixes, "sixes this week", `${fours} fours · ${W.sixes + fours} boundaries in all`),
-    dot ? box("Dot-ball machine", `${Math.round(dot.db / dot.bb * 100)}%`, nm(dot.id), `dot balls bowled · ${dot.db} of ${dot.bb} (2+ overs)`, purl(dot.id)) : "",
+    group(`The week · issue ${W.issue}`, "team", [
+      box("Result", W.WM.length, res, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),
+      hi ? box("Highest total", hi.runs, `${esc(team(hi.team).short)}`, `${hi.runs}/${hi.wk} in ${hi.ov} overs`) : "",
+      box("Sixes this week", W.sixes, sixSplit || "Both sides", `${fours} fours · ${W.sixes + fours} boundaries in all`),
+      box("The pace", bls ? r1(W.runs / bls * 6) : "–", `${W.runs.toLocaleString()} runs, ${W.wkts} wickets`, "runs an over this week")]),
+    group("Batting", "bat", [
+      bat && box("Best batter", bat.r, nm(bat.id), `runs this week · best innings ${bi.r}${bi.no ? "*" : ""} off ${bi.b}`, purl(bat.id)),
+      who(six, "Most sixes", six?.s, `sixes this week · ${six?.r} runs off ${six?.b}`),
+      who(bsr, "Highest strike rate", bsr && Math.round(bsr.r / bsr.b * 100), `runs per 100 balls · ${bsr?.r} off ${bsr?.b} (15+ balls)`),
+      who(bav, "Best average", bav && r1(bav.r / bav.o), `runs per dismissal · ${bav?.r} runs, out ${bav?.o} time${pl(bav?.o)}`)]),
+    group("Bowling", "bowl", [
+      bowl && box("Best bowler", bowl.w, nm(bowl.id), `wickets this week · best ${bs.w}/${bs.r} in ${bs.ov} overs`, purl(bowl.id)),
+      who(econ, "Best economy", econ && r1(econ.rc / econ.bb * 6), `runs an over this week · ${econ?.rc} off ${econ && ovs(econ.bb)} overs (2+ overs)`),
+      who(wsr, "Best strike rate", wsr && r1(wsr.bb / wsr.w), `balls per wicket · ${wsr?.w} wicket${pl(wsr?.w)} in ${wsr && ovs(wsr.bb)} overs`),
+      who(wav, "Best average", wav && r1(wav.rc / wav.w), `runs per wicket · ${wav?.w} for ${wav?.rc}`)]),
+    group("Spells &amp; fielding", "spell", [
+      topSpell && box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `in ${topSpell.ov} overs`, purl(topSpell.id)),
+      eco && box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over · ${eco.w}/${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)),
+      who(dot, "Dot-ball machine", dot && `${Math.round(dot.db / dot.bb * 100)}%`, `dot balls bowled · ${dot?.db} of ${dot?.bb} (2+ overs)`),
+      who(fld, "Best fielder", fld && fld.c + fld.ro, `${fld?.c} catch${fld?.c === 1 ? "" : "es"} · ${fld?.ro} run out${pl(fld?.ro)}`)]),
     // the MVP bonus moments: whoever did each most this week (only if someone did)
-    ...[["ss", "Sixes in a row", "six straight after a six", "sixes straight after a six (+7 each, plus the streak bonus for 3+ in a row)"], ["sad", "Six after two dots", "six after two dots", "sixes straight after two dot balls (+1 each)"],
-      ["was", "Wicket after a six", "wicket after a six", "wickets straight after being hit for six (+5 each)"], ["md", "Maidens", "maiden", "maiden overs (+10 each)"],
-      ["dbr", "The pressure builder", "dot in a row", "dot balls bowled straight after a dot (+1 each)"]].map(([k, kick, , sub]) => {
-      const x = best(E.filter(y => y[k]), (p, q) => q[k] - p[k] || q.pts - p.pts); return x ? box(kick, x[k], nm(x.id), sub, purl(x.id)) : ""; }),
-    box("The pace", bls ? r1(W.runs / bls * 6) : "–", `${W.runs.toLocaleString()} runs, ${W.wkts} wickets`, "runs an over this week"),
+    group("Boundaries &amp; bonus moments", "bonus", [
+      who(bnd, "Most boundaries", bnd && bnd.f + bnd.s, `${bnd?.s} six${bnd?.s === 1 ? "" : "es"} · ${bnd?.f} four${pl(bnd?.f)}`),
+      ...[["ss", "Sixes in a row", "sixes straight after a six (+7 each, plus the streak bonus for 3+ in a row)"], ["sad", "Six after two dots", "sixes straight after two dot balls (+1 each)"],
+        ["was", "Wicket after a six", "wickets straight after being hit for six (+5 each)"], ["md", "Maidens", "maiden overs (+10 each)"],
+        ["dbr", "The pressure builder", "dot balls bowled straight after a dot (+1 each)"]].map(([k, kick, sub]) => {
+        const x = best(E.filter(y => y[k]), (p, q) => q[k] - p[k] || q.pts - p.pts); return x ? box(kick, x[k], nm(x.id), sub, purl(x.id)) : ""; })]),
   ].join("");
 }
 // the ticker: only the selected week
@@ -1485,7 +1515,7 @@ function renderSeasonBook() {
     ${[0, .25, .5, .75, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${CW - R}" y1="${ys(mx * g)}" y2="${ys(mx * g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(mx * g) + 4}" text-anchor="end">${Math.round(mx * g)}</text>`).join("")}
     ${wk.map((w, i) => `<text class="ch-ax" x="${xs(i)}" y="${CH - 10}" text-anchor="middle">${w.issue}</text>`).join("")}
     ${top5.map(([id, arr], j) => `<polyline fill="none" stroke="${pal[j]}" stroke-width="3" points="${arr.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ")}"/><text class="ch-end" x="${CW - R + 8}" y="${ys(arr.at(-1)) + 5}" fill="${pal[j]}">${esc(short(id))} ${arr.at(-1)}</text>`).join("")}
-  </svg><p class="rank-note">Weekly MVP points (1 a run, plus a shot bonus equal to its runs (a 2 +2, a four +4, a six +6; a six straight after a six +7), +1 more for a six straight after two dots, a streak bonus for sixes in a row (+1 for 3, +3 for 4, +5 for 5, +10 for 6), −1 a dot ball faced, −1 more for each dot straight after a dot; 20 a wicket (+5 more straight after being hit for six), +10 a maiden, +1 a dot ball bowled, +1 more for each dot straight after a dot, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 20 a catch (+10 more if the batter had 20+, +10 more again if 40+, +5 for the keeper, +10 for caught and bowled, +5 for each catch after the first in a match), +10 for safe hands (2+ catches in the week, no drops), 25 a run out, −5 a dropped catch), added up issue by issue.</p>`;
+  </svg><p class="rank-note">Weekly MVP points (1 a run, plus a shot bonus equal to its runs (a 2 +2, a four +4, a six +6; a six straight after a six +7), +1 more for a six straight after two dots, a streak bonus for sixes in a row (+1 for 3, +3 for 4, +5 for 5, +10 for 6), −1 a dot ball faced, −1 more for each dot straight after a dot; 20 a wicket (+5 more straight after being hit for six), +10 a maiden, +1 a dot ball bowled, +1 more for each dot straight after a dot, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 20 a catch (+10 more if the batter had 20+, +10 more again if 40+, +5 for the keeper, +10 for caught and bowled, +5 for each catch after the first in a match), +10 for safe hands (2+ catches in the week, no drops), 25 a run out, −5 a dropped catch (−5 more if it went for six)), added up issue by issue.</p>`;
   // 5. superlatives
   const ps = [...P.values()].filter(p => p.matches);
   const cv = p => { const s = [...p.log.values()].flatMap(l => l.bat.map(b => b.r)); if (s.length < 10) return null; const mean = s.reduce((a, b) => a + b, 0) / s.length; if (mean < 15) return null;
