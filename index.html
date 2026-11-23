@@ -613,14 +613,14 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
         <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#seasonbook">Season in detail</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#matchups">Matchups &amp; pressure</a><a href="#archive">Season archive</a><a href="#getapp">Get the app</a><a href="#play">Play us</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
-        <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#kit">The ball</a><a href="#play">Play us</a>
+        <a href="#matches">Match centre</a><a href="#fixtures">Fixtures</a><a href="#gallery">Gallery</a><a href="#scorenama">Scorenama app</a><a href="#kit">The ball</a><a href="#play">Play us</a>
       </div></details>
       <a class="live" href="https://scorenama.com/g/7142662p6r2u" target="_blank" rel="noopener"><span class="dot"></span>Live</a>
     </nav>
   </div>
 </header>
 <nav class="pagetabs" aria-label="Pages"><div class="wrap">
-  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#teams" data-p="teams">Teams</a><a href="#rankings" data-p="analysis" id="anaTab">Analysis</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#club" data-p="club">Club</a>
+  <a href="#live" data-p="live" id="liveTab" class="live-tab" hidden>● Live</a><a href="#home" data-p="home">This week</a><a href="#players" data-p="players">Players</a><a href="#teams" data-p="teams">Teams</a><a href="#rankings" data-p="analysis" id="anaTab">Analysis</a><a href="#stats" data-p="stats">Stats</a><a href="#season" data-p="season">Season</a><a href="#scorenama" data-p="scorenama">Scorenama</a><a href="#club" data-p="club">Club</a>
 </div></nav>
 <nav class="subtabs" id="anaTabs" aria-label="Analysis" hidden><div class="wrap"><a href="#rankings" data-p="rankings">Rankings</a><a href="#compare" data-p="compare">Compare</a><a href="#strategy" data-p="strategy">Strategy</a></div></nav>
 <div class="livebar" id="liveBar" hidden aria-live="polite"></div>
@@ -1072,6 +1072,10 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept sn-page" id="scorenama">
+    <div class="wrap"><div id="scorenamaBody"></div></div>
+  </section>
+
   <section class="dept" id="getapp">
     <div class="wrap">
       <div class="dept-head">
@@ -1208,7 +1212,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["teamhero","teambody","teams","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["scorenama","teamhero","teambody","teams","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one

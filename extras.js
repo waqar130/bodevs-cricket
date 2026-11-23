@@ -367,12 +367,12 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) chec
 document.addEventListener("click", e => { const m = document.querySelector(".navmenu[open]"); if (m && !m.contains(e.target)) m.open = false; if (e.target.closest(".navmenu a")) document.querySelector(".navmenu").open = false; });
 
 /* ---------------- pages: This week / Players / Stats / Season / Club ---------------- */
-const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["teams", "Teams"], ["rankings", "Rankings"], ["compare", "Compare"], ["strategy", "Strategy"], ["stats", "Stats"], ["season", "Season"], ["club", "Club"]];
+const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], ["teams", "Teams"], ["rankings", "Rankings"], ["compare", "Compare"], ["strategy", "Strategy"], ["stats", "Stats"], ["season", "Season"], ["scorenama", "Scorenama"], ["club", "Club"]];
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   teamhero: "teams", teambody: "teams", stratboard: "strategy", strategy: "strategy", rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
   seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
-  fixtures: "club", gallery: "club", kit: "club", play: "club" };
+  fixtures: "club", gallery: "club", kit: "club", play: "club", scorenama: "scorenama" };
 let CUR_PAGE = null;
 const ANALYSIS = ["rankings", "compare", "strategy"];
 // the Analysis tab opens whichever of its pages was used last
@@ -2281,7 +2281,7 @@ window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
   renderTicker(); renderWeekLines(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
-  renderDigest(); renderFixtures(); renderGallery(); checkLive();
+  renderDigest(); renderFixtures(); renderGallery(); renderScorenama(); checkLive();
 };
 // show the right page straight away, before the data has loaded
 tagPages();
@@ -2336,3 +2336,58 @@ function highlightTips(root) {
   mo.observe(document.body, { childList: true, subtree: true });
   if (typeof P !== "undefined" && P?.size) run(document.body);
 })();
+
+/* ---------------- the Scorenama page: follow live, get it on your phone, every match, its points ---------------- */
+function renderScorenama() {
+  const el = $("#scorenamaBody"); if (!el || !M?.length) return;
+  const G = "https://scorenama.com/g/7142662p6r2u", mURL = m => m.m?.scorenama_url || `${G}/m/${m.id}`;
+  const W = selW(), wk = [...W.ranked].sort((a, b) => b.sn - a.sn).filter(x => x.sn > 0).slice(0, 5);
+  const season = new Map(); WEEKS.forEach(w => w.ranked.forEach(e => season.set(e.id, (season.get(e.id) || 0) + e.sn)));
+  const ss = [...season].sort((a, b) => b[1] - a[1]).slice(0, 5), snN = id => P.get(id)?.snN || 0;
+  const board = (rows, val) => `<ol class="sn-board">${rows.map((e, i) => { const id = e.id ?? e[0], p = P.get(id); return p ? `<li><span class="sn-n">${i + 1}</span><a class="sn-who ${p.tm.key}" href="${purl(id)}">${miniThumb(p)}<b>${esc(pname(id))}</b></a><span class="sn-v">${val(e)}<small>pts</small></span></li>` : ""; }).join("")}</ol>`;
+  const live = M.find(m => m.status === "live" || m.m?.status === "live");
+  const ms = [...M].sort((a, b) => b.date - a.date || b.id - a.id);
+  el.innerHTML = `
+    <div class="sn-cover">
+      <div class="sn-copy">
+        <p class="kicker">The scoring app</p>
+        <h2 class="sn-head">Every ball, live, on Scorenama.</h2>
+        <p class="sn-dek">We score every match on Scorenama, ball by ball, on match night at SportsX. Open our group to follow a game as it happens, check any scorecard, or go back through every match we have played. This site reads Scorenama's numbers every Monday at 2 AM.</p>
+        <div class="sn-cta"><a class="sn-btn" href="${G}" target="_blank" rel="noopener">Open our group on Scorenama ↗</a><a class="sn-btn ghost" href="https://scorenama.com/" target="_blank" rel="noopener">scorenama.com ↗</a></div>
+        ${live ? `<p class="sn-live"><span class="dot"></span>A match is on now: <a href="${mURL(live)}" target="_blank" rel="noopener">follow match #${live.id} live ↗</a></p>` : ""}
+      </div>
+      <div class="sn-facts"><div><b>${M.length}</b><span>matches on Scorenama</span></div><div><b>${M.reduce((a, m) => a + m.s.scorecards.reduce((s, sc) => s + (sc.commentary || []).filter(c => c.type === "ball").length, 0), 0).toLocaleString()}</b><span>balls scored</span></div><div><b>${WEEKS.length}</b><span>weeks of Scorenama MVPs</span></div></div>
+    </div>
+
+    <div class="sn-grid">
+      <article class="sn-card"><h3 class="sn-h">Follow a match live</h3><ol class="sn-steps">
+        <li>On match night, open <a href="${G}" target="_blank" rel="noopener">our group</a>.</li>
+        <li>Tap the match at the top: it is marked live while it is on.</li>
+        <li>Leave it open. The score, the over and the ball-by-ball update as each ball is scored.</li>
+        <li>Or watch the <a href="#live">Live tab</a> on this site, which shows the same match with our worm and win chance.</li></ol></article>
+      <article class="sn-card"><h3 class="sn-h">Put it on your home screen</h3>
+        <p class="sn-p"><b>iPhone (Safari):</b> open our group, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+        <p class="sn-p"><b>Android (Chrome):</b> open our group, tap <b>⋮</b>, then <b>Add to Home screen</b>.</p>
+        <p class="sn-p">One tap from then on, straight to our matches. You can do the same for this site from <a href="#getapp">Get the app</a>.</p></article>
+      <article class="sn-card"><h3 class="sn-h">What you will find there</h3><ul class="sn-list">
+        <li>Live score, overs and the ball-by-ball of every match</li><li>Full scorecards: batting, bowling, fall of wickets</li>
+        <li>Player of the match, best batter, best bowler and best fielder</li><li>Every player's figures, match by match</li></ul></article>
+    </div>
+
+    <div class="sn-grid two">
+      <article class="sn-card"><h3 class="sn-h">Scorenama points · issue ${W.issue}</h3>${board(wk, e => e.sn)}
+        <p class="sn-note">Most points on Scorenama this week is the <span class="sn-tag">Scorenama MVP</span>, and is always one of our MVPs too.</p></article>
+      <article class="sn-card"><h3 class="sn-h">Scorenama points · the season</h3>${board(ss, e => e[1].toLocaleString())}
+        <p class="sn-note">Scorenama MVPs so far: ${[...P.values()].filter(p => p.snN).sort((a, b) => b.snN - a.snN).map(p => `${esc(pname(p.id))} ${p.snN}`).join(" · ") || "none yet"}.</p></article>
+    </div>
+
+    <article class="sn-card sn-rules"><h3 class="sn-h">How Scorenama counts points</h3>
+      <div class="sn-rule-grid">
+        <div><b>1</b><span>a run</span></div><div><b>+2</b><span>a four, on top of its runs</span></div><div><b>+3</b><span>a six, on top of its runs</span></div>
+        <div><b>20</b><span>a wicket</span></div><div><b>10</b><span>a catch or run out</span></div><div><b>−5</b><span>a dropped catch</span></div>
+      </div>
+      <p class="sn-note">That is all of it, and it is how Scorenama picks the player of the match. Our weekly MVP starts from the same game but adds strike rate, sixes and wickets per ball, economy against the week, dot balls and moments like a chase finish; see <a href="#home">the points key on This week</a>.</p></article>
+
+    <div class="sn-card"><h3 class="sn-h">Every match on Scorenama</h3>
+      <ul class="sn-matches">${ms.map(m => `<li><a href="${mURL(m)}" target="_blank" rel="noopener"><span class="sn-mn">#${m.id}</span><span class="sn-md">${fmtD(m.date, { day: "numeric", month: "short" })}</span><span class="sn-mr ${m.win?.key || ""}">${m.win ? `${esc(m.win.short)} won by ${esc(m.margin)}` : esc(m.m?.status_label || "")}</span><span class="sn-go">↗</span></a></li>`).join("")}</ul></div>`;
+}
