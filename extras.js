@@ -1420,18 +1420,18 @@ function renderSeasonAwards() {
     const h = a.list[0]; if (!h) return "";
     // everyone level with the leader holds it jointly; the race below starts after them
     const n = a.n(h), holders = a.list.filter(x => a.n(x) === n), tied = holders.length > 1, chasers = a.list.slice(holders.length), second = chasers[0];
-    const list = [...holders, ...chasers.slice(0, Math.max(0, 5 - holders.length))], gap = second ? Math.abs(n - a.n(second)) : 0;
+    const list = [...holders, ...chasers], gap = second ? Math.abs(n - a.n(second)) : 0;
     const lead = tied ? `${holders.length} players level on ${a.v(h)}${second ? `; next is ${plink(second.id)}, ${fmt(a, gap)} ${a.unit} behind` : ""}.` : !second ? "Only qualifier so far." : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
     // a place is shared by everyone on the same number
     const place = p => a.list.filter(x => a.low ? a.n(x) < a.n(p) : a.n(x) > a.n(p)).length + 1;
     // the best two not yet qualified, on the award's own measure
-    const chasing = a.ok && a.chase ? [...P.values()].filter(p => p.matches && !a.ok(p) && a.chase.pool(p)).sort((x, y) => a.chase.low ? a.chase.by(x) - a.chase.by(y) : a.chase.by(y) - a.chase.by(x)).slice(0, 2) : [];
+    const chasing = a.ok && a.chase ? [...P.values()].filter(p => p.matches && !a.ok(p) && a.chase.pool(p)).sort((x, y) => a.chase.low ? a.chase.by(x) - a.chase.by(y) : a.chase.by(y) - a.chase.by(x)) : [];
     return `<article class="sa-card" id="award-${slugify(a.k)}">
       <p class="kicker">${esc(a.k)}${a.note ? ` <span class="sa-note">(${esc(a.note)})</span>` : ""}</p>
       ${holders.map(x => `<a class="sa-holder ${x.tm.key}" href="${purl(x.id)}">${miniThumb(x)}<span><small>${tied ? "Joint holder" : "Holder"}</small><b>${esc(pname(x.id))}</b></span><span class="sa-v">${a.v(x)}<small>${esc(n === 1 && a.u1 ? a.u1 : a.u)}</small></span></a>`).join("")}
       <p class="sa-lead">${lead}</p>
       <ol class="sa-race">${list.slice(holders.length).map(p => `<li><span class="xr-n">${a.list.filter(x => a.n(x) === a.n(p)).length > 1 ? "=" : ""}${place(p)}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
-      ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.chase.show(p)})`).join("; ")}.</p>` : ""}
+      ${chasing.length ? `<p class="sa-chase-h">Not yet qualified · ${chasing.length}</p><ul class="sa-chase-l">${chasing.map(p => `<li>${plink(p.id)}<span>${esc(a.need(p))}</span><b>${a.chase.show(p)}</b></li>`).join("")}</ul>` : ""}
     </article>`;
   };
   // awards by kind

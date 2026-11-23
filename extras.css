@@ -1114,3 +1114,10 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 
 /* four or more joint MVPs: photos in a 2 x 2 grid */
 .cover-art.joint.many .cover-split{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+/* trophy race: everyone's place, compact rows; then everyone not yet qualified */
+.sa-race li{padding:4px 0;font-size:13.5px}.sa-race b{font-size:16px}
+.sa-chase-h{margin:12px 0 4px;font:700 10.5px var(--f-data);letter-spacing:.12em;text-transform:uppercase;color:#8a867c}
+.sa-chase-l{list-style:none;margin:0;padding:0;border-top:1px dashed #333}
+.sa-chase-l li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed #2a2a2a;font:400 13px var(--f-body);color:#cfc9bd}
+.sa-chase-l li span{font:400 10.5px var(--f-data);color:#8a867c}.sa-chase-l li b{font:700 12px var(--f-data);color:#a9a49a}
