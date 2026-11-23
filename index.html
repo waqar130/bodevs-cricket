@@ -2018,12 +2018,12 @@ function buildRecords(){
     sc.batting.forEach(x=>{let c=0,f50=null,f100=null;
       (x.timeline||[]).forEach((t,i)=>{const p=c;c+=runVal(t);if(p<50&&c>=50)f50=i+1;if(p<100&&c>=100)f100=i+1});
       inn.push({id:x.id,mm,ino,opp:sc.bowling_team,r:x.runs,b:x.balls,no:!x.out,s:x.sixes,f:x.fours,f50,f100,lost,chase:last&&ino>1&&won});
-      const k=mm.id+"|"+x.id,e=mBat.get(k)||{id:x.id,mm,ino,opp:sc.bowling_team,r:0,b:0,parts:[]};
-      e.r+=x.runs;e.b+=x.balls;e.parts.push(`${x.runs}${x.out?"":"*"} (${x.balls})`);mBat.set(k,e)});
+      const k=mm.id+"|"+x.id,e=mBat.get(k)||{id:x.id,mm,ino,opp:sc.bowling_team,r:0,b:0,s:0,f:0,parts:[]};
+      e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.parts.push(`${x.runs}${x.out?"":"*"} (${x.balls})`);mBat.set(k,e)});
     sc.bowling.forEach(x=>{const b=balls(x.overs);
       spells.push({id:x.id,mm,ino,opp:sc.batting_team,w:x.wickets,r:x.runs,b,ov:x.overs,dots:x.dots,s:x.sixes});
-      const k=mm.id+"|"+x.id,e=mBowl.get(k)||{id:x.id,mm,ino,opp:sc.batting_team,w:0,r:0,b:0,parts:[]};
-      e.w+=x.wickets;e.r+=x.runs;e.b+=b;e.parts.push(`${x.wickets}/${x.runs}`);mBowl.set(k,e)});
+      const k=mm.id+"|"+x.id,e=mBowl.get(k)||{id:x.id,mm,ino,opp:sc.batting_team,w:0,r:0,b:0,dots:0,parts:[]};
+      e.w+=x.wickets;e.r+=x.runs;e.b+=b;e.dots+=x.dots||0;e.parts.push(`${x.wickets}/${x.runs}`);mBowl.set(k,e)});
     // fielding: catches and run outs per innings, and per match (both innings of a Test together)
     const fi=new Map(),fe=id=>{if(!fi.has(id))fi.set(id,{id,mm,ino,opp:sc.batting_team,c:0,ro:0});return fi.get(id)};
     const fid=x=>x.id||byName.get(x.name);(sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i)fe(i).c+=x.count});(sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i)fe(i).ro+=x.count||1});
@@ -2048,61 +2048,86 @@ function buildRecords(){
       overs.push({id,mm,ino,opp:sc.batting_team,r:parseInt(c.text)||0,w:+((String(c.text).match(/(\d+) wicket/)||[])[1]||0),o:c.over_no,lbl:sc.label})});
   }));
   const top=(a,ok,by)=>a.filter(ok).sort(by).slice(0,10),all=()=>true;
+  // career: one row per player, the whole season (or all-time) added up
+  const car=[...P.values()].filter(p=>p.matches).map(p=>({id:p.id,career:true,m:p.matches,B:p.bat,W:p.bowl,F:p.fld}));
+  const per=(v,m)=>r1(v/Math.max(1,m)),bpb=x=>x.B.b/(x.B.f+x.B.s);
   const bt=x=>`${x.r}${x.no?"*":""}`;
   return{
     bat:[
-      {k:"hs",t:"Highest scores",rows:top(inn,all,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
-      {k:"f50",t:"Fastest fifties",rows:top(inn,x=>x.f50,(a,b)=>a.f50-b.f50||b.r-a.r),big:x=>x.f50,unit:()=>"balls to reach 50",det:x=>`Went on to ${bt(x)} off ${x.b}`},
-      {k:"f100",t:"Fastest hundreds",rows:top(inn,x=>x.f100,(a,b)=>a.f100-b.f100||b.r-a.r),big:x=>x.f100,unit:()=>"balls to reach 100",det:x=>`Went on to ${bt(x)} off ${x.b}`},
-      {k:"six",t:"Most sixes in an innings",rows:top(inn,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:()=>"sixes",det:x=>`${bt(x)} off ${x.b} · SR ${r1(x.r/x.b*100)}`},
-      {k:"sr",t:"Highest strike rates",note:"Innings of 15 balls or more.",rows:top(inn,x=>x.b>=15,(a,b)=>b.r/b.b-a.r/a.b||b.r-a.r),big:x=>Math.round(x.r/x.b*100),unit:()=>"strike rate",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
-      {k:"four",t:"Most fours in an innings",rows:top(inn,x=>x.f>0,(a,b)=>b.f-a.f||b.r-a.r),big:x=>x.f,unit:()=>"fours",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
-      {k:"bnd",t:"Most runs in boundaries",note:"Fours and sixes in one innings.",rows:top(inn,x=>x.f+x.s>0,(a,b)=>(b.f*4+b.s*6)-(a.f*4+a.s*6)||b.r-a.r),big:x=>x.f*4+x.s*6,unit:x=>`of ${x.r} runs from boundaries`,det:x=>`${x.f}×4 · ${x.s}×6 · ${Math.round((x.f*4+x.s*6)/Math.max(x.r,1)*100)}% of the innings`},
-      {k:"long",t:"Longest innings",rows:top(inn,x=>x.b>0,(a,b)=>b.b-a.b||b.r-a.r),big:x=>x.b,unit:()=>"balls faced",det:x=>`${bt(x)} · SR ${r1(x.r/x.b*100)}`},
-      {k:"chase",t:"Best in a winning chase",note:"Top scores in the final innings of a match the batting side won.",rows:top(inn,x=>x.chase,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.mm.margin||"won"}`},
-      {k:"lost",t:"Best in a losing cause",rows:top(inn,x=>x.lost,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
-      {k:"mr",t:"Most runs in a match",note:"Both innings of a Test added together.",rows:top([...mBat.values()],all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs off ${x.b} balls`,det:x=>x.parts.join(" & ")},
+      {k:"hs",g:"Innings",t:"Highest scores",rows:top(inn,all,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
+      {k:"f50",g:"Innings",t:"Fastest fifties",rows:top(inn,x=>x.f50,(a,b)=>a.f50-b.f50||b.r-a.r),big:x=>x.f50,unit:()=>"balls to reach 50",det:x=>`Went on to ${bt(x)} off ${x.b}`},
+      {k:"f100",g:"Innings",t:"Fastest hundreds",rows:top(inn,x=>x.f100,(a,b)=>a.f100-b.f100||b.r-a.r),big:x=>x.f100,unit:()=>"balls to reach 100",det:x=>`Went on to ${bt(x)} off ${x.b}`},
+      {k:"six",g:"Innings",t:"Most sixes in an innings",rows:top(inn,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:()=>"sixes",det:x=>`${bt(x)} off ${x.b} · SR ${r1(x.r/x.b*100)}`},
+      {k:"sr",g:"Innings",t:"Highest strike rates",note:"Innings of 15 balls or more.",rows:top(inn,x=>x.b>=15,(a,b)=>b.r/b.b-a.r/a.b||b.r-a.r),big:x=>Math.round(x.r/x.b*100),unit:()=>"strike rate",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
+      {k:"four",g:"Innings",t:"Most fours in an innings",rows:top(inn,x=>x.f>0,(a,b)=>b.f-a.f||b.r-a.r),big:x=>x.f,unit:()=>"fours",det:x=>`${bt(x)} off ${x.b} · ${x.s}×6`},
+      {k:"bnd",g:"Innings",t:"Most runs in boundaries",note:"Fours and sixes in one innings.",rows:top(inn,x=>x.f+x.s>0,(a,b)=>(b.f*4+b.s*6)-(a.f*4+a.s*6)||b.r-a.r),big:x=>x.f*4+x.s*6,unit:x=>`of ${x.r} runs from boundaries`,det:x=>`${x.f}×4 · ${x.s}×6 · ${Math.round((x.f*4+x.s*6)/Math.max(x.r,1)*100)}% of the innings`},
+      {k:"long",g:"Innings",t:"Longest innings",rows:top(inn,x=>x.b>0,(a,b)=>b.b-a.b||b.r-a.r),big:x=>x.b,unit:()=>"balls faced",det:x=>`${bt(x)} · SR ${r1(x.r/x.b*100)}`},
+      {k:"chase",g:"Innings",t:"Best in a winning chase",note:"Top scores in the final innings of a match the batting side won.",rows:top(inn,x=>x.chase,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.mm.margin||"won"}`},
+      {k:"lost",g:"Innings",t:"Best in a losing cause",rows:top(inn,x=>x.lost,(a,b)=>b.r-a.r||a.b-b.b),big:bt,unit:x=>`off ${x.b} balls`,det:x=>`SR ${r1(x.r/x.b*100)} · ${x.f}×4 · ${x.s}×6`},
+      {k:"msx",g:"Match",t:"Most sixes in a match",note:"Both innings of a Test added together.",rows:top([...mBat.values()],x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:x=>`sixes, ${x.r} runs off ${x.b}`,det:x=>x.parts.join(" & ")},
+      {k:"msr",g:"Match",t:"Highest strike rate in a match",note:"20 balls or more across the match.",rows:top([...mBat.values()],x=>x.b>=20,(a,b)=>b.r/b.b-a.r/a.b),big:x=>Math.round(x.r/x.b*100),unit:()=>"strike rate",det:x=>`${x.r} off ${x.b} · ${x.s}×6`},
+      {k:"cr",g:"Career",t:"Most runs",rows:top(car,x=>x.B.r>0,(a,b)=>b.B.r-a.B.r),big:x=>x.B.r.toLocaleString(),unit:x=>`runs in ${x.m} matches`,det:x=>`Avg ${r1(x.B.avg)} · SR ${Math.round(x.B.sr)} · HS ${x.B.hs?.r??"–"}`},
+      {k:"csx",g:"Career",t:"Most sixes",rows:top(car,x=>x.B.s>0,(a,b)=>b.B.s-a.B.s),big:x=>x.B.s,unit:x=>`sixes in ${x.m} matches`,det:x=>`A six every ${r1(x.B.b/x.B.s)} balls · ${per(x.B.s,x.m)} a match`},
+      {k:"cfr",g:"Career",t:"Most fours",rows:top(car,x=>x.B.f>0,(a,b)=>b.B.f-a.B.f),big:x=>x.B.f,unit:x=>`fours in ${x.m} matches`,det:x=>`${per(x.B.f,x.m)} a match`},
+      {k:"cbh",g:"Career",t:"Boundary hitters",note:"Fewest balls per boundary, 100+ balls faced.",rows:top(car,x=>x.B.b>=100&&x.B.f+x.B.s>0,(a,b)=>bpb(a)-bpb(b)),big:x=>r1(bpb(x)),unit:()=>"balls per boundary",det:x=>`${x.B.f}×4 · ${x.B.s}×6 · ${Math.round((x.B.f*4+x.B.s*6)/Math.max(1,x.B.r)*100)}% of runs in boundaries`},
+      {k:"cav",g:"Career",t:"Best batting average",note:"5 dismissals or more.",rows:top(car,x=>x.B.inns-x.B.no>=5,(a,b)=>b.B.avg-a.B.avg),big:x=>r1(x.B.avg),unit:()=>"runs per dismissal",det:x=>`${x.B.r} runs, out ${x.B.inns-x.B.no} times`},
+      {k:"csr",g:"Career",t:"Best batting strike rate",note:"150 balls faced or more.",rows:top(car,x=>x.B.b>=150,(a,b)=>b.B.sr-a.B.sr),big:x=>Math.round(x.B.sr),unit:()=>"runs per 100 balls",det:x=>`${x.B.r} off ${x.B.b}`},
+      {k:"crm",g:"Career",t:"Runs per match",note:"5 matches or more.",rows:top(car,x=>x.m>=5,(a,b)=>b.B.r/b.m-a.B.r/a.m),big:x=>per(x.B.r,x.m),unit:()=>"runs a match",det:x=>`${x.B.r} runs in ${x.m} matches`},
+      {k:"c50",g:"Career",t:"Most fifties",rows:top(car,x=>x.B.fifty+x.B.hundred>0,(a,b)=>(b.B.fifty+b.B.hundred)-(a.B.fifty+a.B.hundred)||b.B.hundred-a.B.hundred),big:x=>x.B.fifty+x.B.hundred,unit:()=>"50+ scores",det:x=>`${x.B.hundred} hundred${x.B.hundred===1?"":"s"} · ${x.B.ducks} duck${x.B.ducks===1?"":"s"}`},
+      {k:"mr",g:"Match",t:"Most runs in a match",note:"Both innings of a Test added together.",rows:top([...mBat.values()],all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs off ${x.b} balls`,det:x=>x.parts.join(" & ")},
     ],
     bowl:[
-      {k:"bbi",t:"Best bowling",rows:top(spells,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r||a.b-b.b),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${x.ov} overs`,det:x=>`Econ ${r1(x.r/x.b*6)} · ${x.dots} dots`},
-      {k:"bbm",t:"Best match figures",note:"Both innings of a Test added together.",rows:top([...mBowl.values()],x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${ovs(x.b)} overs`,det:x=>x.parts.join(" & ")},
-      {k:"eco",t:"Most economical spells",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>a.r/a.b-b.r/b.b||b.w-a.w),big:x=>r1(x.r/x.b*6),unit:()=>"runs an over",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
-      {k:"dots",t:"Most dot balls in a spell",rows:top(spells,x=>x.dots>0,(a,b)=>b.dots-a.dots||a.r-b.r),big:x=>x.dots,unit:x=>`dot balls in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · ${Math.round(x.dots/x.b*100)}% dots`},
-      {k:"bsr",t:"Best strike rate in a spell",note:"Spells with 2 wickets or more. Balls bowled per wicket.",rows:top(spells,x=>x.w>=2,(a,b)=>a.b/a.w-b.b/b.w||b.w-a.w),big:x=>r1(x.b/x.w),unit:()=>"balls per wicket",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
-      {k:"dotp",t:"Highest dot-ball rate",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>b.dots/b.b-a.dots/a.b||a.r-b.r),big:x=>`${Math.round(x.dots/x.b*100)}%`,unit:x=>`dots in ${x.ov} overs`,det:x=>`${x.dots} dots · ${x.w}/${x.r}`},
-      {k:"wkm",t:"Most wickets in an over",rows:top(overs,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>x.w,unit:()=>"wickets in one over",det:x=>`Over ${x.o} · ${x.r} runs`},
-      {k:"hat",t:"Hat-trick watch",note:"Wickets in consecutive legal balls by the same bowler in one innings. Three is a hat-trick. Wides and no-balls in between don't break the run.",rows:top(hat,all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:x=>x.n>=3?"wickets in a row: hat-trick":"wickets in consecutive balls",det:x=>`Balls ${x.ov.join(", ")}: ${x.v.map(id=>id?esc(pname(id)):"?").join(", ")}`},
-      {k:"exs",t:"Most expensive spells",rows:top(spells,all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · econ ${r1(x.r/x.b*6)}`},
-      {k:"sxc",t:"Most sixes conceded in a spell",rows:top(spells,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:x=>`sixes in ${x.ov} overs`,det:x=>`${x.w}/${x.r}`},
-      {k:"exp",t:"Most runs conceded in an over",rows:top(overs,all,(a,b)=>b.r-a.r||a.w-b.w),big:x=>x.r,unit:()=>"runs in one over",det:x=>`Over ${x.o} of the ${x.lbl} innings${x.w?` · ${x.w} wkt`:""}`},
+      {k:"bbi",g:"Innings",t:"Best bowling",rows:top(spells,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r||a.b-b.b),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${x.ov} overs`,det:x=>`Econ ${r1(x.r/x.b*6)} · ${x.dots} dots`},
+      {k:"bbm",g:"Match",t:"Best match figures",note:"Both innings of a Test added together.",rows:top([...mBowl.values()],x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>`${x.w}/${x.r}`,unit:x=>`in ${ovs(x.b)} overs`,det:x=>x.parts.join(" & ")},
+      {k:"eco",g:"Innings",t:"Most economical spells",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>a.r/a.b-b.r/b.b||b.w-a.w),big:x=>r1(x.r/x.b*6),unit:()=>"runs an over",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
+      {k:"dots",g:"Innings",t:"Most dot balls in a spell",rows:top(spells,x=>x.dots>0,(a,b)=>b.dots-a.dots||a.r-b.r),big:x=>x.dots,unit:x=>`dot balls in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · ${Math.round(x.dots/x.b*100)}% dots`},
+      {k:"bsr",g:"Innings",t:"Best strike rate in a spell",note:"Spells with 2 wickets or more. Balls bowled per wicket.",rows:top(spells,x=>x.w>=2,(a,b)=>a.b/a.w-b.b/b.w||b.w-a.w),big:x=>r1(x.b/x.w),unit:()=>"balls per wicket",det:x=>`${x.w}/${x.r} in ${x.ov} overs`},
+      {k:"dotp",g:"Innings",t:"Highest dot-ball rate",note:"Spells of 2 overs or more.",rows:top(spells,x=>x.b>=12,(a,b)=>b.dots/b.b-a.dots/a.b||a.r-b.r),big:x=>`${Math.round(x.dots/x.b*100)}%`,unit:x=>`dots in ${x.ov} overs`,det:x=>`${x.dots} dots · ${x.w}/${x.r}`},
+      {k:"wkm",g:"Over",t:"Most wickets in an over",rows:top(overs,x=>x.w>0,(a,b)=>b.w-a.w||a.r-b.r),big:x=>x.w,unit:()=>"wickets in one over",det:x=>`Over ${x.o} · ${x.r} runs`},
+      {k:"hat",g:"Innings",t:"Hat-trick watch",note:"Wickets in consecutive legal balls by the same bowler in one innings. Three is a hat-trick. Wides and no-balls in between don't break the run.",rows:top(hat,all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:x=>x.n>=3?"wickets in a row: hat-trick":"wickets in consecutive balls",det:x=>`Balls ${x.ov.join(", ")}: ${x.v.map(id=>id?esc(pname(id)):"?").join(", ")}`},
+      {k:"mdt",g:"Match",t:"Most dot balls in a match",note:"Both innings of a Test added together.",rows:top([...mBowl.values()],x=>x.dots>0,(a,b)=>b.dots-a.dots||a.r-b.r),big:x=>x.dots,unit:x=>`dots in ${ovs(x.b)} overs`,det:x=>x.parts.join(" & ")},
+      {k:"cw",g:"Career",t:"Most wickets",rows:top(car,x=>x.W.w>0,(a,b)=>b.W.w-a.W.w||a.W.r-b.W.r),big:x=>x.W.w,unit:x=>`wickets in ${x.m} matches`,det:x=>`Econ ${r1(x.W.econ)} · avg ${r1(x.W.avg)} · best ${x.W.best?`${x.W.best.w}/${x.W.best.r}`:"–"}`},
+      {k:"cec",g:"Career",t:"Best economy",note:"20 overs or more.",rows:top(car,x=>x.W.b>=120,(a,b)=>a.W.econ-b.W.econ),big:x=>r1(x.W.econ),unit:()=>"runs an over",det:x=>`${x.W.r} off ${ovs(x.W.b)} overs · ${x.W.w} wkts`},
+      {k:"cba",g:"Career",t:"Best bowling average",note:"10 wickets or more.",rows:top(car,x=>x.W.w>=10,(a,b)=>a.W.avg-b.W.avg),big:x=>r1(x.W.avg),unit:()=>"runs per wicket",det:x=>`${x.W.w} for ${x.W.r}`},
+      {k:"cbs",g:"Career",t:"Best bowling strike rate",note:"10 wickets or more.",rows:top(car,x=>x.W.w>=10,(a,b)=>a.W.sr-b.W.sr),big:x=>r1(x.W.sr),unit:()=>"balls per wicket",det:x=>`${x.W.w} wkts in ${ovs(x.W.b)} overs`},
+      {k:"cwm",g:"Career",t:"Wickets per match",note:"5 matches or more.",rows:top(car,x=>x.m>=5&&x.W.w>0,(a,b)=>b.W.w/b.m-a.W.w/a.m),big:x=>(x.W.w/x.m).toFixed(2),unit:()=>"wickets a match",det:x=>`${x.W.w} in ${x.m} matches`},
+      {k:"cdt",g:"Career",t:"Most dot balls",rows:top(car,x=>x.W.dots>0,(a,b)=>b.W.dots-a.W.dots),big:x=>x.W.dots,unit:x=>`dots in ${ovs(x.W.b)} overs`,det:x=>`${Math.round(x.W.dots/Math.max(1,x.W.b)*100)}% of his balls`},
+      {k:"exs",g:"Innings",t:"Most expensive spells",rows:top(spells,all,(a,b)=>b.r-a.r||a.b-b.b),big:x=>x.r,unit:x=>`runs in ${x.ov} overs`,det:x=>`${x.w}/${x.r} · econ ${r1(x.r/x.b*6)}`},
+      {k:"sxc",g:"Innings",t:"Most sixes conceded in a spell",rows:top(spells,x=>x.s>0,(a,b)=>b.s-a.s||b.r-a.r),big:x=>x.s,unit:x=>`sixes in ${x.ov} overs`,det:x=>`${x.w}/${x.r}`},
+      {k:"exp",g:"Over",t:"Most runs conceded in an over",rows:top(overs,all,(a,b)=>b.r-a.r||a.w-b.w),big:x=>x.r,unit:()=>"runs in one over",det:x=>`Over ${x.o} of the ${x.lbl} innings${x.w?` · ${x.w} wkt`:""}`},
     ],
     fld:[
-      {k:"ctm",t:"Most catches in a match",note:"Both innings of a Test added together.",rows:top([...mFld.values()],x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
-      {k:"cti",t:"Most catches in an innings",rows:top(fInn,x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches in one innings",det:x=>x.ro?`Plus ${x.ro} run out${x.ro>1?"s":""}`:"Catches only"},
-      {k:"rom",t:"Most run outs in a match",rows:top([...mFld.values()],x=>x.ro>0,(a,b)=>b.ro-a.ro||b.c-a.c),big:x=>x.ro,unit:x=>`run out${x.ro>1?"s":""}`,det:x=>x.parts.join(" & ")},
-      {k:"dis",t:"Most dismissals in a match",note:"Catches and run outs together.",rows:top([...mFld.values()],x=>x.c+x.ro>0,(a,b)=>(b.c+b.ro)-(a.c+a.ro)||b.c-a.c),big:x=>x.c+x.ro,unit:()=>"dismissals",det:x=>`${x.c} ct · ${x.ro} ro`},
-      {k:"cnb",t:"Caught and bowled",note:"Bowlers who took the catch off their own bowling, season total. The match is the latest one.",rows:top([...cnb.values()],all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:()=>"caught and bowled",det:x=>{const c=new Map();x.v.forEach(id=>c.set(id,(c.get(id)||0)+1));return [...c].sort((p,q)=>q[1]-p[1]).map(([id,n])=>(id?esc(pname(id)):"?")+(n>1?` ×${n}`:"")).join(", ")}},
-      {k:"kp",t:"Keeper: most catches in a match",note:"Catches by a wicket-keeper.",rows:top([...mFld.values()],x=>x.c>0&&P.get(x.id)?.keeper,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
+      {k:"ctm",g:"Match",t:"Most catches in a match",note:"Both innings of a Test added together.",rows:top([...mFld.values()],x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
+      {k:"cti",g:"Innings",t:"Most catches in an innings",rows:top(fInn,x=>x.c>0,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches in one innings",det:x=>x.ro?`Plus ${x.ro} run out${x.ro>1?"s":""}`:"Catches only"},
+      {k:"rom",g:"Match",t:"Most run outs in a match",rows:top([...mFld.values()],x=>x.ro>0,(a,b)=>b.ro-a.ro||b.c-a.c),big:x=>x.ro,unit:x=>`run out${x.ro>1?"s":""}`,det:x=>x.parts.join(" & ")},
+      {k:"dis",g:"Match",t:"Most dismissals in a match",note:"Catches and run outs together.",rows:top([...mFld.values()],x=>x.c+x.ro>0,(a,b)=>(b.c+b.ro)-(a.c+a.ro)||b.c-a.c),big:x=>x.c+x.ro,unit:()=>"dismissals",det:x=>`${x.c} ct · ${x.ro} ro`},
+      {k:"cnb",g:"Career",t:"Caught and bowled",note:"Bowlers who took the catch off their own bowling, season total. The match is the latest one.",rows:top([...cnb.values()],all,(a,b)=>b.n-a.n||b.mm.date-a.mm.date),big:x=>x.n,unit:()=>"caught and bowled",det:x=>{const c=new Map();x.v.forEach(id=>c.set(id,(c.get(id)||0)+1));return [...c].sort((p,q)=>q[1]-p[1]).map(([id,n])=>(id?esc(pname(id)):"?")+(n>1?` ×${n}`:"")).join(", ")}},
+      {k:"cct",g:"Career",t:"Most catches",rows:top(car,x=>x.F.c>0,(a,b)=>b.F.c-a.F.c),big:x=>x.F.c,unit:x=>`catches in ${x.m} matches`,det:x=>`${(x.F.c/x.m).toFixed(2)} a match · ${x.F.drop} dropped`},
+      {k:"cro",g:"Career",t:"Most run outs",rows:top(car,x=>x.F.ro>0,(a,b)=>b.F.ro-a.F.ro),big:x=>x.F.ro,unit:x=>`run outs in ${x.m} matches`,det:x=>`${x.F.c} catches too`},
+      {k:"ccm",g:"Career",t:"Catches per match",note:"5 matches or more.",rows:top(car,x=>x.m>=5&&x.F.c>0,(a,b)=>b.F.c/b.m-a.F.c/a.m),big:x=>(x.F.c/x.m).toFixed(2),unit:()=>"catches a match",det:x=>`${x.F.c} in ${x.m} matches`},
+      {k:"csh",g:"Career",t:"Safest hands",note:"8 chances or more: catches taken out of catches offered.",rows:top(car,x=>x.F.c+x.F.drop>=8,(a,b)=>b.F.c/(b.F.c+b.F.drop)-a.F.c/(a.F.c+a.F.drop)),big:x=>`${Math.round(x.F.c/(x.F.c+x.F.drop)*100)}%`,unit:()=>"of chances held",det:x=>`${x.F.c} caught · ${x.F.drop} dropped`},
+      {k:"kp",g:"Match",t:"Keeper: most catches in a match",note:"Catches by a wicket-keeper.",rows:top([...mFld.values()],x=>x.c>0&&P.get(x.id)?.keeper,(a,b)=>b.c-a.c||b.ro-a.ro),big:x=>x.c,unit:()=>"catches",det:x=>x.parts.join(" & ")},
     ]};
 }
 function renderRecords(){
   document.querySelectorAll(".rec-top [role=tab]").forEach(b=>b.setAttribute("aria-selected",b.dataset.rt===REC.tab));
   const list=RECS[REC.tab],cat=list.find(c=>c.k===REC.cat[REC.tab])||list[0];
-  $("#recCats").innerHTML=list.map(c=>`<button type="button" role="tab" data-rc="${c.k}" aria-selected="${c===cat}">${c.t}</button>`).join("");
+  const G=["Innings","Over","Match","Career"];
+  $("#recCats").innerHTML=G.filter(g=>list.some(c=>c.g===g)).map(g=>`<span class="rc-g">${g==="Career"?"Career":g==="Over"?"Per over":"Per "+g.toLowerCase()}</span>${list.filter(c=>c.g===g).map(c=>`<button type="button" role="tab" data-rc="${c.k}" aria-selected="${c===cat}">${c.t}</button>`).join("")}`).join("");
   const rows=cat.rows;
   if(!rows.length){$("#recBody").innerHTML=`<p class="dnb">No ${cat.t.toLowerCase()} yet. The first one will appear here.</p>`;return}
-  const mlink=x=>`#match-${x.mm.id}-i${x.ino||1}`,when=x=>fmtD(x.mm.date,{day:"numeric",month:"short"});
+  const mlink=x=>x.mm?`#match-${x.mm.id}-i${x.ino||1}`:purl(x.id),when=x=>x.mm?fmtD(x.mm.date,{day:"numeric",month:"short"}):"";
   const L=rows[0],lp=P.get(L.id);
   $("#recBody").innerHTML=`<div class="rec-lead ${lp?.tm.key||"x"}">
       ${lp?photo(lp,"rec-ph"):""}
       <div class="rec-lead-copy"><span class="kicker">Record · ${cat.t}</span>
         <div class="rec-big">${cat.big(L)}</div><div class="rec-unit">${cat.unit(L)}</div>
-        <p><a href="${purl(L.id)}"><b>${esc(pname(L.id))}</b></a> v ${esc(team(L.opp).short)} · <a href="${mlink(L)}">Match #${L.mm.id}, ${when(L)}</a></p>
+        <p><a href="${purl(L.id)}"><b>${esc(pname(L.id))}</b></a> ${L.mm?`v ${esc(team(L.opp).short)} · <a href="${mlink(L)}">Match #${L.mm.id}, ${when(L)}</a>`:`· career, ${L.m} matches`}</p>
         <p class="rec-det">${cat.det(L)}</p></div>
     </div>
     <div class="tbl-wrap"><table class="data rec-tbl"><thead><tr><th></th><th>Player</th><th>Record</th><th style="text-align:left">Details</th><th>Against</th><th>Match</th></tr></thead><tbody>
     ${rows.map((x,i)=>{const p=P.get(x.id);return `<tr><td class="rk">${i+1}</td><td class="nm"><a class="rec-who" href="${purl(x.id)}">${miniThumb(p)}<span>${esc(p?(p.full_name||p.name):"?")}</span></a></td>
-      <td class="hi rec-fig">${cat.big(x)}</td><td class="how">${cat.det(x)}</td><td><span class="chip-t ${team(x.opp).key}">${esc(team(x.opp).short)}</span></td><td><a href="${mlink(x)}">#${x.mm.id} · ${when(x)}</a></td></tr>`}).join("")}
+      <td class="hi rec-fig">${cat.big(x)}</td><td class="how">${cat.det(x)}</td><td>${x.mm?`<span class="chip-t ${team(x.opp).key}">${esc(team(x.opp).short)}</span>`:`<span class="chip-t">Career</span>`}</td><td>${x.mm?`<a href="${mlink(x)}">#${x.mm.id} · ${when(x)}</a>`:`${x.m} matches`}</td></tr>`}).join("")}
     </tbody></table></div>
     <p class="rank-note" style="margin-top:12px">${cat.note?cat.note+" ":""}${rows.length<10?`Only ${rows.length} so far. `:""}Built from the ball-by-ball scorecards.</p>`;
 }

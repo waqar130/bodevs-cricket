@@ -1222,3 +1222,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .cgrid .cg-i{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:4px}
 .cgrid .cg-i small{grid-column:1/-1;white-space:nowrap;overflow:visible}
 .pbadges.sm .pb.cric::before{content:none}
+
+/* record book: category groups */
+#recCats .rc-g{flex-basis:100%;font:700 10px var(--f-data);letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin:8px 0 0}
+#recCats .rc-g:first-child{margin-top:0}
