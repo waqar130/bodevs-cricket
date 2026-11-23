@@ -1966,6 +1966,8 @@ function drawCompare(){
     ["Bowling","Extras per over",p=>q(p.bowl.b>=36,(p.bowl.wd+p.bowl.nb)/p.bowl.b*6),d1,0],
     ["Fielding","Catches + run outs",p=>p.fld.c+p.fld.ro,(v,p)=>`${v} <small>(${p.fld.c} ct, ${p.fld.ro} ro)</small>`,1],["Fielding","Catch rate",p=>q(chances(p)>=3,p.fld.c/chances(p)*100),pct,1],
     ["Fielding","Run out %",p=>q(p.matches>0,ext(p).roM/p.matches*100),pct,1],
+    // the five rankings: rating, with his place
+    ...[["Batting rating","rBat","kBat",""],["Bowling rating","rBowl","kBowl",""],["All-rounder rating","rAll","kAll",""],["Fielding rating","rFld","kFld",""],["Impact (MVP points a week)","rImp","kImp"," pts/wk"]].map(([l,r,k,u])=>["Rankings",l,p=>q(p[r]>0,p[r]),(v,p)=>`${v}${u} <small>#${p[k]}</small>`,1]),
     ["Overall","Match attendance %",p=>M.length?p.matches/M.length*100:NaN,pct,1],["Overall","Win %",p=>q(p.matches>0,ext(p).won/p.matches*100),pct,1],
     ["Overall","MVP awards",p=>p.mvpN,n,1],["Overall","Man of the Match",p=>p.pomN,n,1],
     ["Overall","Current form",p=>form.get(p.id)||0,v=>Math.round(v),1],
