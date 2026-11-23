@@ -1276,16 +1276,17 @@ function model(){
       if(sc.batting_team===l.team&&!sc.batting.some(x=>x.id===p.id))B.dnb++;
       if(sc.bowling_team===l.team){if(sc.bowling.some(x=>x.id===p.id))W.inns++;else W.dnb++}}));});
 
-  // player of the match: runs (+ a bonus for scoring faster than a run a ball) + 25 per wicket + 10 per catch + 15 for the winning side
+  // player of the match: the weekly MVP points, worked out for this match alone. Everyone within 25 points of the best shares it,
+  // and Scorenama's own Player of the match always does too (marked snPom)
   M.forEach(mm=>{const t=new Map();const g=(id,name,tm)=>{if(!t.has(id))t.set(id,{id,name,tm,r:0,b:0,no:true,w:0,rc:0,bb:0,c:0,bat:[],bowl:[]});return t.get(id)};
     mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>{const e=g(x.id,x.name,sc.batting_team);e.r+=x.runs;e.b+=x.balls;e.bat.push(`${x.runs}${x.out?"":"*"} (${x.balls})`)});
       sc.bowling.forEach(x=>{const e=g(x.id,x.name,sc.bowling_team);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.bowl.push(`${x.wickets}/${x.runs}`)});
       (sc.fielding?.catches||[]).forEach(x=>{g(x.id,x.name,sc.bowling_team).c+=x.count})});
-    const sc=e=>e.r+Math.max(0,e.r-e.b)*0.5+25*e.w+10*e.c+(mm.win&&mm.win.name===e.tm?15:0);
-    // anyone within 10 points of the best shares the award
-    const ranked=[...t.values()].sort((a,b)=>sc(b)-sc(a)),best=ranked[0];
+    const ws=weekStats([mm],0),best=ws.ranked[0];
+    const snName=((mm.m.awards||[]).find(a=>/player of the match/i.test(a.title))||{}).player;
+    const snId=snName==null?null:(byName.get(snName)??[...byName].find(([k])=>String(k).toLowerCase()===String(snName).toLowerCase())?.[1]);
     const line=e=>[e.bat.join(" & "),e.w||e.bowl.length?e.bowl.join(" & "):"",e.c?`${e.c} ct`:""].filter(Boolean).join(" · ");
-    mm.poms=best?ranked.filter(e=>sc(best)-sc(e)<10).map(e=>({...e,line:line(e)})):[];mm.pom=mm.poms[0]||null;
+    mm.poms=best?ws.ranked.filter(e=>t.has(e.id)&&(best.pts-e.pts<=25||e.id===snId)).map(e=>({...t.get(e.id),line:line(t.get(e.id)),pts:e.pts,snPom:e.id===snId})):[];mm.pom=mm.poms[0]||null;
     mm.perf=[...t.values()];});
 
   // slugs
@@ -1407,7 +1408,7 @@ function render(){
     const imp=rest[0]?` <b>${nmF(rest[0])}</b> was Impact Player on ${rest[0].pts}${rest[1]?`, with <b>${nmF(rest[1])}</b> Game Changer on ${rest[1].pts}`:""}.`:"";
     const sn=snx.length?` ${lst(snx.map(x=>`<b>${nmF(x)}</b>`))} also share${snx.length>1?"":"s"} MVP as Scorenama's top scorer (${snx[0].sn} Scorenama points).`:"";
     return top+sn+imp};
-  const race=(Wk,i)=>{const role=new Map(Wk.podium.map(x=>[x.id,x])),rows=Wk.ranked,top=Math.max(1,rows[0]?.pts||1);
+  const race=(Wk,i)=>{const role=new Map(Wk.podium.map(x=>[x.id,x])),rows=[...Wk.mvps,...Wk.ranked.filter(x=>!Wk.mvps.includes(x))],top=Math.max(1,rows[0]?.pts||1);
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
@@ -1587,7 +1588,7 @@ function renderMatches(f){
   $("#mlist").innerHTML=list.map(m=>`<a class="mrow" href="#match-${m.id}">
     <div class="when"><b>${fmtD(m.date)}</b>${esc(m.fmt)} · ${m.m.overs} ov · ${esc(m.side)}</div>
     <div class="inns">${m.inns.map(i=>`<span class="${team(i.team).key}"><i>${team(i.team).short}</i> ${i.runs}/${i.wk} <span style="color:var(--muted)">(${i.ov})</span></span>`).join("")}</div>
-    <div class="res ${m.win?.key||""}">${m.win?`${m.win.short} won`:esc(m.m.status_label)}<small>by ${esc(m.margin)} · Match #${m.id}</small>${m.pom?`<span class="moms">${m.poms.map(x=>`<span class="mom-b ${P.get(x.id)?.tm.key||""}" title="${m.poms.length>1?"Joint man":"Man"} of the match">★ ${m.poms.length>1?"Joint MOM":"MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>`:""}</div>
+    <div class="res ${m.win?.key||""}">${m.win?`${m.win.short} won`:esc(m.m.status_label)}<small>by ${esc(m.margin)} · Match #${m.id}</small>${m.pom?`<span class="moms">${m.poms.map(x=>`<span class="mom-b ${P.get(x.id)?.tm.key||""}" title="${m.poms.length>1?"Joint man":"Man"} of the match">★ ${m.poms.length>1?"Joint MOM":"MOM"} · ${esc(short(x.id))}${x.snPom?` <span class="sn-tag">Scorenama POM</span>`:""}</span>`).join("")}</span>`:""}</div>
     <span class="arrow">→</span></a>`).join("");
 }
 
@@ -2179,7 +2180,7 @@ function shareBlock(mm){
   const pom=mm.pom?P.get(mm.pom.id):null;
   return `<section class="share-wrap">
     <div class="share-copy"><p class="kicker">Share the result</p><h3 class="hd">Result card</h3>
-      ${pom?`<p class="pom"><span class="label">${mm.poms.length>1?"Joint players of the match":"Player of the match"}</span> ${mm.poms.map(x=>`<a href="${purl(x.id)}">${esc(pname(x.id))}</a> · ${esc(x.line)}`).join(" <span class=\"label\">and</span> ")}</p>`:""}
+      ${pom?`<p class="pom"><span class="label">${mm.poms.length>1?"Joint players of the match":"Player of the match"}</span> ${mm.poms.map(x=>`<a href="${purl(x.id)}">${esc(pname(x.id))}</a> · ${esc(x.line)}${x.snPom?` <span class="sn-tag">Scorenama POM</span>`:""}`).join(" <span class=\"label\">and</span> ")}</p>`:""}
       <p>A ready-made image for the team group or Instagram. Copy it, or right-click / long-press the image to save it.</p>
       <div class="pick-actions"><button type="button" class="btn solid" id="copyCard">Copy image</button><button type="button" class="btn" id="dlCard" hidden>Download PNG</button><a class="btn" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(resultText(mm))}">Send score on WhatsApp ↗</a></div>
       <p class="label" id="shareMsg"></p></div>

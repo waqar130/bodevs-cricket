@@ -86,7 +86,7 @@ function renderDigest() {
   const thumb = id => miniThumb(P.get(id)), nm = id => esc(pname(id));
   // results
   const results = [...W.WM].reverse().map(m => `<li><a class="dgr ${m.win?.key || ""}" href="#match-${m.id}"><span class="dgr-id">#${m.id} · ${esc(m.fmt)}</span><b>${m.win ? `${esc(m.win.short)} won` : esc(m.m.status_label)}</b><span class="dgr-m">${m.win ? `by ${esc(m.margin)}` : ""}</span>
-    ${(m.poms || []).length ? `<span class="moms">${m.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${m.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>` : ""}</a></li>`).join("");
+    ${(m.poms || []).length ? `<span class="moms">${m.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${m.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}${x.snPom ? ` <span class="sn-tag">Scorenama POM</span>` : ""}</span>`).join("")}</span>` : ""}</a></li>`).join("");
   // podium
   const pod = W.podium.slice(0, 4).map(x => `<a class="dgp ${P.get(x.id)?.tm.key || ""} ${x.n === 1 ? "top" : ""}" href="${purl(x.id)}">${thumb(x.id)}<span><small>${x.role}</small><b>${nm(x.id)}</b><i>${x.r} runs · ${x.w} wkt${x.w === 1 ? "" : "s"} · ${x.c} ct</i></span><em>${x.pts}<small>pts</small></em></a>`).join("");
   // top performers
@@ -1583,7 +1583,7 @@ function weekMore(W, now) {
       <div class="iw-score">${sides}</div>
       <p class="iw-dek">${bat ? `<b>${esc(short(bat.id))}</b> top-scored with ${bat.r}${bat.b ? ` off ${bat.b}` : ""}` : ""}${bowl ? `; <b>${esc(short(bowl.id))}</b> took ${bowl.w}/${bowl.rc}.` : "."}</p>
       ${(t => t.length ? `<blockquote class="iw-pull">${t[0].t}${t.length > 1 ? `<ol class="iw-tps">${t.slice(1).map(x => `<li>${x.t}</li>`).join("")}</ol>` : ""}<cite>Turning point${t.length > 1 ? "s" : ""}</cite></blockquote>` : "")(turns(mm))}
-      ${(mm.poms || []).length ? `<span class="moms">${mm.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${mm.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>` : ""}</article>`; };
+      ${(mm.poms || []).length ? `<span class="moms">${mm.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${mm.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}${x.snPom ? ` <span class="sn-tag">Scorenama POM</span>` : ""}</span>`).join("")}</span>` : ""}</article>`; };
   const recaps = `<div class="iw-matches n${W.WM.length}">${[...W.WM].reverse().map(recap).join("")}</div>`;
   // week v last week
   const stat = Wk => { const i = new Set(Wk.WM.map(m => m.id)); return { runs: Wk.runs, sixes: Wk.sixes, wkts: Wk.wkts, extras: Wk.extras, drops: DROPS.filter(d => i.has(d.mm.id)).length, m: Wk.WM.length,
