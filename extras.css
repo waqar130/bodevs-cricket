@@ -1209,3 +1209,7 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .pbadges.sm{flex-wrap:nowrap;min-width:0}
 .pbadges.sm .pb.cric{border-radius:999px;padding:4px 10px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:inline-block;font-size:10px;letter-spacing:.03em}
 .pbadges.sm{align-items:center}.pbadges.sm .pb.role{border-radius:999px;padding:4px 10px;font-size:10px}
+/* highlights: best green, second orange, worst red */
+.rv-best{background:#1f8a4c;color:#fff;box-shadow:none}
+.rv-second{background:#f08a24;color:#fff;box-shadow:none}
+.rv-worst{background:#d42a1f;color:#fff}

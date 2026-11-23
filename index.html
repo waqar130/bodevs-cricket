@@ -1520,7 +1520,7 @@ function render(){
 
   // tables
   const bats=all.filter(p=>p.bat.inns).sort((a,b)=>b.bat.r-a.bat.r);
-  // career tables: every column a stat; yellow marks the best and red the worst among players with enough of a sample
+  // career tables: every column a stat; green marks the best, orange the second and red the worst among players with enough of a sample
   const bndC=new Map();M.forEach(mm=>mm.s.scorecards.forEach(sc=>sc.bowling.forEach(x=>bndC.set(x.id,(bndC.get(x.id)||0)+(x.fours||0)+(x.sixes||0)))));
   const s30=p=>[...p.log.values()].reduce((s,l)=>s+l.bat.filter(x=>x.r>=30).length,0),outs=p=>p.bat.inns-p.bat.no,ch=p=>p.fld.c+p.fld.drop;
   const nan=NaN,f1=v=>isNaN(v)?"–":r1(v),f0=v=>isNaN(v)?"–":Math.round(v).toLocaleString(),pc=v=>isNaN(v)?"–":Math.round(v)+"%",f2=v=>isNaN(v)?"–":v.toFixed(2);
