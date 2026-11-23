@@ -1560,6 +1560,20 @@ function weekMore(W, now) {
   // milestones as cards
   const ms = milestonesIn(W).map(s => { const [name, what] = s.split(": "); const p = [...P.values()].find(q => (q.full_name || q.name) === name); return p && { p, what }; }).filter(Boolean);
   const msHtml = `<div class="xr-card"><h3 class="tbl-title">Milestones reached</h3>${ms.length ? `<div class="ms-cards">${ms.map(x => `<a class="ms-card ${x.p.tm.key}" href="${purl(x.p.id)}">${miniThumb(x.p)}<span><b>${esc(x.what)}</b><small>${esc(pname(x.p.id))}</small></span></a>`).join("")}</div>` : `<p class="dnb">None ${now ? "this" : "that"} week.</p>`}</div>`;
+  // turning points of a match: big overs, costly drops, big wickets, double-wicket overs and the finish; the three biggest
+  const byNick = nm => { const k = String(nm || "").trim().toLowerCase(); return [...P.values()].find(p => String(p.src || p.name).toLowerCase() === k || String(p.name).toLowerCase() === k); };
+  const turns = mm => { const tp = [], nm = id => esc(short(id));
+    X.overBat.filter(x => x.mm === mm && x.r >= 20).forEach(x => tp.push({ w: x.r, t: `${nm(x.id)} took ${x.r} off over ${x.ov}${x.bw ? ` from ${nm(x.bw)}` : ""}.` }));
+    DROPS.filter(d => d.mm === mm && d.r >= 15).forEach(d => tp.push({ w: d.r, t: `${d.fl ? nm(d.fl) : "A fielder"} dropped ${nm(d.bt)} in over ${String(d.over).split(".")[0]}; it cost ${d.r} more runs.` }));
+    mm.s.scorecards.forEach(sc => {
+      sc.batting.filter(x => x.out && x.runs >= 25).forEach(x => { const h = String(x.how || ""), b = (h.match(/(?:^|\s)b (.+?)(?: ·|$)/) || [])[1], bp = !/run out/i.test(h) && b && byNick(b);
+        tp.push({ w: x.runs, t: bp ? `${nm(bp.id)} removed ${nm(x.id)} for ${x.runs}.` : `${nm(x.id)} was run out for ${x.runs}.` }); });
+      sc.bowling.forEach(x => (x.spell || []).forEach(o => { const k = (o.balls || []).filter(b => b.kind === "wicket").length; if (k >= 2) tp.push({ w: 15 * k, t: `${nm(x.id)} took ${k} wickets in over ${o.over}.` }); }));
+    });
+    const ch = [...mm.s.scorecards].reverse().find(s => s.target), last = ch && (ch.commentary || []).find(b => b.type === "ball"), m = last && String(last.text).match(/^(.+?) TO (.+?),/);
+    if (m && mm.win) { if (mm.win.name === ch.batting_team) { const p = byNick(m[2]); if (p) tp.push({ w: 22, t: `${nm(p.id)} hit the winning runs to finish the chase.` }); }
+      else { const p = byNick(m[1]); if (p) tp.push({ w: 22, t: `${nm(p.id)} defended the last over; won by ${ch.target - 1 - ch.runs} run${ch.target - 1 - ch.runs === 1 ? "" : "s"}.` }); } }
+    return tp.sort((a, b) => b.w - a.w).slice(0, 3); };
   // match recaps
   const recap = mm => { const perf = mm.perf || [], bat = [...perf].sort((a, b) => b.r - a.r)[0], bowl = [...perf].filter(e => e.w).sort((a, b) => b.w - a.w || a.rc - b.rc)[0];
     const ob = X.overBat.filter(x => x.mm === mm).sort((a, b) => b.r - a.r)[0], k = mm.win?.key || "";
@@ -1568,7 +1582,7 @@ function weekMore(W, now) {
       <h4>${mm.win ? `${esc(mm.win.short)} won by ${esc(mm.margin)}` : esc(mm.m.status_label)}</h4></a>
       <div class="iw-score">${sides}</div>
       <p class="iw-dek">${bat ? `<b>${esc(short(bat.id))}</b> top-scored with ${bat.r}${bat.b ? ` off ${bat.b}` : ""}` : ""}${bowl ? `; <b>${esc(short(bowl.id))}</b> took ${bowl.w}/${bowl.rc}.` : "."}</p>
-      ${ob && ob.r >= 20 ? `<blockquote class="iw-pull">${esc(short(ob.id))} took ${ob.r} off over ${ob.ov}${ob.bw ? ` from ${esc(short(ob.bw))}` : ""}.<cite>Turning point</cite></blockquote>` : ""}
+      ${(t => t.length ? `<blockquote class="iw-pull">${t[0].t}${t.length > 1 ? `<ol class="iw-tps">${t.slice(1).map(x => `<li>${x.t}</li>`).join("")}</ol>` : ""}<cite>Turning point${t.length > 1 ? "s" : ""}</cite></blockquote>` : "")(turns(mm))}
       ${(mm.poms || []).length ? `<span class="moms">${mm.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${mm.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}</span>`).join("")}</span>` : ""}</article>`; };
   const recaps = `<div class="iw-matches n${W.WM.length}">${[...W.WM].reverse().map(recap).join("")}</div>`;
   // week v last week
