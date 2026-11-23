@@ -400,15 +400,15 @@ function markEmpty(id, empty) {
 function ranksBefore(skip) { return ratingsFrom(M.filter(m => !skip.has(m.id))).rk; }
 function ratingsFrom(ms) {
   const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0, n: 0, nb: 0 }); return g.get(id); };
-  const OW = ownWeights(ms);
+  const OW = ownWeights(ms), BB = bowlBits(ms);
   let tr = 0, tb = 0;
   ms.forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
     mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id), w = OW(x.id, mm.id); a.inns += w; a.n++; a.r += x.runs * w; a.b += x.balls * w; if (!x.out) a.no += w; });
-      sc.bowling.forEach(x => { const a = e(x.id), w = OW(x.id, mm.id), bb = balls(x.overs); a.wb += bb * w; a.nb += bb; a.wr += x.runs * w; a.w += x.wickets * w; }); }); });
+      sc.bowling.forEach(x => { const a = e(x.id), w = OW(x.id, mm.id), bb = balls(x.overs); a.wb += bb * w; a.nb += bb; a.wr += x.runs * w; a.w += x.wickets * w; a.dots = (a.dots || 0) + (x.dots || 0) * w; a.ex = (a.ex || 0) + ((x.wides || 0) + (x.noballs || 0)) * w; }); }); });
   const RR = tb ? tr / tb * 6 : 0, out = new Map();
   g.forEach(a => { const avg = a.inns ? ((a.inns - a.no ? a.r / (a.inns - a.no) : a.r) + a.r / a.inns) / 2 : 0, sr = a.b ? a.r / a.b * 100 : 0;
     const rBat = a.n >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.n / 15))) : 0;
-    const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.nb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.nb / 180))) : 0;
+    const econ = a.wb ? a.wr / a.wb * 6 : NaN, adj = bowlAdj(a.dots || 0, a.ex || 0, a.wb, BB), rBowl = a.nb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.nb / 180) * adj.dotF * adj.exF)) : 0;
     out.set(a.id, { rBat, rBowl, rAll: Math.round(rBat * rBowl / 1000) }); });
   if (typeof fldRatings === "function") fldRatings(ms).forEach((f, id) => { const v = out.get(id) || { rBat: 0, rBowl: 0, rAll: 0 }; v.rFld = f.r; out.set(id, v); });
   const rk = {}; ["rBat", "rBowl", "rAll", "rFld"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
@@ -964,8 +964,8 @@ function rankHow(k, top) {
   const agg = p => { const a = { inn: 0, no: 0, r: 0, b: 0, bb: 0, br: 0, bw: 0, n: 0, nb: 0 }, L = [...p.log.values()].sort((u, v) => u.mm.date - v.mm.date || u.mm.id - v.mm.id); L.forEach((l, i) => { const w = Math.pow(0.5, (L.length - 1 - i) / HALF); l.bat.forEach(z => { a.inn += w; a.n++; if (z.no) a.no += w; a.r += z.r * w; a.b += z.b * w; }); l.bowl.forEach(z => { a.bb += z.b * w; a.nb += z.b; a.br += z.r * w; a.bw += z.w * w; }); }); return a; };
   const bat = p => { const a = agg(p), outs = a.inn - a.no, a1 = outs > 0 ? a.r / outs : a.r, a2 = a.r / a.inn, avg = (a1 + a2) / 2, sr = a.r / a.b * 100, exp = Math.min(1, a.n / 15);
     return { B: { r: a.r, inns: a.inn, sr }, n: a.n, outs, a1, a2, avg, exp, raw: avg * (sr / 100) * 6 * exp }; };
-  const bowl = p => { const a = agg(p), econ = a.br / a.bb * 6, wpo = a.bw / (a.bb / 6), exp = Math.min(1, a.nb / 180);
-    return { W: { w: a.bw, b: a.bb, econ }, wpo, exp, raw: wpo * 10 * (rr / econ) * 230 * exp }; };
+  const bowl = p => { const a = agg(p), econ = a.br / a.bb * 6, wpo = a.bw / (a.bb / 6), exp = Math.min(1, a.nb / 180), adj = p.bowlAdj || { dotF: 1, exF: 1 };
+    return { W: { w: a.bw, b: a.bb, econ }, wpo, exp, adj, raw: wpo * 10 * (rr / econ) * 230 * exp * adj.dotF * adj.exF }; };
   const batHow = `<div class="rk-how-c"><h4>Batting rating</h4>
     <p class="rk-f">(<b>average</b> × <b>strike rate</b> ÷ 100) × 6 × <b>experience</b></p>
     <ul><li><b>Average</b> is the mean of two averages, so not-outs don't flatter it: runs per dismissal, and runs per innings.</li>
@@ -974,10 +974,12 @@ function rankHow(k, top) {
       <li><b>Recent form counts more:</b> each match counts half as much for every 12 of his own matches since, so missing a week costs nothing.</li>
       <li>Needs 3 innings to be rated. Highest possible rating is 999.</li></ul></div>`;
   const bowlHow = `<div class="rk-how-c"><h4>Bowling rating</h4>
-    <p class="rk-f"><b>wickets per over</b> × 10 × (<b>league run rate</b> ÷ <b>economy</b>) × 230 × <b>experience</b></p>
+    <p class="rk-f"><b>wickets per over</b> × 10 × (<b>league run rate</b> ÷ <b>economy</b>) × 230 × <b>experience</b> × <b>dot-ball factor</b> × <b>extras factor</b></p>
     <ul><li><b>Wickets per over</b> is wickets ÷ overs bowled.</li>
       <li><b>League run rate</b> is runs per over across every innings this season, now <b>${r1(rr)}</b>. Conceding less than that lifts the rating, more lowers it.</li>
       <li><b>Experience</b> is overs ÷ 30, up to 1. Full weight from 30 overs (180 balls).</li>
+      <li><b>Dot-ball factor</b> is 1 + his dot-ball share − the league's (${Math.round((typeof bowlBits === "function" ? bowlBits(M).dot : 0) * 100)}% now). 53% dots against a 45% league is ×1.08.</li>
+      <li><b>Extras factor</b> takes off 5% for every wide or no-ball an over above the league's (${r1(typeof bowlBits === "function" ? bowlBits(M).ex : 0)} now), and adds 5% for every one below. Both factors stay within ±15%.</li>
       <li><b>Recent form counts more:</b> each match counts half as much for every 12 of his own matches since, so missing a week costs nothing.</li>
       <li>Needs 6 overs to be rated. Highest possible rating is 999.</li></ul></div>`;
   const allHow = `<div class="rk-how-c"><h4>All-rounder rating</h4>
@@ -995,7 +997,7 @@ function rankHow(k, top) {
   if (p) {
     if (k === "rFld" && p.fldR) { const f = p.fldR; ex = `${esc(pname(p.id))}, recency-weighted: ${r1(f.c + f.ro)} dismissals in ${r1(f.wm)} matches → <b>${f.dpm.toFixed(2)}</b> a match; held <b>${Math.round(f.suc * 100)}%</b> (${f.nc} of ${f.nc + f.nd} chances); experience ${Math.min(f.m, 10)}/10 matches = <b>${r1(f.exp)}</b>. ${f.dpm.toFixed(2)} × ${f.suc.toFixed(2)} × 700 × ${r1(f.exp)} = <b>${n0(f.r)}</b>.`; }
     if (k === "rBat") { const x = bat(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.B.r)} runs, ${r1(x.outs)} outs, ${r1(x.B.inns)} innings → average (${r1(x.a1)} + ${r1(x.a2)}) ÷ 2 = <b>${r1(x.avg)}</b>; strike rate <b>${r1(x.B.sr)}</b>; experience ${Math.min(x.n, 15)}/15 innings = <b>${r1(x.exp)}</b>. ${r1(x.avg)} × ${r1(x.B.sr)} ÷ 100 × 6 × ${r1(x.exp)} = <b>${n0(Math.min(999, x.raw))}</b>.`; }
-    if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.W.w)} wickets in ${r1(x.W.b / 6)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
+    if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.W.w)} wickets in ${r1(x.W.b / 6)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>; dot-ball factor <b>${x.adj.dotF.toFixed(2)}</b>, extras factor <b>${x.adj.exF.toFixed(2)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} × ${x.adj.dotF.toFixed(2)} × ${x.adj.exF.toFixed(2)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
     if (k === "rAll") ex = `${esc(pname(p.id))}: batting ${p.rBat} × bowling ${p.rBowl} ÷ 1,000 = <b>${p.rAll}</b>.`;
   }
   return `<div class="rk-how"><h3 class="xr-h">How it's calculated</h3>

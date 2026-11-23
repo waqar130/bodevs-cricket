@@ -1381,6 +1381,12 @@ const HALF=12;
 function ownWeights(ms){const seen=new Map();[...ms].sort((a,b)=>a.date-b.date||a.id-b.id).forEach(mm=>{const ids=new Set();mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>ids.add(x.id));sc.bowling.forEach(x=>ids.add(x.id));
     (sc.fielding?.catches||[]).concat(sc.fielding?.runouts||[]).forEach(x=>{const i=x.id||byName.get(x.name);if(i)ids.add(i)})});ids.forEach(i=>{if(!seen.has(i))seen.set(i,[]);seen.get(i).push(mm.id)})});
   const w=new Map();seen.forEach((list,id)=>list.forEach((mid,k)=>w.set(id+"|"+mid,Math.pow(.5,(list.length-1-k)/HALF))));return (id,mid)=>w.get(id+"|"+mid)??1}
+// Bowling refinements: dot balls and extras against the league, each capped at +/-15%.
+// dotF = 1 + (his dot share - league dot share); exF = 1 - 0.05 x (his wides+no-balls an over - league's)
+function bowlBits(ms){const per=new Map();let d=0,b=0,x=0;ms.forEach(mm=>mm.s.scorecards.forEach(sc=>sc.bowling.forEach(y=>{const k=y.id+"|"+mm.id,v=per.get(k)||{dots:0,ex:0},bb=balls(y.overs),e=(y.wides||0)+(y.noballs||0);
+  v.dots+=y.dots||0;v.ex+=e;per.set(k,v);d+=y.dots||0;b+=bb;x+=e})));return{per,dot:b?d/b:0,ex:b?x/b*6:0}}
+const clampF=v=>Math.max(.85,Math.min(1.15,v));
+const bowlAdj=(dots,ex,bb,L)=>{const dotF=clampF(1+(bb?dots/bb:0)-L.dot),exF=clampF(1-.05*((bb?ex/bb*6:0)-L.ex));return{dotF,exF}};
 function fldRatings(ms){
   const OW=ownWeights(ms);
   const g=new Map(),e=id=>{if(!g.has(id))g.set(id,{m:0,wm:0,c:0,ro:0,nc:0,nd:0,nro:0});return g.get(id)};
@@ -1394,15 +1400,16 @@ function fldRatings(ms){
   return out;
 }
 function rateAll(){
-  const ps=[...P.values()],FLD=fldRatings(M);
+  const ps=[...P.values()],FLD=fldRatings(M),BB=bowlBits(M);
   // recency: a match counts half as much for every 12 of the player's own matches since, so recent form moves the ratings
   // and missing a week costs nothing.
   // Qualifying (3 innings, 6 overs) and the confidence ramp still use real counts.
-  ps.forEach(p=>{let inn=0,no=0,r=0,b=0,bb=0,br=0,bw=0,nInn=0,nB=0;
-    const L=[...p.log.values()].sort((a,b)=>a.mm.date-b.mm.date||a.mm.id-b.mm.id);L.forEach((l,i)=>{const w=Math.pow(.5,(L.length-1-i)/HALF);l.bat.forEach(x=>{inn+=w;nInn++;if(x.no)no+=w;r+=x.r*w;b+=x.b*w});l.bowl.forEach(x=>{bb+=x.b*w;br+=x.r*w;bw+=x.w*w;nB+=x.b})});
+  ps.forEach(p=>{let inn=0,no=0,r=0,b=0,bb=0,br=0,bw=0,nInn=0,nB=0,bd=0,bx=0;
+    const L=[...p.log.values()].sort((a,b)=>a.mm.date-b.mm.date||a.mm.id-b.mm.id);L.forEach((l,i)=>{const w=Math.pow(.5,(L.length-1-i)/HALF);l.bat.forEach(x=>{inn+=w;nInn++;if(x.no)no+=w;r+=x.r*w;b+=x.b*w});l.bowl.forEach(x=>{bb+=x.b*w;br+=x.r*w;bw+=x.w*w;nB+=x.b});const q=BB.per.get(p.id+"|"+l.mm.id);if(q&&l.bowl.length){bd+=q.dots*w;bx+=q.ex*w}});
     const avg=inn?((inn-no>0?r/(inn-no):r)+r/inn)/2:0,sr=b?r/b*100:0,econ=bb?br/bb*6:0;
     p.rBat=nInn>=3?Math.min(999,Math.round(avg*(sr/100)*6*Math.min(1,nInn/15))):0;
-    p.rBowl=nB>=36&&econ?Math.min(999,Math.round(bw/(bb/6)*10*(SEASON_RR/econ)*230*Math.min(1,nB/180))):0;
+    const adj=bowlAdj(bd,bx,bb,BB);p.bowlAdj=adj;
+    p.rBowl=nB>=36&&econ?Math.min(999,Math.round(bw/(bb/6)*10*(SEASON_RR/econ)*230*Math.min(1,nB/180)*adj.dotF*adj.exF)):0;
     p.rAll=Math.round(p.rBat*p.rBowl/1000);
     // impact: average weekly MVP points over the weeks he played (3 weeks or more)
     const fr=FLD.get(p.id);p.rFld=fr?fr.r:0;p.fldR=fr;
