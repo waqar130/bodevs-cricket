@@ -1111,3 +1111,6 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 
 /* race: the full-card chip */
 .race-sum .rs.all{border-style:dashed}.race-sum .rs.all b{margin-left:2px}
+
+/* four or more joint MVPs: photos in a 2 x 2 grid */
+.cover-art.joint.many .cover-split{grid-template-columns:repeat(2,minmax(0,1fr))}
