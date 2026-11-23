@@ -1162,3 +1162,6 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 /* match page: Scorenama button under the header */
 .sn-match-cta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 0}
 .sn-match-cta span{font:500 12px var(--f-data);color:var(--muted)}
+
+/* share the week: the ready-to-post message */
+.dg-msg{white-space:pre-wrap;font:400 13.5px/1.55 var(--f-data);background:var(--paper);border:1px solid var(--rule);padding:14px 16px;margin:14px 0 12px;max-height:340px;overflow:auto}

@@ -80,37 +80,21 @@ function weekHeadline(W) {
 }
 function renderDigest() {
   const el = $("#digestBody"); if (!el || !WEEK) return;
-  const W = selW(), X = buildXR().raw, ids = new Set(W.WM.map(m => m.id));
-  const now = W === WEEK, hd = weekHeadline(W), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
-  $("#digest h2").textContent = now ? "This week" : `Issue ${W.issue}`;
-  const thumb = id => miniThumb(P.get(id)), nm = id => esc(pname(id));
-  // results
-  const results = [...W.WM].reverse().map(m => `<li><a class="dgr ${m.win?.key || ""}" href="#match-${m.id}"><span class="dgr-id">#${m.id} · ${esc(m.fmt)}</span><b>${m.win ? `${esc(m.win.short)} won` : esc(m.m.status_label)}</b><span class="dgr-m">${m.win ? `by ${esc(m.margin)}` : ""}</span>
-    ${(m.poms || []).length ? `<span class="moms">${m.poms.map(x => `<span class="mom-b ${P.get(x.id)?.tm.key || ""}">★ ${m.poms.length > 1 ? "Joint MOM" : "MOM"} · ${esc(short(x.id))}${x.snPom ? ` <span class="sn-tag">Scorenama POM</span>` : ""}</span>`).join("")}</span>` : ""}</a></li>`).join("");
-  // podium
-  const pod = W.podium.slice(0, 4).map(x => `<a class="dgp ${P.get(x.id)?.tm.key || ""} ${x.n === 1 ? "top" : ""}" href="${purl(x.id)}">${thumb(x.id)}<span><small>${x.role}</small><b>${nm(x.id)}</b><i>${x.r} runs · ${x.w} wkt${x.w === 1 ? "" : "s"} · ${x.c} ct</i></span><em>${x.pts}<small>pts</small></em></a>`).join("");
-  // top performers
-  const ob = X.overBat.filter(x => ids.has(x.mm.id)).sort((a, b) => b.r - a.r)[0], six = [...W.ranked].sort((a, b) => b.s - a.s)[0];
-  const tiles = [
-    W.knock && ["Best knock", `${W.knock.r}${W.knock.no ? "*" : ""}`, `${nm(W.knock.id)} · ${W.knock.b} balls, ${W.knock.s} sixes`],
-    W.spell && ["Best spell", `${W.spell.w}/${W.spell.r}`, `${nm(W.spell.id)} · ${W.spell.ov} overs`],
-    ob && ["Biggest over", ob.r, `${nm(ob.id)}${ob.bw ? ` off ${esc(short(ob.bw))}` : ""}`],
-    six?.s && ["Most sixes", six.s, nm(six.id)],
-  ].filter(Boolean).map(([k, v, s]) => `<div class="dgt"><span class="label">${k}</span><b>${v}</b><small>${s}</small></div>`).join("");
-  const ms = milestonesIn(W), hot = formData().filter(x => x.trend === "hot").slice(0, 4);
+  const W = selW(), now = W === WEEK, hd = weekHeadline(W), t = M.filter(m => m.win?.key === "t").length, f = M.filter(m => m.win?.key === "f").length;
+  $("#digest .kicker").textContent = "Share the week"; $("#digest h2").textContent = now ? "Post it to the group" : `Issue ${W.issue}, ready to post`;
+  // the week as a WhatsApp message: results, MVPs, the standout numbers, the season score
+  const res = [...W.WM].map(m => `#${m.id} ${m.win ? `${m.win.short} won by ${m.margin}` : m.m.status_label}`).join("\n");
+  const tops = [W.knock && `Best knock: ${pname(W.knock.id)} ${W.knock.r}${W.knock.no ? "*" : ""} off ${W.knock.b}`, W.spell && `Best spell: ${pname(W.spell.id)} ${W.spell.w}/${W.spell.r}`, `Sixes: ${W.sixes}`].filter(Boolean).join("\n");
+  const msg = `🏏 BoDevs Cricket · Issue ${W.issue} (${weekRange(W)})\n${hd.h}.\n\n${res}\n\n${W.joint ? "Joint MVPs" : "MVP"}: ${W.mvps.map(z => `${pname(z.id)} (${z.pts})${z.snMvp ? " · Scorenama MVP" : ""}`).join(", ")}\n${tops}\n\nSeason: Tigers ${t}–${f} Falcons\n${SITE_BASE}`;
   el.innerHTML = `<div class="dg-main">
-      <div class="dg-mast"><span>The Monday digest</span><span>Issue ${W.issue} · ${esc(weekRange(W))}</span></div>
+      <div class="dg-mast"><span>Share the week</span><span>Issue ${W.issue} · ${esc(weekRange(W))}</span></div>
       <h3 class="dg-h">${hd.h}.</h3>
       <p class="dg-d">${hd.d} Season: <b>Tigers ${t}–${f} Falcons</b>.</p>
-      <div class="dg-cols"><div>
-      <h4 class="dg-k">Results</h4><ul class="dg-res">${results}</ul>
-      <h4 class="dg-k">The podium</h4><div class="dg-pod">${pod}</div>
-      </div><div>
-      <h4 class="dg-k">Top performers</h4><div class="dg-tiles">${tiles}</div>
-      ${ms.length ? `<h4 class="dg-k">Milestones</h4><p class="dg-chips">${ms.map(s => `<span>🏅 ${esc(s)}</span>`).join("")}</p>` : ""}
-      ${hot.length ? `<h4 class="dg-k">In form</h4><p class="dg-chips">${hot.map(x => `<a href="${purl(x.p.id)}">🔥 ${esc(pname(x.p.id))} <small>form ${Math.round(x.form)}</small></a>`).join("")}</p>` : ""}
-      </div></div>
+      <pre class="dg-msg" id="dgMsg">${esc(msg)}</pre>
+      <div class="pick-actions"><button type="button" class="btn solid" id="dgCopy">Copy the text</button><a class="btn" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Send on WhatsApp ↗</a></div>
+      <p class="label" id="dgNote"></p>
     </div>`;
+  $("#dgCopy").onclick = async () => { try { await navigator.clipboard.writeText(msg); $("#dgNote").textContent = "Copied. Paste it in the group."; } catch (e) { $("#dgNote").textContent = "Couldn't copy here: select the text above instead."; } };
 }
 
 /* ---------------- 2. Season story (charts) ---------------- */
@@ -471,39 +455,22 @@ function recordsThisWeek(W) {
   return out.sort((a, b) => a.i - b.i);
 }
 function renderWeekAwards() {
-  const el = $("#weekAwardsBody"); if (!el || !WEEK) return;
+  const host = $("#weekLines"); if (!host || !WEEK) return; const sec = $("#weekawards"); if (sec) sec.hidden = true;
   const W = selW(), now = W === WEEK;
-  $("#weekawards .kicker").textContent = now ? "Weekly awards" : `Weekly awards · Issue ${W.issue}`;
-  $("#weekawards h2").textContent = now ? "The week's honours" : `Honours, week of ${weekRange(W)}`;
-  const ids = new Set(W.WM.map(m => m.id)), pod = new Set(W.podium.map(x => x.id));
-  const card = (k, p, stat, line) => p ? `<article class="wa-card ${p.tm.key}"><p class="kicker">${k}</p>
-    <a class="wa-who" href="${purl(p.id)}">${miniThumb(p)}<b>${esc(pname(p.id))}</b></a><div class="wa-stat">${stat}</div><p class="wa-line">${line}</p></article>` : "";
-  // each award goes to a different player, and never to an MVP, who has the cover
+  // each honour goes to a different player, and never to an MVP, who has the cover
   const used = new Set(W.mvps.map(x => x.id)), pick = (list, ok = () => true) => { const x = list.find(e => !used.has(e.id ?? e.e.id) && ok(e)); if (x) used.add(x.id ?? x.e.id); return x; };
-  // rising star: best week (60+ points) from someone outside the all-rounder top 5
   const rs = pick(W.ranked, e => (!P.get(e.id)?.kAll || P.get(e.id).kAll > 5) && e.pts >= 60);
-  // bowler of the week: most wickets, then the cheapest economy
-  const bw = pick(W.ranked.filter(e => e.bb > 0 && e.w > 0).sort((a, b) => b.w - a.w || a.rc / a.bb - b.rc / b.bb));
-  const ct = pick(W.ranked.filter(e => e.c > 1).sort((a, b) => b.c - a.c || b.pts - a.pts));
-  // most improved: this week's points per match against the player's average before this week (3+ earlier matches)
   const before = id => { const p = P.get(id); if (!p) return null; const l = [...p.log.values()].filter(x => x.mm.date < W.ws); return l.length >= 3 ? l.reduce((a, x) => a + impactOf(x), 0) / l.length : null; };
   const imp = pick(W.ranked.map(e => ({ e, now: e.pts / Math.max(1, e.m.size), was: before(e.id) })).filter(x => x.was !== null && x.now > x.was).sort((a, b) => (b.now - b.was) - (a.now - a.was)));
-  // tough week: lowest points per match among regulars (5+ career matches)
   const tw = pick([...W.ranked].filter(e => (P.get(e.id)?.matches || 0) >= 5).sort((a, b) => a.pts / Math.max(1, a.m.size) - b.pts / Math.max(1, b.m.size)));
   const recs = recordsThisWeek(W);
-  el.innerHTML = `<div class="wa-grid">
-      ${bw ? card("Bowler of the week", P.get(bw.id), `${bw.w}/${bw.rc}`, `in ${ovs(bw.bb)} overs · econ ${r1(bw.rc / bw.bb * 6)}`) : ""}
-      ${ct ? card("Safest hands", P.get(ct.id), `${ct.c} catch${ct.c > 1 ? "es" : ""}`, `Most catches ${now ? "this" : "that"} week.`) : ""}
-      ${imp ? card("Most improved", P.get(imp.e.id), `+${Math.round(imp.now - imp.was)} pts`, `${Math.round(imp.now)} points a match ${now ? "this" : "that"} week, up from a ${Math.round(imp.was)} average.`) : ""}
-      ${rs ? card("Rising star", P.get(rs.id), `${rs.pts} pts`, `${rs.r} runs · ${rs.w} wkt${rs.w === 1 ? "" : "s"} · ${rs.c} ct, from outside the top 5.`) : ""}
-      ${tw ? card("Tough week", P.get(tw.id), `${tw.pts} pts`, "Quiet one. Back stronger on Sunday.") : ""}
-    </div>
-    <h3 class="tbl-title" style="margin-top:34px">${now ? "Records this week" : "Records set that week, still in the top 10"}</h3>
-    ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
-      return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
-      : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
-    <p class="rank-note" style="margin-top:12px">Weekly points: 1 a run, +20 for the chase finisher (on strike for the winning ball of a chase, not out), a runs bonus of runs × strike rate ÷ 1000 and a speed bonus of strike rate ÷ 10 (10+ balls faced), a six-hitting factor of sixes × sixes per 100 balls ÷ 10 (20 sixes in 100 balls +40, in 50 balls +80), plus a shot bonus equal to its runs (a 2 +2, a four +4, a six +6; a six straight after a six +9), +3 more for a six straight after two dots, a streak bonus for sixes in a row (+3 for 3, +9 for 4, +15 for 5, +30 for 6), −1 a dot ball faced, −1 more for each dot straight after a dot; 30 a wicket (+5 more straight after being hit for six), +20 for defending the last over (bowled the final over of a chase his side won), a big-wicket bonus of +10 for dismissing a batter on 20+ and +10 more if he had 40+, a wicket-taking factor of wickets × wickets per 100 balls (5 in 60 balls +42, 5 in 30 balls +83), +10 a maiden, sixes conceded back to back cost more each time (2nd in a row −2, 3rd −4, 4th −6, 5th −8, 6th −10), the week's economy minus his own, for every over he bowled (week 12, he goes 14 over 5 overs: −2 × 5 = −10), 30 minus the week's average (runs a wicket: 21 is +9), never below 0, +1 a dot ball bowled, +1 more for each dot straight after a dot, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 10 a catch (+5 more if the batter had 20+, +5 more again if 40+, +5 for the keeper, +5 for caught and bowled, +5 for each catch after the first in a match), +5 for safe hands (2+ catches in the week, no drops), 10 a run out, −5 a dropped catch (−5 more if it went for six). The podium on the cover uses the same points.</p>`;
-  el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
+  const box = (kick, id, num, sub) => id == null ? "" : `<a class="coverline" href="${purl(id)}"><div><span class="kicker">${kick}</span><div class="cl-h">${esc(pname(id))}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span></a>`;
+  const boxes = [imp && box("Most improved", imp.e.id, `+${Math.round(imp.now - imp.was)}`, `points a match up: ${Math.round(imp.now)} ${now ? "this" : "that"} week against a ${Math.round(imp.was)} average`),
+    rs && box("Rising star", rs.id, rs.pts, `points from outside the all-rounder top 5 · ${rs.r} runs, ${rs.w} wkt${rs.w === 1 ? "" : "s"}, ${rs.c} ct`),
+    tw && box("Tough week", tw.id, tw.pts, "points. A quiet one: back stronger on Sunday."),
+    recs.length ? `<a class="coverline" href="#records"><div><span class="kicker">Records this week</span><div class="cl-h">${recs.length} new</div></div><span class="cl-n">${recs.length}</span><span class="cl-p">${recs.slice(0, 3).map(q => `${esc(q.cat.t)}: ${esc(short(q.x.id))}`).join(" · ")}${recs.length > 3 ? " …" : ""}</span></a>` : ""].filter(Boolean);
+  host.querySelector(".wl-g.hon")?.remove();
+  if (boxes.length) host.insertAdjacentHTML("beforeend", `<section class="wl-g hon"><h3 class="wl-h">Honours</h3><div class="wl-grid">${boxes.join("")}</div></section>`);
 }
 
 /* ---------------- next Sunday ---------------- */
@@ -824,6 +791,7 @@ function renderWeekLines() {
   const dot = best(E.filter(x => x.bb >= 12), (p, q) => q.db / q.bb - p.db / p.bb);
   const fld = best(E.filter(x => x.c + x.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro) || q.c - p.c);
   const bnd = best(E.filter(x => x.f + x.s), (p, q) => (q.f + q.s) - (p.f + p.s) || q.s - p.s);
+  const wkIds = new Set(W.WM.map(m => m.id)), bestOv = buildXR().raw.overBowl.filter(o => wkIds.has(o.mm.id) && o.w > 0).sort((a, b) => b.w - a.w || a.r - b.r)[0];
   const fours = E.reduce((a, x) => a + x.f, 0), bls = W.WM.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.b, 0), 0);
   const ovs = b => `${Math.floor(b / 6)}${b % 6 ? "." + (b % 6) : ""}`;
   // a player's box gets a button that opens his week's points card
@@ -854,6 +822,7 @@ function renderWeekLines() {
     group("Spells &amp; fielding", "spell", [
       topSpell && box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `${topSpell.w} wicket${pl(topSpell.w)} for ${topSpell.r} runs in ${topSpell.ov} overs`, purl(topSpell.id)),
       eco && box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over in one spell · ${eco.w} for ${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)),
+      bestOv && box("Best over", `${bestOv.w}/${bestOv.r}`, nm(bestOv.id), `in over ${bestOv.ov} · the week's best bowling over`, purl(bestOv.id)),
       who(dot, "Dot-ball machine", dot && `${Math.round(dot.db / dot.bb * 100)}%`, `of his balls were dots · ${dot?.db} of ${dot?.bb} (2+ overs)`),
       who(fld, "Best fielder", fld && fld.c + fld.ro, `${fld?.c} catch${fld?.c === 1 ? "" : "es"} · ${fld?.ro} run out${pl(fld?.ro)}`)]),
     // the MVP bonus moments: whoever did each most this week (only if someone did)
@@ -924,11 +893,6 @@ function renderWeekNumbers() {
       ${tile("drops", "Drops", dr.length ? `<p class="wn-big">${dr.length}<small>catches put down, costing ${cost} runs</small></p>
         ${dear2 ? `<p class="wn-line">Costliest: ${plink(dear2.fl)} dropped ${plink(dear2.bt)}${dear2.bw ? (dear2.bw === dear2.fl ? " off his own bowling" : ` off ${plink(dear2.bw)}`) : ""}, who added ${dear2.r} more. ${at(dear2.mm)}</p>` : ""}
         ${lucky && lucky[1] > 1 ? `<p class="wn-line">Lucky charm of the week: ${plink(lucky[0])}, dropped ${lucky[1]} times.</p>` : ""}` : `<p class="dnb">Every chance taken ${now ? "this" : "that"} week.</p>`)}
-      ${tile("overs", "Overs of the week", ob.length || obat.length ? `<ol class="xr-list wn-ov">
-        ${ovRow("Biggest over", bigBat, bigBat ? bigBat.r : "", bigBat ? `runs off ${bigBat.b} balls${bigBat.bw ? ` from ${esc(short(bigBat.bw))}` : ""} · ${at(bigBat.mm)}` : "")}
-        ${ovRow("Best over", best, best ? `${best.w}/${best.r}` : "", best ? `over ${best.ov} · ${at(best.mm)}` : "")}
-        ${ovRow("Costliest over", dear, dear ? dear.r : "", dear ? `runs in over ${dear.ov} · ${at(dear.mm)}` : "")}
-        ${ovRow("Sixes in a row", sixer, sixer ? sixer.n : "", sixer ? `back to back · ${at(sixer.mm)}` : "")}</ol>` : `<p class="dnb">No ball-by-ball data for this week.</p>`)}
       ${tile("above", "Above his usual", list(above.map((x, i) => li(i, who(x.p.id), r1(x.x) + "×", `${Math.round(x.wk)} pts a match against a usual ${Math.round(x.u)}`))))}
       ${tile("stands", "Best stands", list(stands.map((s, i) => li(i, `<span class="xr-who"><b>${s.ids.map(id => esc(short(id))).join(" & ")}</b></span>`, s.runs + (s.unbroken ? "*" : ""), `off ${s.balls} balls · ${s.wkt}${["st", "nd", "rd"][s.wkt - 1] || "th"} wicket · ${at(s.mm)}`))))}
     </div>

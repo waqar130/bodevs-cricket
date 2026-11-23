@@ -609,7 +609,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <span class="title">Cricket</span>
     <nav aria-label="Sections">
       <details class="navmenu"><summary>Sections</summary><div class="nm-panel">
-        <a href="#digest">Monday digest</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
+        <a href="#digest">Share the week</a><a href="#rivalry">The rivalry</a><a href="#story">Season story</a><a href="#numbers">By the numbers</a>
         <a href="#squads">Squads</a><a href="#form">Form guide</a><a href="#milestones">Milestones</a><a href="#picker">Pick the sides</a>
         <a href="#tables">Rankings &amp; records</a><a href="#seasonawards">Season awards</a><a href="#seasonbook">Season in detail</a><a href="#records">Record book</a><a href="#streaks">Streaks &amp; team records</a><a href="#matchups">Matchups &amp; pressure</a><a href="#archive">Season archive</a><a href="#getapp">Get the app</a><a href="#play">Play us</a><a href="#compare">Compare players</a><a href="#underrated">Underrated</a>
         <a href="#partners">Partnerships</a><a href="#tactics">Toss &amp; tactics</a><a href="#phases">Phases of play</a><a href="#shame">Hall of shame</a>
@@ -673,7 +673,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     <div class="wrap">
       <div class="dept-head">
         <div><p class="kicker">The Monday digest</p><h2 class="hd">This week</h2></div>
-        <p>Sunday night, written up: the results, the podium, the standout numbers and the milestones. Rebuilt after every Monday sync.</p>
+        <p>The week in one message and one poster, ready for the WhatsApp group. Rebuilt after every Monday sync.</p>
       </div>
       <div id="digestBody"></div>
     </div>
@@ -1413,7 +1413,6 @@ function render(){
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
         <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; everyone within 50 points of the top shares it, and so does Scorenama's MVP (most Scorenama points that week), and level points go to whoever got there first.</p></div></div>
-      ${raceKey()}
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
           <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}${x.snMvp?` <span class="sn-tag" title="Most points on Scorenama this week: ${x.sn}">Scorenama MVP</span>`:""}</small><b>${esc(pname(q.id))}</b></span></a>
@@ -1463,6 +1462,7 @@ function render(){
       <div class="mvp-bar"><span class="kicker">MVP of the week</span><span class="label" id="mvpPos"></span>
         <div class="mvp-nav"><button type="button" class="mvp-btn" id="mvpPrev" aria-label="Newer week">← Newer</button><button type="button" class="mvp-btn" id="mvpNext" aria-label="Older week">Older →</button></div></div>
       <div class="mvp-track" id="mvpTrack" tabindex="0">${WEEKS.map(slide).join("")}</div>
+      <div class="mvp-key">${raceKey()}</div>
       <div class="mvp-dots" role="tablist" aria-label="Choose a week">${WEEKS.map((Wk,i)=>`<button type="button" role="tab" data-i="${i}" aria-selected="${!i}" aria-label="Issue ${Wk.issue}: ${Wk.mvps.map(x=>esc(pname(x.id))).join(" & ")}"><span>${Wk.issue}</span><i>${Wk.mvps.map(x=>esc(short(x.id))).join(" & ")}</i></button>`).join("")}</div>
     </div>
     <div class="coverlines cl-row" id="weekLines"></div>
