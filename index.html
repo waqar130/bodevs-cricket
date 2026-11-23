@@ -1138,10 +1138,13 @@ let WEEKS=[];
 // dot balls that come straight after another dot (a run of dots): any run, wicket, wide or no-ball ends the run
 const isDot=t=>t&&(t.kind==="dot"||(t.kind==="drop"&&t.mark==="•"));
 const dotRuns=balls=>{let n=0,prev=false;(balls||[]).forEach(t=>{const d=isDot(t);if(d&&prev)n++;prev=d});return n};
+// bonus moments in the ball-by-ball: a six straight after two dots, a six straight after a six, a wicket straight after a six
+const isSix=t=>t&&t.kind==="six",isWkt=t=>t&&t.kind==="wicket";
+const moments=balls=>{const b=balls||[];let sad=0,ss=0,was=0;b.forEach((t,i)=>{if(isSix(t)&&isDot(b[i-1])&&isDot(b[i-2]))sad++;if(isSix(t)&&isSix(b[i-1]))ss++;if(isWkt(t)&&isSix(b[i-1]))was++});return{sad,ss,was}};
 function weekStats(WM,issue){
   const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
   const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,was:0,md:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
   // "at": when he last added to his points, so equal totals go to whoever got there first
   const order=[...WM].sort((a,b)=>a.date-b.date||a.id-b.id),when=new Map(order.map((m,i)=>[m.id,i]));
   const scored=(id,key)=>{const e=ent(id);e.at=Math.max(e.at,key)};
@@ -1150,9 +1153,9 @@ function weekStats(WM,issue){
     const did=new Map(),add=(id,team,k,v)=>{const d=did.get(id)||{team,r:0,w:0,f:0};d[k]+=v;did.set(id,d)};
     const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
       if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
-      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;e.dfr+=dotRuns(x.timeline);
+      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;e.dfr+=dotRuns(x.timeline);{const q=moments(x.timeline);e.sad+=q.sad;e.ss+=q.ss}
         if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
-      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.dbr+=dotRuns((x.spell||[]).flatMap(o=>o.balls));e.ex+=(x.wides||0)+(x.noballs||0);e.h3+=Math.min(3,Math.max(0,x.wickets-1));e.m.add(mm.id);
+      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.dbr+=dotRuns((x.spell||[]).flatMap(o=>o.balls));e.was+=moments((x.spell||[]).flatMap(o=>o.balls)).was;e.md+=x.maidens||0;e.ex+=(x.wides||0)+(x.noballs||0);e.h3+=Math.min(3,Math.max(0,x.wickets-1));e.m.add(mm.id);
         if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
       (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
       (sc.fielding?.runouts||[]).forEach(x=>{ent(x.id).ro+=x.count||1;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count||1)});
@@ -1163,10 +1166,10 @@ function weekStats(WM,issue){
       if(mm.win)mm.win.name===n?tw[n].w++:tw[n].l++;});
   });
   // MVP points, in four parts. #1 MVP, #2 Impact Player, #3 Game Changer.
-  // batting: runs, +1 for each 1-3, +2 a four, +3 a six, -1 a dot ball faced, -1 more for each dot straight after a dot
-  // bowling: 20 a wicket, +1 a dot ball, +1 more for each dot straight after a dot, -1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell
+  // batting: runs, +1 for each 1-3, +2 a four, +3 a six (+1 more after two dots, +1 more after a six), -1 a dot ball faced, -1 more for each dot straight after a dot
+  // bowling: 20 a wicket (+5 if straight after being hit for six), +10 for each 2nd, 3rd and 4th wicket in a spell, +1 a dot ball, +1 more for each dot straight after a dot, +10 a maiden, -1 a wide or no-ball
   // fielding: 10 a catch or run out, -5 a dropped catch (wins no longer score)
-  const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3,fld:10*(e.c+e.ro)-5*e.dr,win:0});
+  const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s+e.sad+e.ss-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md,fld:10*(e.c+e.ro)-5*e.dr,win:0});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld};
   // most points first; level on points, whoever got there first. Within 10 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
@@ -1375,8 +1378,8 @@ function render(){
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
         <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; within 10 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
       <dl class="race-legend">
-        <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · +1 for a 1, 2 or 3 · +2 a four · +3 a six · −1 a dot ball, −1 more for each dot straight after a dot</dd></div>
-        <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket · +10 more for each 2nd, 3rd and 4th wicket in a spell · +1 a dot ball, +1 more for each dot straight after a dot · −1 a wide or no-ball</dd></div>
+        <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · +1 for a 1, 2 or 3 · +2 a four · +3 a six, +1 more for a six straight after two dots or after another six · −1 a dot ball, −1 more for each dot straight after a dot</dd></div>
+        <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket, +5 more straight after being hit for six · +10 more for each 2nd, 3rd and 4th wicket in a spell · +1 a dot ball, +1 more for each dot straight after a dot · +10 a maiden · −1 a wide or no-ball</dd></div>
         <div><dt><i class="rk-c"></i>Field</dt><dd>10 a catch or run out · −5 a dropped catch</dd></div>
       </dl>
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
@@ -1717,8 +1720,8 @@ function renderMilestones(){
 function raceSum(x){
   const n=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t},tip=items=>items.filter(([v])=>v).map(([v,t])=>`${v<0?"−":"+"}${n(Math.abs(v))} ${t}`).join(", ");
   const g=(cls,lab,tot,items)=>tot||items.some(([v])=>v)?`<span class="rs ${cls}" title="${tip(items)}"><i></i>${lab} <b>${n(tot)}</b></span>`:"";
-  return [g("r","Bat",x.parts.bat,[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[-x.df,"dots"],[-x.dfr,"dots in a row"]]),
-    g("w","Bowl",x.parts.bowl,[[20*x.w,"wickets"],[x.db,"dots"],[x.dbr,"dots in a row"],[-x.ex,"extras"],[10*x.h3,"wicket bonus"]]),
+  return [g("r","Bat",x.parts.bat,[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[x.sad,"six after two dots"],[x.ss,"sixes in a row"],[-x.df,"dots"],[-x.dfr,"dots in a row"]]),
+    g("w","Bowl",x.parts.bowl,[[20*x.w,"wickets"],[x.db,"dots"],[x.dbr,"dots in a row"],[-x.ex,"extras"],[10*x.h3,"wicket bonus"],[5*x.was,"wicket after a six"],[10*x.md,"maidens"]]),
     g("c","Field",x.parts.fld,[[10*x.c,"catches"],[10*x.ro,"run outs"],[-5*x.dr,"drops"]]),
 ].filter(Boolean).join("");
 }
