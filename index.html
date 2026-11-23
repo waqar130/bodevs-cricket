@@ -1604,7 +1604,7 @@ function matchPage(id,tab){
     <div class="scoreline">${teams.map(n=>`<div class="${team(n).key} ${m.winner?.name===n?"won":""}">${crest(n)}<span class="tn">${esc(n)}</span><span class="ts">${agg(n)}</span></div>`).join("")}</div>
     ${toss?`<p class="dek">${esc(toss)}.</p>`:""}
     <p class="sn-match-cta"><a class="sn-btn" href="${m.scorenama_url||`https://scorenama.com/g/7142662p6r2u/m/${m.id}`}" target="_blank" rel="noopener">Open match #${m.id} on Scorenama ↗</a><span>Ball by ball, scorecard and share image</span></p></header>`;
-  h+=(typeof matchExtras==="function"?matchExtras(mm):"")+(typeof matchLeaders==="function"?`<h2 class="sec-t">Match leaders</h2>${matchLeaders(mm)}`:"")+shareBlock(mm);
+  h+=(typeof matchExtras==="function"?matchExtras(mm):"")+(typeof matchLeaders==="function"?`<h2 class="sec-t">Match points &amp; leaders</h2>${matchLeaders(mm)}`:"")+shareBlock(mm);
   const sel=Math.min(Math.max(0,(tab||1)-1),mm.s.scorecards.length-1);
   h+=`<div class="inn-tabs" role="tablist" aria-label="Innings">${mm.s.scorecards.map((sc,i)=>{const t=team(sc.batting_team);
     return `<button role="tab" class="${t.key}" id="itab-${i}" aria-controls="inn-${i}" aria-selected="${i===sel}" data-i="${i}" tabindex="${i===sel?0:-1}">

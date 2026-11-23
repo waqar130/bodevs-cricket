@@ -2373,7 +2373,16 @@ function matchLeaders(mm) {
   const bo = best(ovB.filter(o => o.w > 0), (p, q) => q.w - p.w || p.r - q.r), big = best(ovR, (p, q) => q.r - p.r);
   const top = E[0], ss = best(E.filter(e => e.ss), (p, q) => q.ss - p.ss), fin = E.find(e => e.cf), def = E.find(e => e.dl);
   const hi = best(inns, (p, q) => q.r - p.r || p.b - q.b);
-  return `<div class="coverlines ml-lines">
+  // everyone who played, ranked on the same points as the weekly MVP race
+  const moms = new Map((mm.poms || []).map(p => [p.id, p])), barMax = Math.max(1, ...E.map(e => Math.max(0, e.parts.bat) + Math.max(0, e.parts.bowl) + Math.max(0, e.parts.fld))), pc = v => (Math.max(0, v) / barMax * 100).toFixed(2) + "%";
+  const race = `<ol class="race-list ml-race">${E.map((e, j) => { const q = P.get(e.id); if (!q) return ""; const mo = moms.get(e.id);
+    return `<li class="${q.tm.key}${mo ? " win" : ""}"><span class="race-n">${j + 1}</span>
+      <a class="race-who" href="${purl(q.id)}">${miniThumb(q)}<span><small>${mo ? (moms.size > 1 ? "Joint man of the match" : "Man of the match") : esc(team(q.team).short || "")}${mo?.snPom ? ` <span class="sn-tag">Scorenama POM</span>` : ""}</small><b>${nm(e.id)}</b></span></a>
+      <div class="race-bar"><div class="race-fill" role="img" aria-label="batting ${e.parts.bat}, bowling ${e.parts.bowl}, fielding ${e.parts.fld}"><i class="rk-r" style="width:${pc(e.parts.bat)}"></i><i class="rk-w" style="width:${pc(e.parts.bowl)}"></i><i class="rk-c" style="width:${pc(e.parts.fld)}"></i></div>
+        <p class="race-sum">${raceSum(e)}<button type="button" class="rs all" data-pts='${ptsAll(e, "Match points · " + pname(e.id))}'>Full card <b>= ${ptsN(e.pts)}</b></button></p></div>
+      <span class="race-pts"><b>${ptsN(e.pts)}</b> pts</span></li>`; }).join("")}</ol>`;
+  return `<h3 class="tbl-title">Everyone's points this match</h3>${race}<p class="rank-note">Same points as the weekly MVP, for this match alone. Within 25 of the top shares man of the match, and Scorenama's Player of the match always does.</p>
+  <h3 class="tbl-title" style="margin-top:26px">Leaders</h3><div class="coverlines ml-lines">
     ${group("Points", [top && box((mm.poms || []).length > 1 ? "Joint man of the match" : "Man of the match", ptsN(top.pts), top.id, `points on our MVP system, for this match`)].concat((mm.poms || []).filter(p => p.id !== top?.id).map(p => box("Joint man of the match", ptsN(E.find(e => e.id === p.id)?.pts || 0), p.id, p.line))))}
     ${group("Batting", [bat && box("Best batter", bat.r, bat.id, `runs off ${bat.b} balls${hi && hi.id === bat.id && hi.no ? ", not out" : ""}`), six && box("Most sixes", six.s, six.id, `sixes · ${six.r} off ${six.b}`),
       sr && box("Highest strike rate", Math.round(sr.r / sr.b * 100), sr.id, `runs per 100 balls · ${sr.r} off ${sr.b} (10+ balls)`), bnd && box("Most boundaries", bnd.f + bnd.s, bnd.id, `${bnd.s} six${bnd.s === 1 ? "" : "es"} · ${bnd.f} four${pl(bnd.f)}`)])}
