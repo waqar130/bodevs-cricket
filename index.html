@@ -310,6 +310,8 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .hb svg{width:19px;height:19px}
 .hb.mvp{background:var(--ink);color:#ffd23f}
 .hb.mom{background:#ffd23f;color:var(--ink)}
+.hb.sn{background:#1d5bd0;color:#fff}
+.sn-tag{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:3px;background:#1d5bd0;color:#fff;font:700 9.5px/1.5 var(--f-data);letter-spacing:.08em;text-transform:uppercase;vertical-align:middle;white-space:nowrap}.hb.sn b{font:900 15px/1 var(--f-display)}
 .hb i{position:absolute;top:-7px;right:-8px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--red);color:#fff;font:700 11px/19px var(--f-data);font-style:normal;text-align:center;border:2px solid var(--paper)}
 .hon.inline{position:static;display:inline-flex;gap:10px;margin-left:6px;vertical-align:middle}
 .hon.inline .hb{width:22px;height:22px;box-shadow:none}
@@ -1196,9 +1198,11 @@ function weekStats(WM,issue){
   const parts=e=>({bat:2*e.r+srRuns(e)+srSpeed(e)+sixF(e)+20*e.cf+3*e.sad+3*e.ss+e.st-e.df-e.dfr,bowl:30*e.w+wktF(e)+20*e.dl+10*e.bw+10*e.bw2+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md-e.cp+Math.round(wkEco*e.bb/6-e.rc)+(e.w?Math.max(0,Math.round(30-e.rc/e.w)):0),fld:10*e.c+5*e.bc+5*e.bc2+5*e.kc+5*e.cb+5*e.mc+(e.c>=2&&!e.dr?5:0)+10*e.ro-5*e.dr-5*e.ds,win:0});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld};
   // most points first; level on points, whoever got there first. Everyone within 50 points of the top is a joint MVP;
-  // the next two places are Impact Player and Game Changer
-  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e),parts:parts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
-  const mvps=ranked.filter(e=>pow.pts-e.pts<=50),joint=mvps.length>1,rest=ranked.slice(mvps.length);
+  // Scorenama's MVP (most Scorenama points that week) is always one of them too. The next two places are Impact Player and Game Changer
+  const snPts=e=>e.r+2*e.f+3*e.s+20*e.w+10*e.c+10*e.ro-5*e.dr;
+  const ranked=[...pw.values()].map(e=>({...e,pts:pts(e),parts:parts(e),sn:snPts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
+  const snTop=Math.max(0,...ranked.map(e=>e.sn));ranked.forEach(e=>{e.snMvp=snTop>0&&e.sn===snTop});
+  const mvps=ranked.filter(e=>pow.pts-e.pts<=50||e.snMvp),joint=mvps.length>1,rest=ranked.filter(e=>!mvps.includes(e));
   const podium=[...mvps.map(e=>({...e,role:joint?"Joint MVP":"MVP",n:1})),...rest.slice(0,2).map((e,j)=>({...e,role:j?"Game Changer":"Impact Player",n:mvps.length+j+1}))];
   return{WM,ws,we,pow,mvps,joint,isMvp:id=>mvps.some(e=>e.id===id),podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
 }
@@ -1327,7 +1331,8 @@ function model(){
   WEEKS=weekKeys.map((k,i)=>weekStats(M.filter(m=>m.week===k),weekKeys.length-i));
   WEEK=WEEKS[0];
   // honours: MVP = player of the week, MOM = man of the match
-  P.forEach(p=>{p.mvpN=0;p.pomN=0;p.impN=0;p.gcN=0});
+  P.forEach(p=>{p.mvpN=0;p.pomN=0;p.impN=0;p.gcN=0;p.snN=0});
+  WEEKS.forEach(w=>w.ranked.forEach(x=>{if(x.snMvp){const p=P.get(x.id);if(p)p.snN++}}));
   WEEKS.forEach(w=>w.podium.forEach(x=>{const p=P.get(x.id);if(!p)return;if(x.n===1)p.mvpN++;else if(x.role==="Impact Player")p.impN++;else p.gcN++}));
   M.forEach(m=>(m.poms||[]).forEach(x=>{const p=P.get(x.id);if(p)p.pomN++}));
 }
@@ -1373,7 +1378,7 @@ const plink=(id,txt)=>`<a href="${purl(id)}">${esc(txt??pname(id))}</a>`;
 const ICON_MVP=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.8 6 6.6.7-4.9 4.5 1.4 6.5L12 16.9l-5.9 3.3 1.4-6.5L2.6 9.2l6.6-.7z"/></svg>`;
 const ICON_MOM=`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 3h10v2h3.5v2.5A4.5 4.5 0 0 1 16.4 12a5 5 0 0 1-3.4 2.9V18h3.5v3h-9v-3H11v-3.1A5 5 0 0 1 7.6 12 4.5 4.5 0 0 1 3.5 7.5V5H7V3Zm-1.5 4v.5A2.5 2.5 0 0 0 7 9.8V7H5.5Zm11.5 0v2.8a2.5 2.5 0 0 0 1.5-2.3V7H17Z"/></svg>`;
 // count badges, like a cart icon: ★ MVP (player of the week) and trophy MOM (man of the match)
-const honours=(p,cls="")=>p&&(p.mvpN||p.pomN)?`<span class="hon ${cls}">${p.mvpN?`<span class="hb mvp" role="img" aria-label="${p.mvpN} MVP award${p.mvpN>1?"s":""}" title="MVP (player of the week) × ${p.mvpN}">${ICON_MVP}<i>${p.mvpN}</i></span>`:""}${p.pomN?`<span class="hb mom" role="img" aria-label="${p.pomN} man of the match award${p.pomN>1?"s":""}" title="Man of the Match × ${p.pomN}">${ICON_MOM}<i>${p.pomN}</i></span>`:""}</span>`:"";
+const honours=(p,cls="")=>p&&(p.mvpN||p.pomN||p.snN)?`<span class="hon ${cls}">${p.snN?`<span class="hb sn" role="img" aria-label="${p.snN} Scorenama MVP award${p.snN>1?"s":""}" title="Scorenama MVP × ${p.snN}"><b>S</b><i>${p.snN}</i></span>`:""}${p.mvpN?`<span class="hb mvp" role="img" aria-label="${p.mvpN} MVP award${p.mvpN>1?"s":""}" title="MVP (player of the week) × ${p.mvpN}">${ICON_MVP}<i>${p.mvpN}</i></span>`:""}${p.pomN?`<span class="hb mom" role="img" aria-label="${p.pomN} man of the match award${p.pomN>1?"s":""}" title="Man of the Match × ${p.pomN}">${ICON_MOM}<i>${p.pomN}</i></span>`:""}</span>`:"";
 const photo=(p,cls="")=>`<div class="ph ${p.tm.key} ${cls}">${honours(p)}${p.photo?`<img src="${p.photo}" alt="${esc(p.full_name||p.name)}" loading="lazy">`:`<span class="mono">${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}${p.captain?'<span class="cap">Captain</span>':""}${p.keeper?'<span class="cap wk">Keeper</span>':""}</div>`;
 
 function render(){
@@ -1391,21 +1396,22 @@ function render(){
   const lead=tWins>=fWins?["Tigers",tWins,"Falcons",fWins]:["Falcons",fWins,"Tigers",tWins];
   // the MVP race: everyone who played this week, with how their points were made
   // who made the points, and how: the top (or the tie), then Impact Player and Game Changer
-  const raceStory=Wk=>{const nmF=x=>esc(first(x.id)),ft=x=>{const [v,w]=feat(x);return `${v} ${w}`},mv=Wk.mvps,rest=Wk.podium.filter(x=>x.n>1);
+  const raceStory=Wk=>{const nmF=x=>esc(first(x.id)),ft=x=>{const [v,w]=feat(x);return `${v} ${w}`},mv=Wk.mvps.filter(x=>Wk.pow.pts-x.pts<=50),snx=Wk.mvps.filter(x=>Wk.pow.pts-x.pts>50),rest=Wk.podium.filter(x=>x.n>1);
     const lst=a=>a.length>1?`${a.slice(0,-1).join(", ")} and ${a.at(-1)}`:a[0];
     const top=mv.length>1?`${lst(mv.map(x=>`<b>${nmF(x)}</b>`))} shared the top on ${lst([...new Set(mv.map(x=>x.pts))])}: ${lst(mv.map(x=>`${nmF(x)}'s ${ft(x)}`))}.`
       :`<b>${nmF(mv[0])}</b> led with ${mv[0].pts}${Wk.ranked[1]?`, ${mv[0].pts-Wk.ranked[1].pts} clear`:""}, built on ${ft(mv[0])}.`;
     const imp=rest[0]?` <b>${nmF(rest[0])}</b> was Impact Player on ${rest[0].pts}${rest[1]?`, with <b>${nmF(rest[1])}</b> Game Changer on ${rest[1].pts}`:""}.`:"";
-    return top+imp};
+    const sn=snx.length?` ${lst(snx.map(x=>`<b>${nmF(x)}</b>`))} also share${snx.length>1?"":"s"} MVP as Scorenama's top scorer (${snx[0].sn} Scorenama points).`:"";
+    return top+sn+imp};
   const race=(Wk,i)=>{const role=new Map(Wk.podium.map(x=>[x.id,x])),rows=Wk.ranked,top=Math.max(1,rows[0]?.pts||1);
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
-        <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; everyone within 50 points of the top shares it, and level points go to whoever got there first.</p></div></div>
+        <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; everyone within 50 points of the top shares it, and so does Scorenama's MVP (most Scorenama points that week), and level points go to whoever got there first.</p></div></div>
       ${raceKey()}
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
-          <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}</small><b>${esc(pname(q.id))}</b></span></a>
+          <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}${x.snMvp?` <span class="sn-tag" title="Most points on Scorenama this week: ${x.sn}">Scorenama MVP</span>`:""}</small><b>${esc(pname(q.id))}</b></span></a>
           <div class="race-bar"><div class="race-fill" role="img" aria-label="batting ${x.parts.bat}, bowling ${x.parts.bowl}, fielding ${x.parts.fld}"><i class="rk-r" style="width:${pc(Math.max(0,x.parts.bat))}"></i><i class="rk-w" style="width:${pc(Math.max(0,x.parts.bowl))}"></i><i class="rk-c" style="width:${pc(Math.max(0,x.parts.fld))}"></i></div>
             <p class="race-sum">${raceSum(x)}<button type="button" class="rs all" data-pts='${ptsAll(x,"Weekly points · "+pname(x.id))}'>Full card <b>= ${ptsN(x.pts)}</b></button></p></div>
           <span class="race-pts"><b>${x.pts}</b> pts</span></li>`}).join("")}</ol>
@@ -1414,13 +1420,15 @@ function render(){
   const first=id=>{const w=(pname(id)||"").split(" ");return w.find(x=>x.length>2&&!x.endsWith("."))||w[0]};
   const feat=x=>x.w>=4&&x.w*20>=x.r?[x.w,"wickets"]:x.s>=8?[x.s,"sixes"]:x.r>=40?[x.r,"runs"]:x.c+(x.ro||0)>=3?[x.c+(x.ro||0),"dismissals"]:[x.pts,"points"];
   const and=list=>list.length>1?`${list.slice(0,-1).join(", ")} &amp; ${list.at(-1)}`:list[0];
-  const slide=(Wk,i)=>{const mv=Wk.mvps.filter(x=>P.get(x.id)),n=mv.length,p=P.get(Wk.pow.id),top=mv[0].pts;
+  const slide=(Wk,i)=>{const mv=Wk.mvps.filter(x=>P.get(x.id)),n=mv.length,p=P.get(Wk.pow.id),top=mv[0].pts,core=mv.filter(x=>top-x.pts<=50),snx=mv.filter(x=>top-x.pts>50);
     const teams=Object.entries(Wk.tw),res=teams.length===2?`${team(teams[0][0]).short} ${teams[0][1].w}–${teams[1][1].w} ${team(teams[1][0]).short}`:"";
-    const next=Wk.ranked[n];
+    const next=Wk.ranked.find(x=>!mv.includes(x));
+    const snLine=snx.length?` ${and(snx.map(x=>esc(pname(x.id))))} joins as Scorenama's MVP, top on Scorenama's points with ${snx[0].sn}.`:"";
     const head=n===1?esc(pname(p.id)):and(mv.map(x=>esc(first(x.id))));
-    const why=n===1?`<b>${top} points</b>${next?`, ${top-next.pts} clear of ${esc(pname(next.id))}`:""}.`
-      :mv.every(x=>x.pts===top)?`Level on <b>${top} points</b>, so they share the week.`
-      :`<b>${and(mv.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-Math.min(...mv.map(x=>x.pts))} point${top-Math.min(...mv.map(x=>x.pts))===1?"":"s"} apart: within 50, so they share the week.`;
+    const cn=core.length,ct=Math.min(...core.map(x=>x.pts));
+    const why=(cn===1?`<b>${top} points</b>${next&&!snx.length?`, ${top-next.pts} clear of ${esc(pname(next.id))}`:""}.`
+      :core.every(x=>x.pts===top)?`Level on <b>${top} points</b>, so they share the week.`
+      :`<b>${and(core.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-ct} point${top-ct===1?"":"s"} apart: within 50, so they share the week.`)+snLine;
     const art=n===1?`<a class="cover-art" href="${purl(p.id)}" aria-label="${esc(pname(p.id))} profile" ${i?'tabindex="-1"':""}>
           <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">MVP · Issue ${Wk.issue}</span></div>
           <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt=""></a>`
@@ -1428,7 +1436,7 @@ function render(){
           <span class="cover-tag">Joint MVPs · Issue ${Wk.issue}</span><img class="cover-ball" src="assets/tilde/yellow-seam.png" alt=""></div>`;
     const card=x=>{const q=P.get(x.id),[fv,fw]=feat(x);
       return `<a class="mvx-card ${q.tm.key}" href="${purl(q.id)}" ${i?'tabindex="-1"':""}>
-        <span class="mvx-who">${n>1?`${esc(pname(q.id))} · `:""}${esc(q.title||"")}</span>
+        <span class="mvx-who">${n>1?`${esc(pname(q.id))} · `:""}${esc(q.title||"")}${x.snMvp?` <span class="sn-tag" title="Most points on Scorenama this week: ${x.sn}">Scorenama MVP</span>`:""}</span>
         <span class="mvx-feat"><b>${fv}</b> ${fw}</span>
         <span class="mvx-line">${x.r} runs off ${x.b}${x.s?` · ${x.s} sixes`:""} · ${x.w}/${x.rc} · ${x.c} ct${x.ro?` · ${x.ro} run out${x.ro>1?"s":""}`:""}${x.wb?` · ${x.wb} win${x.wb>1?"s":""}`:""}</span>
         <span class="mvx-pts">${x.pts}<small>pts</small></span></a>`};
@@ -2501,7 +2509,7 @@ function playerPage(id,tab){
     <p class="why">${esc(p.why)}</p>
     ${p.full_name&&!p.full_name.startsWith(p.name)?`<p class="dek">Known on the scorecard as “${esc(p.name)}”.</p>`:""}
     <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} pts</small></a>`:"").join("")}</div>
-    <div class="facts"><span><b>${p.mvpN}</b> MVP</span><span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${p.fld.c+p.fld.drop?`<span><b>${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}%</b> catch rate</span>`:""}${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
+    <div class="facts"><span><b>${p.mvpN}</b> MVP</span>${p.snN?`<span><b>${p.snN}</b> Scorenama MVP</span>`:""}<span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${p.fld.c+p.fld.drop?`<span><b>${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}%</b> catch rate</span>`:""}${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;
   if(!p.matches)return h+`<p class="dek">No matches yet. The first scorecard will fill this page in.</p>`;
   h+="<!--pane:overview-->"+awardsFor(p)+formChart(p);
