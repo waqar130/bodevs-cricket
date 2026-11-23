@@ -441,7 +441,10 @@ function renderSince() {
   document.querySelectorAll("#rankings .rank-col").forEach((col, ci) => col.querySelectorAll(".rank-list a").forEach(a => {
     const id = BySlug.get(a.getAttribute("href").slice(1)) ?? +(a.getAttribute("href").match(/player-(\d+)/) || [])[1], d = MOVES.get(id + "|" + keys[ci]);
     if (d === undefined || d === 0 || a.querySelector(".mv")) return;
-    a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`); }));
+    const e = WEEK.ranked.find(y => y.id === id), bat = e && e.b ? `${e.r} off ${e.b}` : "", bowl = e && e.bb ? `${e.w}/${e.rc}` : "";
+    const why = !e ? "did not play this week" : keys[ci] === "kBat" ? (bat ? `${bat} this week` : "did not bat this week") : keys[ci] === "kBowl" ? (bowl ? `${bowl} this week` : "did not bowl this week") : [bat, bowl].filter(Boolean).join(" and ") + " this week";
+    a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week: ${why}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`);
+    if (d !== "new") a.querySelector(".rk-who")?.insertAdjacentHTML("beforeend", `<small class="mv-why ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} after ${esc(why)}</small>`); }));
 }
 
 /* ---------------- weekly awards + records broken ---------------- */
