@@ -410,7 +410,8 @@ function ratingsFrom(ms) {
     const rBat = a.n >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.n / 15))) : 0;
     const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.nb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.nb / 180))) : 0;
     out.set(a.id, { rBat, rBowl, rAll: Math.round(rBat * rBowl / 1000) }); });
-  const rk = {}; ["rBat", "rBowl", "rAll"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
+  if (typeof fldRatings === "function") fldRatings(ms).forEach((f, id) => { const v = out.get(id) || { rBat: 0, rBowl: 0, rAll: 0 }; v.rFld = f.r; out.set(id, v); });
+  const rk = {}; ["rBat", "rBowl", "rAll", "rFld"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
   return { val: out, rk };
 }
 let MOVES = new Map(); // "id|kBat" -> places moved (+ up, - down, "new")
@@ -419,7 +420,7 @@ function computeMoves() {
   const prev = ranksBefore(new Set(WEEK.WM.map(m => m.id))), list = [];
   { const m = new Map(); WEEKS.filter(W => W !== WEEK).forEach(W => W.ranked.forEach(e => { const v = m.get(e.id) || { s: 0, n: 0 }; v.s += e.pts; v.n++; m.set(e.id, v); }));
     prev.rImp = new Map([...m].filter(([, v]) => v.n >= 3).sort((a, b) => b[1].s / b[1].n - a[1].s / a[1].n).map(([id], i) => [id, i + 1])); }
-  [["kBat", "rBat", "batting"], ["kBowl", "rBowl", "bowling"], ["kAll", "rAll", "all-rounder"], ["kImp", "rImp", "impact"]].forEach(([k, r, label]) => P.forEach(p => {
+  [["kBat", "rBat", "batting"], ["kBowl", "rBowl", "bowling"], ["kAll", "rAll", "all-rounder"], ["kFld", "rFld", "fielding"], ["kImp", "rImp", "impact"]].forEach(([k, r, label]) => P.forEach(p => {
     if (!p[k]) return; const before = prev[r].get(p.id);
     const d = before ? before - p[k] : "new"; MOVES.set(p.id + "|" + k, d);
     if (d === "new" || d > 0) list.push({ p, k, label, d, now: p[k] }); }));
@@ -440,14 +441,14 @@ function renderSince() {
   P.forEach(p => { const first = [...p.log.values()].sort((a, b) => a.mm.date - b.mm.date || a.mm.id - b.mm.id)[0]; if (first && firstIds.has(first.mm.id)) items.push(`<a class="sc-item" href="${purl(p.id)}"><span class="sc-k">Debut</span>${esc(pname(p.id))}</a>`); });
   el.innerHTML = `<span class="label sc-lab">${now ? "Since last Monday" : `Issue ${W.issue} · ${esc(weekRange(W))}`}</span><div class="sc-row">${items.join("")}</div>`;
   // rank-change arrows in the rankings lists
-  const keys = ["kBat", "kBowl", "kAll", "kImp"];
+  const keys = ["kBat", "kBowl", "kAll", "kFld", "kImp"];
   document.querySelectorAll("#rankings .rank-col").forEach((col, ci) => col.querySelectorAll(".rank-list a").forEach(a => {
     const id = BySlug.get(a.getAttribute("href").slice(1)) ?? +(a.getAttribute("href").match(/player-(\d+)/) || [])[1], d = MOVES.get(id + "|" + keys[ci]);
     if (d === undefined || d === 0 || a.querySelector(".mv")) return;
     const e = WEEK.ranked.find(y => y.id === id), bat = e && e.b ? `${e.r} off ${e.b}` : "", bowl = e && e.bb ? `${e.w}/${e.rc}` : "";
-    const why = !e ? "did not play this week" : keys[ci] === "kImp" ? `${ptsN(e.pts)} points this week` : keys[ci] === "kBat" ? (bat ? `${bat} this week` : "did not bat this week") : keys[ci] === "kBowl" ? (bowl ? `${bowl} this week` : "did not bowl this week") : [bat, bowl].filter(Boolean).join(" and ") + " this week";
+    const why = !e ? "did not play this week" : keys[ci] === "kImp" ? `${ptsN(e.pts)} points this week` : keys[ci] === "kFld" ? `${e.c} catch${e.c === 1 ? "" : "es"}, ${e.ro} run out${e.ro === 1 ? "" : "s"}${e.dr ? `, ${e.dr} dropped` : ""} this week` : keys[ci] === "kBat" ? (bat ? `${bat} this week` : "did not bat this week") : keys[ci] === "kBowl" ? (bowl ? `${bowl} this week` : "did not bowl this week") : [bat, bowl].filter(Boolean).join(" and ") + " this week";
     a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week: ${why}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`);
-    if (d !== "new") a.querySelector(".rk-who")?.insertAdjacentHTML("beforeend", `<small class="mv-why ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} after ${esc(why)}</small>`); }));
+    if (d !== "new") a.querySelector(".rk-who")?.insertAdjacentHTML("beforeend", `<small class="mv-why ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} ${e ? `after ${esc(why)}` : "without playing this week"}</small>`); }));
 }
 
 /* ---------------- weekly awards + records broken ---------------- */
@@ -918,7 +919,7 @@ function rankHistory() {
   RHIST = weeks.map(W => { seen.push(...W.WM); return { W, ...ratingsFrom([...seen]) }; });
   return RHIST;
 }
-const RK_LABEL = { rAll: "All-rounder", rBat: "Batting", rBowl: "Bowling" };
+const RK_LABEL = { rAll: "All-rounder", rBat: "Batting", rBowl: "Bowling", rFld: "Fielding" };
 function rankRows(kind) {
   const H = rankHistory(), now = H.at(-1), prev = H.at(-2);
   if (!now) return [];
@@ -952,7 +953,7 @@ function renderRankings() {
       <div class="sh-stats">${riser && riser.season > 0 ? `<div><b>▲${riser.season}</b><span>season's biggest climb · ${esc(pname(riser.id))}, #${riser.start} to #${riser.rank} ${RK_LABEL[riser.k].toLowerCase()}</span></div>` : ""}${up && up.delta > 0 ? `<div><b>+${up.delta}</b><span>biggest climb · ${esc(pname(up.id))}, ${RK_LABEL[up.k].toLowerCase()}</span></div>` : ""}${down && down.delta < 0 ? `<div><b>${down.delta}</b><span>biggest drop · ${esc(pname(down.id))}, ${RK_LABEL[down.k].toLowerCase()}</span></div>` : ""}${["rBat", "rBowl"].map(k => no1(k) ? `<div><b>${no1(k).rating}</b><span>No. 1 ${RK_LABEL[k].toLowerCase()} · ${esc(pname(no1(k).id))}</span></div>` : "").join("")}<div><b>${H.length}</b><span>weeks rated</span></div></div></div>
     <div class="sh-stars">${ones.map(({ k, x }) => `<a class="sh-star ${x.p.tm.key}" href="#rankboard" data-rk="${k}"><span class="sh-ph">${x.p.photo ? `<img src="${x.p.photo}" alt="" loading="lazy">` : ""}</span><small>No. ${x.rank} · All-rounder</small><b>${esc(pname(x.id))}</b><em>${x.rating} <i>points ${x.move === "new" ? "" : x.move > 0 ? "▲" + x.move : x.move < 0 ? "▼" + -x.move : ""}</i></em></a>`).join("")}</div></div>`;
   hero.querySelectorAll("[data-rk]").forEach(a => a.addEventListener("click", () => { RK.kind = a.dataset.rk; drawBoard(); }));
-  tabs.innerHTML = ["rAll", "rBat", "rBowl"].map(k => `<button type="button" role="tab" data-k="${k}">${RK_LABEL[k]}</button>`).join("");
+  tabs.innerHTML = ["rAll", "rBat", "rBowl", "rFld"].map(k => `<button type="button" role="tab" data-k="${k}">${RK_LABEL[k]}</button>`).join("");
   tabs.onclick = ev => { const b = ev.target.closest("[data-k]"); if (!b) return; RK.kind = b.dataset.k; try { localStorage.setItem("bdc-rk", RK.kind); } catch (x) {} drawBoard(); };
   drawBoard();
 }
@@ -984,14 +985,22 @@ function rankHow(k, top) {
     <p class="rk-f"><b>batting rating</b> × <b>bowling rating</b> ÷ 1,000</p>
     <ul><li>Multiplying means a player needs both: a great batter who doesn't bowl rates 0.</li>
       <li>Needs a batting and a bowling rating.</li></ul></div>`;
+  const fldHow = `<div class="rk-how-c"><h4>Fielding rating</h4>
+    <p class="rk-f"><b>dismissals per match</b> × <b>catch success</b> × 700 × <b>experience</b></p>
+    <ul><li><b>Dismissals per match</b> is catches plus run outs, per match played.</li>
+      <li><b>Catch success</b> is catches out of chances (catches + drops). Under 5 chances counts as 75%.</li>
+      <li><b>Experience</b> is matches ÷ 10, up to 1.</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
+      <li>Needs 5 matches to be rated. Highest possible rating is 999.</li></ul></div>`;
   let ex = "";
   if (p) {
+    if (k === "rFld" && p.fldR) { const f = p.fldR; ex = `${esc(pname(p.id))}, recency-weighted: ${r1(f.c + f.ro)} dismissals in ${r1(f.wm)} matches → <b>${f.dpm.toFixed(2)}</b> a match; held <b>${Math.round(f.suc * 100)}%</b> (${f.nc} of ${f.nc + f.nd} chances); experience ${Math.min(f.m, 10)}/10 matches = <b>${r1(f.exp)}</b>. ${f.dpm.toFixed(2)} × ${f.suc.toFixed(2)} × 700 × ${r1(f.exp)} = <b>${n0(f.r)}</b>.`; }
     if (k === "rBat") { const x = bat(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.B.r)} runs, ${r1(x.outs)} outs, ${r1(x.B.inns)} innings → average (${r1(x.a1)} + ${r1(x.a2)}) ÷ 2 = <b>${r1(x.avg)}</b>; strike rate <b>${r1(x.B.sr)}</b>; experience ${Math.min(x.n, 15)}/15 innings = <b>${r1(x.exp)}</b>. ${r1(x.avg)} × ${r1(x.B.sr)} ÷ 100 × 6 × ${r1(x.exp)} = <b>${n0(Math.min(999, x.raw))}</b>.`; }
     if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.W.w)} wickets in ${r1(x.W.b / 6)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
     if (k === "rAll") ex = `${esc(pname(p.id))}: batting ${p.rBat} × bowling ${p.rBowl} ÷ 1,000 = <b>${p.rAll}</b>.`;
   }
   return `<div class="rk-how"><h3 class="xr-h">How it's calculated</h3>
-    <div class="rk-how-g">${k === "rAll" ? allHow + batHow + bowlHow : k === "rBat" ? batHow : bowlHow}</div>
+    <div class="rk-how-g">${k === "rAll" ? allHow + batHow + bowlHow : k === "rBat" ? batHow : k === "rFld" ? fldHow : bowlHow}</div>
     ${ex ? `<p class="rk-ex"><span>Worked example, No. 1</span>${ex}</p>` : ""}
     <ul class="rk-key"><li><b>#</b> rank now · <b>▲▼</b> places moved since last week · <b>This week</b> change in rating points since last week</li>
       <li><b>Position by week</b> place after each of the last six issues (green a climb, red a drop, solid for 2+ places) · <b>Season</b> places moved since first ranked</li>
@@ -1001,7 +1010,7 @@ function rankHow(k, top) {
 function drawBoard() {
   const body = $("#rankBoardBody"), k = RK.kind, rows = rankRows(k), H = rankHistory();
   $("#rbTabs").querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k));
-  const sub = x => k === "rAll" ? `Bat ${H.at(-1).val.get(x.id).rBat} · Bowl ${H.at(-1).val.get(x.id).rBowl}` : k === "rBat" ? `${x.p.bat.r} runs · avg ${r1(x.p.bat.avg)} · SR ${Math.round(x.p.bat.sr)}` : `${x.p.bowl.w} wkts · econ ${r1(x.p.bowl.econ)}`;
+  const sub = x => k === "rAll" ? `Bat ${H.at(-1).val.get(x.id).rBat} · Bowl ${H.at(-1).val.get(x.id).rBowl}` : k === "rBat" ? `${x.p.bat.r} runs · avg ${r1(x.p.bat.avg)} · SR ${Math.round(x.p.bat.sr)}` : k === "rFld" ? `${x.p.fld.c} ct · ${x.p.fld.ro} ro · ${x.p.fld.drop} drops` : `${x.p.bowl.w} wkts · econ ${r1(x.p.bowl.econ)}`;
   const weeks = H.map(s => s.W);
   const recent = 6, path = x => `<span class="rb-path">${x.ranks.slice(-recent).map((r, i, a) => { const prev = i ? a[i - 1] : x.ranks[x.ranks.length - recent - 1] ?? null, c = r && prev ? (r < prev ? "up" : r > prev ? "down" : "") : "", big = r && prev && Math.abs(prev - r) >= 2 ? " big" : "";
     return `<i class="${c}${big}" title="${r ? `#${r}` : "not ranked"} after issue ${weeks[weeks.length - a.length + i].issue}">${r || "·"}</i>`; }).join("")}</span>`;
@@ -1035,7 +1044,7 @@ function ratingTrend(p) {
       ${xy.length > 1 ? `<svg class="rt-svg" viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${RK_LABEL[k]} rating by week: ${series.join(", ")}"><path d="${path}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${xy.map((q, i) => `<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="${i === xy.length - 1 ? 4 : 2}" fill="currentColor"><title>Issue ${H[pts[i][0]].W.issue}: ${pts[i][1]}</title></circle>`).join("")}</svg>
       <p class="rt-axis"><span>Issue ${H[pts[0][0]].W.issue}</span><span>Issue ${H.at(-1).W.issue}</span></p>` : ""}</div>`;
   };
-  return `<h2 class="sec-t">Rating trend</h2><div class="rt-grid">${["rBat", "rBowl", "rAll"].map(card).join("")}</div>
+  return `<h2 class="sec-t">Rating trend</h2><div class="rt-grid">${["rBat", "rBowl", "rAll", "rFld"].map(card).join("")}</div>
     <p class="rank-note" style="margin-top:8px">Ratings rebuilt after every week of the season. ▲▼ are places moved since last week. <a href="#rankings">Full rankings →</a></p>`;
 }
 

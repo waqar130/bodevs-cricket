@@ -592,7 +592,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 
 /* rankings */
 .rankings{display:grid;gap:36px;margin-bottom:14px}
-@media(min-width:700px){.rankings{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}}@media(min-width:1150px){.rankings{grid-template-columns:repeat(4,minmax(0,1fr));gap:26px}}.rankings .rk-recency{grid-column:1/-1;margin-top:-10px}
+@media(min-width:700px){.rankings{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}}@media(min-width:1050px){.rankings{grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}}.rankings .rk-recency{grid-column:1/-1;margin-top:-10px}
 .rankings>div{min-width:0}
 .rank-list{list-style:none}
 .rank-list a{display:grid;grid-template-columns:34px 44px 1fr 92px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule);text-decoration:none}
@@ -1372,8 +1372,23 @@ function assignTitles(){
   free().forEach(p=>give(p,"New Joiner, Awaiting Debut","First match pending. The scorecard is ready."));
 }
 // Player ratings (international-rankings style, 0–1000). Batting: blended average x strike rate. Bowling: wickets per over x league RR / economy.
+// Fielding rating (0-999): dismissals (catches + run outs) per match x catch success x 700 x experience.
+// Recent matches count more, like the other ratings. Catch success is catches out of chances (catches + drops); under 5 chances counts as 75%.
+// Needs 5 matches; full weight from 10.
+function fldRatings(ms){
+  const ord=[...ms].sort((a,b)=>a.date-b.date||a.id-b.id),age=new Map(ord.map((m,i)=>[m.id,ord.length-1-i])),wt=m=>Math.pow(.5,(age.get(m.id)||0)/8);
+  const g=new Map(),e=id=>{if(!g.has(id))g.set(id,{m:0,wm:0,c:0,ro:0,nc:0,nd:0,nro:0});return g.get(id)};
+  ms.forEach(mm=>{const w=wt(mm),ids=new Set();mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>ids.add(x.id));sc.bowling.forEach(x=>ids.add(x.id));const fid=x=>x.id||byName.get(x.name);
+    (sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).c+=x.count*w;e(i).nc+=x.count}});
+    (sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).ro+=(x.count||1)*w;e(i).nro+=x.count||1}});
+    (sc.fielding?.drops||[]).forEach(x=>{const i=fid(x);if(i)e(i).nd+=x.count||1})});
+    ids.forEach(i=>{e(i).m++;e(i).wm+=w})});
+  const out=new Map();g.forEach((a,id)=>{const dpm=a.wm?(a.c+a.ro)/a.wm:0,suc=a.nc+a.nd>=5?a.nc/(a.nc+a.nd):.75,exp=Math.min(1,a.m/10);
+    out.set(id,{r:a.m>=5?Math.min(999,Math.round(dpm*suc*700*exp)):0,dpm,suc,exp,m:a.m,nc:a.nc,nd:a.nd,nro:a.nro,c:a.c,ro:a.ro,wm:a.wm})});
+  return out;
+}
 function rateAll(){
-  const ps=[...P.values()];
+  const ps=[...P.values()],FLD=fldRatings(M);
   // recency: a match counts half as much for every 8 matches played since, so recent form moves the ratings.
   // Qualifying (3 innings, 6 overs) and the confidence ramp still use real counts.
   const order=[...M].sort((a,b)=>a.date-b.date||a.id-b.id),age=new Map(order.map((m,i)=>[m.id,order.length-1-i])),wt=m=>Math.pow(.5,(age.get(m.id)||0)/8);
@@ -1384,8 +1399,9 @@ function rateAll(){
     p.rBowl=nB>=36&&econ?Math.min(999,Math.round(bw/(bb/6)*10*(SEASON_RR/econ)*230*Math.min(1,nB/180))):0;
     p.rAll=Math.round(p.rBat*p.rBowl/1000);
     // impact: average weekly MVP points over the weeks he played (3 weeks or more)
+    const fr=FLD.get(p.id);p.rFld=fr?fr.r:0;p.fldR=fr;
     const wk=WEEKS.map(W=>W.ranked.find(e=>e.id===p.id)).filter(Boolean);p.impW=wk.length;p.rImp=wk.length>=3?Math.round(wk.reduce((s,e)=>s+e.pts,0)/wk.length):0;});
-  [["rBat","kBat"],["rBowl","kBowl"],["rAll","kAll"],["rImp","kImp"]].forEach(([r,k])=>{ps.forEach(p=>p[k]=0);ps.filter(p=>p[r]>0).sort((a,b)=>b[r]-a[r]).forEach((p,i)=>p[k]=i+1)});
+  [["rBat","kBat"],["rBowl","kBowl"],["rAll","kAll"],["rFld","kFld"],["rImp","kImp"]].forEach(([r,k])=>{ps.forEach(p=>p[k]=0);ps.filter(p=>p[r]>0).sort((a,b)=>b[r]-a[r]).forEach((p,i)=>p[k]=i+1)});
 }
 let SEASON_RR=0;const teamWins=k=>M.filter(m=>m.win?.key===k).length;
 const short=id=>P.get(id)?.name||"?";
@@ -1594,8 +1610,9 @@ function render(){
   $("#rankings").innerHTML=rankCol("Batting","rBat","kBat",p=>`Avg ${nz(p.bat.avg)} · SR ${Math.round(p.bat.sr)||"–"} · ${r1(pm(p.bat.s,p))} sixes/m`)
     +rankCol("Bowling","rBowl","kBowl",p=>`${pm(p.bowl.w,p).toFixed(2)} wkts/m · econ ${nz(p.bowl.econ)} · ${p.bowl.b?Math.round(p.bowl.dots/p.bowl.b*100):0}% dots`)
     +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl} · ${r1(pm(p.bat.r,p))} runs, ${pm(p.bowl.w,p).toFixed(1)} wkts/m`)
+    +rankCol("Fielding","rFld","kFld",p=>{const f=p.fldR;return f?`${r1((f.nc+f.nro)/Math.max(1,f.m))} ct+ro/m · ${f.nc+f.nd?Math.round(f.nc/(f.nc+f.nd)*100):"–"}% held · ${f.nd} drop${f.nd===1?"":"s"}`:""})
     +rankCol("Impact","rImp","kImp",p=>`MVP points a week · ${p.impW} weeks · ${p.mvpN} MVP · ${p.pomN} MOM`)
-    +`<p class="rank-note rk-recency">Batting, bowling and all-rounder ratings weight recent matches more: a match counts half as much for every 8 matches played since. Impact is a player's average MVP points a week, over the weeks he played (3 or more).</p>`;
+    +`<p class="rank-note rk-recency">Batting, bowling and all-rounder ratings weight recent matches more: a match counts half as much for every 8 matches played since. Fielding is catches and run outs per match times the share of chances held (recent matches count more, 5 matches to qualify). Impact is a player's average MVP points a week, over the weeks he played (3 or more).</p>`;
 
   AWARDS=buildAwards();renderForm();renderMilestones();
   renderPicker();
