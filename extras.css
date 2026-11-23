@@ -1090,3 +1090,21 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
   #weekLines .wl-grid .coverline:nth-child(4n){border-right:1px solid var(--rule)}#weekLines .wl-grid .coverline:nth-child(2n){border-right:0}
   #weekLines .wl-grid .coverline:nth-child(4n+1){padding-left:16px}#weekLines .wl-grid .coverline:nth-child(2n+1){padding-left:0}}
 @media(max-width:520px){#weekLines .wl-grid{grid-template-columns:1fr}#weekLines .wl-grid .coverline{border-right:0!important;padding-left:0}}
+
+/* the MVP points key: three rows, small type, line icons */
+.race-key{margin:16px 0 8px;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink)}
+.race-key .rk-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0;padding:8px 0 6px}
+.race-key .rk-top .kicker{font-size:10.5px}.race-key .rk-note{font:500 10.5px var(--f-data);color:var(--muted);letter-spacing:.04em}
+.race-key .rk-row{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--rule);align-items:start}
+.race-key .rk-lab{margin:0;padding-top:2px;display:flex;align-items:center;gap:7px;font:800 15px/1 var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+.race-key .rk-lab i{width:10px;height:10px;flex:none}
+.race-key .rk-items{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px}
+.race-key .rk-items li{display:inline-flex;align-items:center;gap:5px;font:500 12.5px/1.2 var(--f-body);color:var(--ink);white-space:nowrap}
+.race-key .rk-ic{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--rule);color:var(--muted);background:var(--paper)}
+.race-key .rk-ic svg{width:13px;height:13px}
+.race-key .rk-items b{font:700 11px var(--f-data);margin-left:2px}
+.race-key .rk-items b.pos{color:#1a7a43}.race-key .rk-items b.neg{color:var(--red)}
+.race-key .rk-r{background:var(--ink)}.race-key .rk-w{background:var(--red)}.race-key .rk-c{background:#b9b3a6}
+@media(max-width:620px){.race-key .rk-row{grid-template-columns:1fr;gap:6px}.race-key .rk-items li{white-space:normal}.race-key .rk-note{display:none}}
+.race-key .rk-items li{text-transform:none;letter-spacing:0;font-family:var(--f-body)!important;font-weight:500}
+.race-key .rk-items b{text-transform:none}
