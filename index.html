@@ -1373,27 +1373,33 @@ function assignTitles(){
 }
 // Player ratings (international-rankings style, 0–1000). Batting: blended average x strike rate. Bowling: wickets per over x league RR / economy.
 // Fielding rating (0-999): dismissals (catches + run outs) per match x catch success x 700 x experience.
-// Recent matches count more, like the other ratings. Catch success is catches out of chances (catches + drops); under 5 chances counts as 75%.
+// Recent matches count more, like the other ratings (half weight every 12 of his own matches back). Catch success is catches out of chances (catches + drops); under 5 chances counts as 75%.
 // Needs 5 matches; full weight from 10.
+// recency, per player: a match counts half as much for every 12 of HIS OWN matches played since it.
+// ownWeights(ms) -> (id, matchId) -> weight
+const HALF=12;
+function ownWeights(ms){const seen=new Map();[...ms].sort((a,b)=>a.date-b.date||a.id-b.id).forEach(mm=>{const ids=new Set();mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>ids.add(x.id));sc.bowling.forEach(x=>ids.add(x.id));
+    (sc.fielding?.catches||[]).concat(sc.fielding?.runouts||[]).forEach(x=>{const i=x.id||byName.get(x.name);if(i)ids.add(i)})});ids.forEach(i=>{if(!seen.has(i))seen.set(i,[]);seen.get(i).push(mm.id)})});
+  const w=new Map();seen.forEach((list,id)=>list.forEach((mid,k)=>w.set(id+"|"+mid,Math.pow(.5,(list.length-1-k)/HALF))));return (id,mid)=>w.get(id+"|"+mid)??1}
 function fldRatings(ms){
-  const ord=[...ms].sort((a,b)=>a.date-b.date||a.id-b.id),age=new Map(ord.map((m,i)=>[m.id,ord.length-1-i])),wt=m=>Math.pow(.5,(age.get(m.id)||0)/8);
+  const OW=ownWeights(ms);
   const g=new Map(),e=id=>{if(!g.has(id))g.set(id,{m:0,wm:0,c:0,ro:0,nc:0,nd:0,nro:0});return g.get(id)};
-  ms.forEach(mm=>{const w=wt(mm),ids=new Set();mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>ids.add(x.id));sc.bowling.forEach(x=>ids.add(x.id));const fid=x=>x.id||byName.get(x.name);
-    (sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).c+=x.count*w;e(i).nc+=x.count}});
-    (sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).ro+=(x.count||1)*w;e(i).nro+=x.count||1}});
+  ms.forEach(mm=>{const ids=new Set();mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>ids.add(x.id));sc.bowling.forEach(x=>ids.add(x.id));const fid=x=>x.id||byName.get(x.name);
+    (sc.fielding?.catches||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).c+=x.count*OW(i,mm.id);e(i).nc+=x.count}});
+    (sc.fielding?.runouts||[]).forEach(x=>{const i=fid(x);if(i){ids.add(i);e(i).ro+=(x.count||1)*OW(i,mm.id);e(i).nro+=x.count||1}});
     (sc.fielding?.drops||[]).forEach(x=>{const i=fid(x);if(i)e(i).nd+=x.count||1})});
-    ids.forEach(i=>{e(i).m++;e(i).wm+=w})});
+    ids.forEach(i=>{e(i).m++;e(i).wm+=OW(i,mm.id)})});
   const out=new Map();g.forEach((a,id)=>{const dpm=a.wm?(a.c+a.ro)/a.wm:0,suc=a.nc+a.nd>=5?a.nc/(a.nc+a.nd):.75,exp=Math.min(1,a.m/10);
     out.set(id,{r:a.m>=5?Math.min(999,Math.round(dpm*suc*700*exp)):0,dpm,suc,exp,m:a.m,nc:a.nc,nd:a.nd,nro:a.nro,c:a.c,ro:a.ro,wm:a.wm})});
   return out;
 }
 function rateAll(){
   const ps=[...P.values()],FLD=fldRatings(M);
-  // recency: a match counts half as much for every 8 matches played since, so recent form moves the ratings.
+  // recency: a match counts half as much for every 12 of the player's own matches since, so recent form moves the ratings
+  // and missing a week costs nothing.
   // Qualifying (3 innings, 6 overs) and the confidence ramp still use real counts.
-  const order=[...M].sort((a,b)=>a.date-b.date||a.id-b.id),age=new Map(order.map((m,i)=>[m.id,order.length-1-i])),wt=m=>Math.pow(.5,(age.get(m.id)||0)/8);
   ps.forEach(p=>{let inn=0,no=0,r=0,b=0,bb=0,br=0,bw=0,nInn=0,nB=0;
-    [...p.log.values()].forEach(l=>{const w=wt(l.mm);l.bat.forEach(x=>{inn+=w;nInn++;if(x.no)no+=w;r+=x.r*w;b+=x.b*w});l.bowl.forEach(x=>{bb+=x.b*w;br+=x.r*w;bw+=x.w*w;nB+=x.b})});
+    const L=[...p.log.values()].sort((a,b)=>a.mm.date-b.mm.date||a.mm.id-b.mm.id);L.forEach((l,i)=>{const w=Math.pow(.5,(L.length-1-i)/HALF);l.bat.forEach(x=>{inn+=w;nInn++;if(x.no)no+=w;r+=x.r*w;b+=x.b*w});l.bowl.forEach(x=>{bb+=x.b*w;br+=x.r*w;bw+=x.w*w;nB+=x.b})});
     const avg=inn?((inn-no>0?r/(inn-no):r)+r/inn)/2:0,sr=b?r/b*100:0,econ=bb?br/bb*6:0;
     p.rBat=nInn>=3?Math.min(999,Math.round(avg*(sr/100)*6*Math.min(1,nInn/15))):0;
     p.rBowl=nB>=36&&econ?Math.min(999,Math.round(bw/(bb/6)*10*(SEASON_RR/econ)*230*Math.min(1,nB/180))):0;
@@ -1612,7 +1618,7 @@ function render(){
     +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl} · ${r1(pm(p.bat.r,p))} runs, ${pm(p.bowl.w,p).toFixed(1)} wkts/m`)
     +rankCol("Fielding","rFld","kFld",p=>{const f=p.fldR;return f?`${r1((f.nc+f.nro)/Math.max(1,f.m))} ct+ro/m · ${f.nc+f.nd?Math.round(f.nc/(f.nc+f.nd)*100):"–"}% held · ${f.nd} drop${f.nd===1?"":"s"}`:""})
     +rankCol("Impact","rImp","kImp",p=>`MVP points a week · ${p.impW} weeks · ${p.mvpN} MVP · ${p.pomN} MOM`)
-    +`<p class="rank-note rk-recency">Batting, bowling and all-rounder ratings weight recent matches more: a match counts half as much for every 8 matches played since. Fielding is catches and run outs per match times the share of chances held (recent matches count more, 5 matches to qualify). Impact is a player's average MVP points a week, over the weeks he played (3 or more).</p>`;
+    +`<p class="rank-note rk-recency">Batting, bowling, all-rounder and fielding ratings weight a player's recent matches more: each match counts half as much for every 12 of his own matches since, so missing a week costs nothing. Fielding is catches and run outs per match times the share of chances held (5 matches to qualify). Impact is a player's average MVP points a week, over the weeks he played (3 or more).</p>`;
 
   AWARDS=buildAwards();renderForm();renderMilestones();
   renderPicker();

@@ -400,11 +400,11 @@ function markEmpty(id, empty) {
 function ranksBefore(skip) { return ratingsFrom(M.filter(m => !skip.has(m.id))).rk; }
 function ratingsFrom(ms) {
   const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0, n: 0, nb: 0 }); return g.get(id); };
-  const ord = [...ms].sort((a, b) => a.date - b.date || a.id - b.id), age = new Map(ord.map((m, i) => [m.id, ord.length - 1 - i])), wt = m => Math.pow(0.5, (age.get(m.id) || 0) / 8);
+  const OW = ownWeights(ms);
   let tr = 0, tb = 0;
   ms.forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
-    const w = wt(mm); mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id); a.inns += w; a.n++; a.r += x.runs * w; a.b += x.balls * w; if (!x.out) a.no += w; });
-      sc.bowling.forEach(x => { const a = e(x.id), bb = balls(x.overs); a.wb += bb * w; a.nb += bb; a.wr += x.runs * w; a.w += x.wickets * w; }); }); });
+    mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id), w = OW(x.id, mm.id); a.inns += w; a.n++; a.r += x.runs * w; a.b += x.balls * w; if (!x.out) a.no += w; });
+      sc.bowling.forEach(x => { const a = e(x.id), w = OW(x.id, mm.id), bb = balls(x.overs); a.wb += bb * w; a.nb += bb; a.wr += x.runs * w; a.w += x.wickets * w; }); }); });
   const RR = tb ? tr / tb * 6 : 0, out = new Map();
   g.forEach(a => { const avg = a.inns ? ((a.inns - a.no ? a.r / (a.inns - a.no) : a.r) + a.r / a.inns) / 2 : 0, sr = a.b ? a.r / a.b * 100 : 0;
     const rBat = a.n >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.n / 15))) : 0;
@@ -960,9 +960,8 @@ function renderRankings() {
 // how each rating is worked out, with the No. 1's own numbers as a worked example (same formula as rateAll in index.html)
 function rankHow(k, top) {
   const rr = typeof SEASON_RR !== "undefined" ? SEASON_RR : 0, p = top?.p, n0 = v => Math.round(v).toLocaleString();
-  // recency-weighted totals, exactly as the rating uses them: a match counts half as much for every 8 matches played since
-  const ord = [...M].sort((a, b) => a.date - b.date || a.id - b.id), age = new Map(ord.map((m, i) => [m.id, ord.length - 1 - i])), wt = m => Math.pow(0.5, (age.get(m.id) || 0) / 8);
-  const agg = p => { const a = { inn: 0, no: 0, r: 0, b: 0, bb: 0, br: 0, bw: 0, n: 0, nb: 0 }; [...p.log.values()].forEach(l => { const w = wt(l.mm); l.bat.forEach(z => { a.inn += w; a.n++; if (z.no) a.no += w; a.r += z.r * w; a.b += z.b * w; }); l.bowl.forEach(z => { a.bb += z.b * w; a.nb += z.b; a.br += z.r * w; a.bw += z.w * w; }); }); return a; };
+  // recency-weighted totals, exactly as the rating uses them: a match counts half as much for every 12 of his own matches since
+  const agg = p => { const a = { inn: 0, no: 0, r: 0, b: 0, bb: 0, br: 0, bw: 0, n: 0, nb: 0 }, L = [...p.log.values()].sort((u, v) => u.mm.date - v.mm.date || u.mm.id - v.mm.id); L.forEach((l, i) => { const w = Math.pow(0.5, (L.length - 1 - i) / HALF); l.bat.forEach(z => { a.inn += w; a.n++; if (z.no) a.no += w; a.r += z.r * w; a.b += z.b * w; }); l.bowl.forEach(z => { a.bb += z.b * w; a.nb += z.b; a.br += z.r * w; a.bw += z.w * w; }); }); return a; };
   const bat = p => { const a = agg(p), outs = a.inn - a.no, a1 = outs > 0 ? a.r / outs : a.r, a2 = a.r / a.inn, avg = (a1 + a2) / 2, sr = a.r / a.b * 100, exp = Math.min(1, a.n / 15);
     return { B: { r: a.r, inns: a.inn, sr }, n: a.n, outs, a1, a2, avg, exp, raw: avg * (sr / 100) * 6 * exp }; };
   const bowl = p => { const a = agg(p), econ = a.br / a.bb * 6, wpo = a.bw / (a.bb / 6), exp = Math.min(1, a.nb / 180);
@@ -972,14 +971,14 @@ function rankHow(k, top) {
     <ul><li><b>Average</b> is the mean of two averages, so not-outs don't flatter it: runs per dismissal, and runs per innings.</li>
       <li><b>Strike rate</b> is runs per 100 balls.</li>
       <li><b>Experience</b> is innings ÷ 15, up to 1. Full weight from 15 innings.</li>
-      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 12 of his own matches since, so missing a week costs nothing.</li>
       <li>Needs 3 innings to be rated. Highest possible rating is 999.</li></ul></div>`;
   const bowlHow = `<div class="rk-how-c"><h4>Bowling rating</h4>
     <p class="rk-f"><b>wickets per over</b> × 10 × (<b>league run rate</b> ÷ <b>economy</b>) × 230 × <b>experience</b></p>
     <ul><li><b>Wickets per over</b> is wickets ÷ overs bowled.</li>
       <li><b>League run rate</b> is runs per over across every innings this season, now <b>${r1(rr)}</b>. Conceding less than that lifts the rating, more lowers it.</li>
       <li><b>Experience</b> is overs ÷ 30, up to 1. Full weight from 30 overs (180 balls).</li>
-      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 12 of his own matches since, so missing a week costs nothing.</li>
       <li>Needs 6 overs to be rated. Highest possible rating is 999.</li></ul></div>`;
   const allHow = `<div class="rk-how-c"><h4>All-rounder rating</h4>
     <p class="rk-f"><b>batting rating</b> × <b>bowling rating</b> ÷ 1,000</p>
@@ -990,7 +989,7 @@ function rankHow(k, top) {
     <ul><li><b>Dismissals per match</b> is catches plus run outs, per match played.</li>
       <li><b>Catch success</b> is catches out of chances (catches + drops). Under 5 chances counts as 75%.</li>
       <li><b>Experience</b> is matches ÷ 10, up to 1.</li>
-      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 12 of his own matches since, so missing a week costs nothing.</li>
       <li>Needs 5 matches to be rated. Highest possible rating is 999.</li></ul></div>`;
   let ex = "";
   if (p) {
