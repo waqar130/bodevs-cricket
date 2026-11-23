@@ -1108,3 +1108,6 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 @media(max-width:620px){.race-key .rk-row{grid-template-columns:1fr;gap:6px}.race-key .rk-items li{white-space:normal}.race-key .rk-note{display:none}}
 .race-key .rk-items li{text-transform:none;letter-spacing:0;font-family:var(--f-body)!important;font-weight:500}
 .race-key .rk-items b{text-transform:none}
+
+/* race: the full-card chip */
+.race-sum .rs.all{border-style:dashed}.race-sum .rs.all b{margin-left:2px}
