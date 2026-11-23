@@ -1276,7 +1276,7 @@ function model(){
       if(sc.batting_team===l.team&&!sc.batting.some(x=>x.id===p.id))B.dnb++;
       if(sc.bowling_team===l.team){if(sc.bowling.some(x=>x.id===p.id))W.inns++;else W.dnb++}}));});
 
-  // player of the match: the weekly MVP points, worked out for this match alone. Everyone within 25 points of the best shares it,
+  // player of the match: the weekly MVP points, worked out for this match alone. Everyone within 20 points of the best shares it,
   // and Scorenama's own Player of the match always does too (marked snPom)
   M.forEach(mm=>{const t=new Map();const g=(id,name,tm)=>{if(!t.has(id))t.set(id,{id,name,tm,r:0,b:0,no:true,w:0,rc:0,bb:0,c:0,bat:[],bowl:[]});return t.get(id)};
     mm.s.scorecards.forEach(sc=>{sc.batting.forEach(x=>{const e=g(x.id,x.name,sc.batting_team);e.r+=x.runs;e.b+=x.balls;e.bat.push(`${x.runs}${x.out?"":"*"} (${x.balls})`)});
@@ -1286,7 +1286,7 @@ function model(){
     const snName=((mm.m.awards||[]).find(a=>/player of the match/i.test(a.title))||{}).player;
     const snId=snName==null?null:(byName.get(snName)??[...byName].find(([k])=>String(k).toLowerCase()===String(snName).toLowerCase())?.[1]);
     const line=e=>[e.bat.join(" & "),e.w||e.bowl.length?e.bowl.join(" & "):"",e.c?`${e.c} ct`:""].filter(Boolean).join(" · ");
-    mm.poms=best?ws.ranked.filter(e=>t.has(e.id)&&(best.pts-e.pts<=25||e.id===snId)).map(e=>({...t.get(e.id),line:line(t.get(e.id)),pts:e.pts,snPom:e.id===snId})):[];mm.pom=mm.poms[0]||null;
+    mm.poms=best?ws.ranked.filter(e=>t.has(e.id)&&(best.pts-e.pts<=20||e.id===snId)).map(e=>({...t.get(e.id),line:line(t.get(e.id)),pts:e.pts,snPom:e.id===snId})):[];mm.pom=mm.poms[0]||null;
     mm.perf=[...t.values()];});
 
   // slugs

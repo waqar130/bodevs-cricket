@@ -469,8 +469,8 @@ function renderWeekAwards() {
     rs && box("Rising star", rs.id, rs.pts, `points from outside the all-rounder top 5 · ${rs.r} runs, ${rs.w} wkt${rs.w === 1 ? "" : "s"}, ${rs.c} ct`),
     tw && box("Tough week", tw.id, tw.pts, "points. A quiet one: back stronger on Sunday."),
     recs.length ? `<a class="coverline" href="#records"><div><span class="kicker">Records this week</span><div class="cl-h">${recs.length} new</div></div><span class="cl-n">${recs.length}</span><span class="cl-p">${recs.slice(0, 3).map(q => `${esc(q.cat.t)}: ${esc(short(q.x.id))}`).join(" · ")}${recs.length > 3 ? " …" : ""}</span></a>` : ""].filter(Boolean);
-  host.querySelector(".wl-g.hon")?.remove();
-  if (boxes.length) host.insertAdjacentHTML("beforeend", `<section class="wl-g hon"><h3 class="wl-h">Honours</h3><div class="wl-grid">${boxes.join("")}</div></section>`);
+  host.querySelector(".wl-g.wl-hon")?.remove();
+  if (boxes.length) host.insertAdjacentHTML("beforeend", `<section class="wl-g wl-hon"><h3 class="wl-h">Honours</h3><div class="wl-grid">${boxes.join("")}</div></section>`);
 }
 
 /* ---------------- next Sunday ---------------- */
@@ -2382,7 +2382,7 @@ function matchLeaders(mm) {
       <div class="race-bar"><div class="race-fill" role="img" aria-label="batting ${e.parts.bat}, bowling ${e.parts.bowl}, fielding ${e.parts.fld}"><i class="rk-r" style="width:${pc(e.parts.bat)}"></i><i class="rk-w" style="width:${pc(e.parts.bowl)}"></i><i class="rk-c" style="width:${pc(e.parts.fld)}"></i></div>
         <p class="race-sum">${raceSum(e)}<button type="button" class="rs all" data-pts='${ptsAll(e, "Match points · " + pname(e.id))}'>Full card <b>= ${ptsN(e.pts)}</b></button></p></div>
       <span class="race-pts"><b>${ptsN(e.pts)}</b> pts</span></li>`; }).join("")}</ol>`;
-  return `<h3 class="tbl-title">Everyone's points this match</h3>${race}<p class="rank-note">Same points as the weekly MVP, for this match alone. Within 25 of the top shares man of the match, and Scorenama's Player of the match always does.</p>
+  return `<h3 class="tbl-title">Everyone's points this match</h3>${race}<p class="rank-note">Same points as the weekly MVP, for this match alone. Within 20 of the top shares man of the match, and Scorenama's Player of the match always does.</p>
   <h3 class="tbl-title" style="margin-top:26px">Leaders</h3><div class="coverlines ml-lines">
     ${group("Points", [top && box((mm.poms || []).length > 1 ? "Joint man of the match" : "Man of the match", ptsN(top.pts), top.id, `points on our MVP system, for this match`)].concat((mm.poms || []).filter(p => p.id !== top?.id).map(p => box("Joint man of the match", ptsN(E.find(e => e.id === p.id)?.pts || 0), p.id, p.line))))}
     ${group("Batting", [bat && box("Best batter", bat.r, bat.id, `runs off ${bat.b} balls${hi && hi.id === bat.id && hi.no ? ", not out" : ""}`), six && box("Most sixes", six.s, six.id, `sixes · ${six.r} off ${six.b}`),
