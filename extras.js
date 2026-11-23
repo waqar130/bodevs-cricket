@@ -840,27 +840,29 @@ function renderWeekLines() {
       box("Sixes this week", W.sixes, sixSplit || "Both sides", `${fours} fours · ${W.sixes + fours} boundaries in all`),
       box("The pace", bls ? r1(W.runs / bls * 6) : "–", `${W.runs.toLocaleString()} runs, ${W.wkts} wickets`, "runs an over this week")]),
     group("Batting", "bat", [
-      bat && box("Best batter", bat.r, nm(bat.id), `runs this week · best innings ${bi.r}${bi.no ? "*" : ""} off ${bi.b}`, purl(bat.id)),
-      who(six, "Most sixes", six?.s, `sixes this week · ${six?.r} runs off ${six?.b}`),
-      who(bsr, "Highest strike rate", bsr && Math.round(bsr.r / bsr.b * 100), `runs per 100 balls · ${bsr?.r} off ${bsr?.b} (15+ balls)`),
+      bat && box("Best batter", bat.r, nm(bat.id), `runs this week · best innings ${bi.r}${bi.no ? "*" : ""} off ${bi.b} balls`, purl(bat.id)),
+      who(six, "Most sixes", six?.s, `sixes he hit this week · ${six?.r} runs off ${six?.b} balls`),
+      who(bsr, "Highest strike rate", bsr && Math.round(bsr.r / bsr.b * 100), `runs per 100 balls · ${bsr?.r} runs off ${bsr?.b} balls (15+ balls)`),
       who(bav, "Best average", bav && r1(bav.r / bav.o), `runs per dismissal · ${bav?.r} runs, out ${bav?.o} time${pl(bav?.o)}`)]),
     group("Bowling", "bowl", [
-      bowl && box("Best bowler", bowl.w, nm(bowl.id), `wickets this week · best ${bs.w}/${bs.r} in ${bs.ov} overs`, purl(bowl.id)),
+      bowl && box("Best bowler", bowl.w, nm(bowl.id), `wickets this week · best spell ${bs.w} for ${bs.r} in ${bs.ov} overs`, purl(bowl.id)),
       who(econ, "Best economy", econ && r1(econ.rc / econ.bb * 6), `runs an over this week · ${econ?.rc} off ${econ && ovs(econ.bb)} overs (2+ overs)`),
       who(wsr, "Best strike rate", wsr && r1(wsr.bb / wsr.w), `balls per wicket · ${wsr?.w} wicket${pl(wsr?.w)} in ${wsr && ovs(wsr.bb)} overs`),
       who(wav, "Best average", wav && r1(wav.rc / wav.w), `runs per wicket · ${wav?.w} for ${wav?.rc}`)]),
     group("Spells &amp; fielding", "spell", [
-      topSpell && box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `in ${topSpell.ov} overs`, purl(topSpell.id)),
-      eco && box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over · ${eco.w}/${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)),
-      who(dot, "Dot-ball machine", dot && `${Math.round(dot.db / dot.bb * 100)}%`, `dot balls bowled · ${dot?.db} of ${dot?.bb} (2+ overs)`),
+      topSpell && box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `${topSpell.w} wicket${pl(topSpell.w)} for ${topSpell.r} runs in ${topSpell.ov} overs`, purl(topSpell.id)),
+      eco && box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over in one spell · ${eco.w} for ${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)),
+      who(dot, "Dot-ball machine", dot && `${Math.round(dot.db / dot.bb * 100)}%`, `of his balls were dots · ${dot?.db} of ${dot?.bb} (2+ overs)`),
       who(fld, "Best fielder", fld && fld.c + fld.ro, `${fld?.c} catch${fld?.c === 1 ? "" : "es"} · ${fld?.ro} run out${pl(fld?.ro)}`)]),
     // the MVP bonus moments: whoever did each most this week (only if someone did)
     group("Boundaries &amp; bonus moments", "bonus", [
       who(bnd, "Most boundaries", bnd && bnd.f + bnd.s, `${bnd?.s} six${bnd?.s === 1 ? "" : "es"} · ${bnd?.f} four${pl(bnd?.f)}`),
-      ...[["ss", "Sixes in a row", "sixes straight after a six (+7 each, plus the streak bonus for 3+ in a row)"], ["sad", "Six after two dots", "sixes straight after two dot balls (+1 each)"],
-        ["was", "Wicket after a six", "wickets straight after being hit for six (+5 each)"], ["md", "Maidens", "maiden overs (+10 each)"],
-        ["dbr", "The pressure builder", "dot balls bowled straight after a dot (+1 each)"]].map(([k, kick, sub]) => {
-        const x = best(E.filter(y => y[k]), (p, q) => q[k] - p[k] || q.pts - p.pts); return x ? box(kick, x[k], nm(x.id), sub, purl(x.id)) : ""; })]),
+      ...[["ss", "Back-to-back sixes", x => `times he hit a six straight after a six${x.stl >= 2 ? ` · longest run ${x.stl} sixes in a row` : ""}`],
+        ["sad", "Dots, then a six", x => `time${pl(x.sad)} he hit a six straight after two dot balls`],
+        ["was", "Wicket after a six", x => `time${pl(x.was)} he took a wicket the ball after being hit for six`],
+        ["md", "Maidens", x => `maiden over${pl(x.md)} bowled`],
+        ["dbr", "The pressure builder", x => `time${pl(x.dbr)} he bowled a dot straight after a dot`]].map(([k, kick, sub]) => {
+        const x = best(E.filter(y => y[k]), (p, q) => q[k] - p[k] || q.pts - p.pts); return x ? box(kick, x[k], nm(x.id), sub(x), purl(x.id)) : ""; })]),
   ].join("");
 }
 // the ticker: only the selected week

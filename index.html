@@ -1141,11 +1141,11 @@ const dotRuns=balls=>{let n=0,prev=false;(balls||[]).forEach(t=>{const d=isDot(t
 // bonus moments in the ball-by-ball: a six straight after two dots, a six straight after a six, a wicket straight after a six
 const isSix=t=>t&&t.kind==="six",isWkt=t=>t&&t.kind==="wicket";
 const streakBonus=n=>n>=6?10:n===5?5:n===4?3:n===3?1:0;
-const moments=balls=>{const b=balls||[];let sad=0,ss=0,was=0,st=0,run=0;b.forEach((t,i)=>{if(isSix(t)&&isDot(b[i-1])&&isDot(b[i-2]))sad++;if(isSix(t)&&isSix(b[i-1]))ss++;if(isWkt(t)&&isSix(b[i-1]))was++;if(isSix(t))run++;else{st+=streakBonus(run);run=0}});st+=streakBonus(run);return{sad,ss,was,st}};
+const moments=balls=>{const b=balls||[];let sad=0,ss=0,was=0,st=0,stc=0,stl=0,run=0;const end=()=>{st+=streakBonus(run);if(run>=3)stc++;stl=Math.max(stl,run);run=0};b.forEach((t,i)=>{if(isSix(t)&&isDot(b[i-1])&&isDot(b[i-2]))sad++;if(isSix(t)&&isSix(b[i-1]))ss++;if(isWkt(t)&&isSix(b[i-1]))was++;if(isSix(t))run++;else end()});end();return{sad,ss,was,st,stc,stl}};
 function weekStats(WM,issue){
   const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
   const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,st:0,css:0,cst:0,was:0,md:0,bc:0,bc2:0,kc:0,cb:0,mc:0,ds:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,st:0,css:0,cst:0,stc:0,stl:0,cstc:0,cstl:0,was:0,md:0,bc:0,bc2:0,kc:0,cb:0,mc:0,ds:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
   // "at": when he last added to his points, so equal totals go to whoever got there first
   const order=[...WM].sort((a,b)=>a.date-b.date||a.id-b.id),when=new Map(order.map((m,i)=>[m.id,i]));
   const scored=(id,key)=>{const e=ent(id);e.at=Math.max(e.at,key)};
@@ -1155,9 +1155,9 @@ function weekStats(WM,issue){
     const mcat=new Map();
     const tot={};mm.s.scorecards.forEach(sc=>{tot[sc.batting_team]=(tot[sc.batting_team]||0)+sc.runs;runs+=sc.runs;wkts+=sc.wickets;extras+=sc.extras?.total||0;
       if(!hiT||sc.runs>hiT.runs)hiT={team:sc.batting_team,runs:sc.runs,wk:sc.wickets,ov:sc.overs};
-      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;e.dfr+=dotRuns(x.timeline);{const q=moments(x.timeline);e.sad+=q.sad;e.ss+=q.ss;e.st+=q.st}
+      sc.batting.forEach(x=>{sixes+=x.sixes;add(x.id,sc.batting_team,"r",x.runs);if(x.runs)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.m.add(mm.id);e.r+=x.runs;e.b+=x.balls;e.s+=x.sixes;e.f+=x.fours;e.sh+=(x.ones||0)+(x.twos||0)+(x.threes||0);e.df+=x.dots||0;e.dfr+=dotRuns(x.timeline);{const q=moments(x.timeline);e.sad+=q.sad;e.ss+=q.ss;e.st+=q.st;e.stc+=q.stc;e.stl=Math.max(e.stl,q.stl)}
         if(!knock||x.runs>knock.r||(x.runs===knock.r&&x.balls<knock.b))knock={id:x.id,r:x.runs,b:x.balls,s:x.sixes,no:!x.out}});
-      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.dbr+=dotRuns((x.spell||[]).flatMap(o=>o.balls));{const q=moments((x.spell||[]).flatMap(o=>o.balls));e.was+=q.was;e.css+=q.ss;e.cst+=q.st}e.md+=x.maidens||0;e.ex+=(x.wides||0)+(x.noballs||0);e.h3+=Math.min(3,Math.max(0,x.wickets-1));e.m.add(mm.id);
+      sc.bowling.forEach(x=>{add(x.id,sc.bowling_team,"w",x.wickets);if(x.wickets)scored(x.id,mk+sc.innings_no);const e=ent(x.id);e.w+=x.wickets;e.rc+=x.runs;e.bb+=balls(x.overs);e.db+=x.dots||0;e.dbr+=dotRuns((x.spell||[]).flatMap(o=>o.balls));{const q=moments((x.spell||[]).flatMap(o=>o.balls));e.was+=q.was;e.css+=q.ss;e.cst+=q.st;e.cstc+=q.stc;e.cstl=Math.max(e.cstl,q.stl)}e.md+=x.maidens||0;e.ex+=(x.wides||0)+(x.noballs||0);e.h3+=Math.min(3,Math.max(0,x.wickets-1));e.m.add(mm.id);
         if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
       (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;mcat.set(x.id,(mcat.get(x.id)||0)+x.count);scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
       (sc.fielding?.runouts||[]).forEach(x=>{ent(x.id).ro+=x.count||1;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count||1)});
@@ -1728,13 +1728,20 @@ function renderMilestones(){
 // "Bat 102 runs +9 1-3s +6 fours +36 sixes −3 dots = 150 · Bowl …" (only the parts that apply)
 // the breakdown rows for a player's week: [symbol, symbol style, label, count, points each]
 function ptsGroups(x){
-  // [icon, tone, label, count, points each]
-  return [["r","Batting",x.parts.bat,[["bat","","Runs",x.r,1],["run","","Running runs bonus",Math.max(0,x.r-4*x.f-6*x.s),1],["four","","Fours bonus",x.f,4],["six","","Sixes bonus",x.s,6],["sixsix","hot","Six straight after a six (+7)",x.ss,1],["flame","hot","Six streak bonus (3+ in a row)",x.st||0,1],["sixdots","hot","Six after two dots",x.sad,1],["dot","bad","Dot balls faced",x.df,-1],["dots","bad","Dots in a row",x.dfr,-1]]],
-    ["w","Bowling",x.parts.bowl,[["stumps","","Wickets",x.w,20],["stumpsplus","hot","Spell bonus, 2nd–4th wicket",x.h3,10],["stumpssix","hot","Wicket straight after a six",x.was,5],["dot","","Dot balls",x.db,1],["dots","","Dots in a row",x.dbr,1],["over","hot","Maidens",x.md,10],["sixsix","bad","Six conceded straight after a six",x.css||0,-1],["flame","bad","Six streak conceded (3+ in a row)",x.cst||0,-1],["wide","bad","Wides and no-balls",x.ex,-1]]],
-    ["c","Fielding",x.parts.fld,[["hands","","Catches",x.c,20],["star","hot","Set batter caught (20+)",x.bc,10],["star","hot","Big fish caught (40+)",x.bc2,10],["glove","","Keeper catch",x.kc,5],["handsball","hot","Caught and bowled",x.cb,10],["handsplus","hot","Extra catch in a match",x.mc,5],["shield","hot","Safe hands (2+ catches, no drops)",x.c>=2&&!x.dr?1:0,10],["bolt","","Run outs",x.ro,25],["drop","bad","Dropped catches",x.dr,-5],["dropsix","bad","Dropped, then went for six",x.ds||0,-5]]]];
+  // [icon, tone, label, count, points each, unit (or {n: a note of its own})]
+  const streaks=(n,l,neg)=>({n:`${n} streak${n===1?"":"s"} of 3+ in a row · longest ${l} sixes · ${neg?"penalty 3 −1, 4 −3, 5 −5, 6 −10":"bonus 3 +1, 4 +3, 5 +5, 6 +10"}`});
+  return [["r","Batting",x.parts.bat,[["bat","","Runs",x.r,1,"runs"],["run","","Running runs bonus",Math.max(0,x.r-4*x.f-6*x.s),1,"runs from 1s, 2s and 3s"],["four","","Fours bonus",x.f,4,"fours"],["six","","Sixes bonus",x.s,6,"sixes"],
+      ["sixsix","hot","Back-to-back sixes",x.ss,1,"times a six followed a six"],["flame","hot","Six streaks",x.st||0,1,streaks(x.stc||0,x.stl||0)],["sixdots","hot","Six after two dots",x.sad,1,"times"],["dot","bad","Dot balls faced",x.df,-1,"dots"],["dots","bad","Dot straight after a dot",x.dfr,-1,"times"]]],
+    ["w","Bowling",x.parts.bowl,[["stumps","","Wickets",x.w,20,"wickets"],["stumpsplus","hot","Spell bonus",x.h3,10,"extra wickets (2nd to 4th in a spell)"],["stumpssix","hot","Wicket after a six",x.was,5,"times"],["dot","","Dot balls",x.db,1,"dots"],["dots","","Dot straight after a dot",x.dbr,1,"times"],["over","hot","Maidens",x.md,10,"maidens"],
+      ["sixsix","bad","Back-to-back sixes conceded",x.css||0,-1,"times a six followed a six"],["flame","bad","Six streaks conceded",x.cst||0,-1,streaks(x.cstc||0,x.cstl||0,true)],["wide","bad","Wides and no-balls",x.ex,-1,"extras"]]],
+    ["c","Fielding",x.parts.fld,[["hands","","Catches",x.c,20,"catches"],["star","hot","Set batter caught (20+)",x.bc,10,"catches"],["star","hot","Big fish caught (40+)",x.bc2,10,"catches"],["glove","","Keeper catches",x.kc,5,"catches"],["handsball","hot","Caught and bowled",x.cb,10,"catches"],["handsplus","hot","Multi-catch match",x.mc,5,"extra catches (2nd or later in a match)"],
+      ["shield","hot","Safe hands",x.c>=2&&!x.dr?1:0,10,{n:"2+ catches this week, no drops"}],["bolt","","Run outs",x.ro,25,"run outs"],["drop","bad","Dropped catches",x.dr,-5,"drops"],["dropsix","bad","Dropped, then hit for six",x.ds||0,-5,"times"]]]];
 }
 const ptsN=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t};
-const ptsRows=items=>items.filter(i=>i[3]).map(([sym,st,l,c,each])=>[sym,st,l,c,(each>0?"+":"−")+Math.abs(each),ptsN(c*each)]);
+// one of a thing reads "1 catch", not "1 catches"
+const ptsOne={runs:"run",fours:"four",sixes:"six",times:"time",dots:"dot",wickets:"wicket",maidens:"maiden",extras:"extra",catches:"catch",drops:"drop",run:"run"};
+const ptsUnit=(c,u)=>c===1?String(u||"").replace(/^[a-z]+/,w=>ptsOne[w]||w).replace(/^run outs/,"run out").replace(/^extra (wickets|catches)/,(m,w)=>"extra "+ptsOne[w]):u||"";
+const ptsRows=items=>items.filter(i=>i[3]).map(([sym,st,l,c,each,u])=>{const ea=(each>0?"+":"−")+Math.abs(each);return [sym,st,l,c,ea,ptsN(c*each),u&&typeof u==="object"?u.n:`${c} ${ptsUnit(c,u)} · ${ea} each`]});
 // all three parts in one card, with a heading row for each
 function ptsAll(x,title){
   const rows=[];ptsGroups(x).forEach(([cls,lab,tot,items])=>{const r=ptsRows(items);if(r.length){rows.push([cls,lab,ptsN(tot)]);rows.push(...r)}});
@@ -1780,8 +1787,8 @@ const picon=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
     pop.innerHTML=`<header class="pp-top"><div><span class="pp-k">${nm.length?kick:"Weekly points"}</span><span class="pp-n">${nm.length?nm.join(" · "):kick}</span></div><b class="pp-t">${d.tot}<small>pts</small></b></header>`
       +(heads.length>1&&pos?`<div class="pp-bar">${heads.map(r=>num(r[2])>0?`<i class="g-${r[0]}" style="flex:${num(r[2])}"></i>`:"").join("")}</div>`:"")
       +`<ul>${d.rows.map(r=>{if(r.length===3){grp=r[0];return `<li class="pp-g g-${r[0]}"><span>${r[1]}</span><b>${r[2]}</b></li>`}
-        const [sym,st,l,c,each,p]=r,neg=String(p).startsWith("−");
-        return `<li class="pp-r g-${grp} ${st}${neg?" bad":""}"><span class="pp-i">${picon(sym)}</span><span class="pp-l">${l}<small>${c} × ${each}</small></span><b>${neg?p:"+"+p}</b></li>`}).join("")}</ul>`;
+        const [sym,st,l,c,each,p,note]=r,neg=String(p).startsWith("−");
+        return `<li class="pp-r g-${grp} ${st}${neg?" bad":""}"><span class="pp-i">${picon(sym)}</span><span class="pp-l">${l}<small>${note||c+" × "+each}</small></span><b>${neg?p:"+"+p}</b></li>`}).join("")}</ul>`;
     pop.hidden=false;const r=btn.getBoundingClientRect(),w=pop.offsetWidth,hgt=pop.offsetHeight;
     let left=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8),top=r.top-hgt-10;if(top<70)top=r.bottom+10;
     pop.style.left=left+scrollX+"px";pop.style.top=top+scrollY+"px";open=btn};
