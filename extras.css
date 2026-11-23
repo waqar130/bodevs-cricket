@@ -1031,3 +1031,20 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 #weekLines .coverline{border-bottom:1px solid var(--rule)}
 #weekLines .cl-h{font-size:clamp(20px,2vw,28px)}
 #weekLines .cl-n{font-size:clamp(34px,3.4vw,48px)}
+
+/* MVP race: totals open a points card */
+.race-sum .rs{background:none;border:1px solid var(--rule);border-radius:999px;padding:3px 10px 3px 8px;cursor:pointer}
+.race-sum .rs:hover,.race-sum .rs:focus-visible{border-color:var(--ink);background:var(--paper)}
+.pts-pop{position:absolute;z-index:80;width:min(320px,calc(100vw - 16px));background:#141413;color:#f3efe6;padding:12px 14px 10px;box-shadow:0 14px 34px rgba(0,0,0,.35);border-top:4px solid #ffd23f}
+.pts-pop .pp-h{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;font:700 11px var(--f-data);letter-spacing:.12em;text-transform:uppercase;color:#ffd23f}
+.pts-pop .pp-h b{font:900 26px/1 var(--f-display);color:#fff;letter-spacing:0}.pts-pop .pp-h small{font:600 10px var(--f-data);color:#a9a49a}
+.pts-pop ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.pts-pop li{display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center}
+.pp-s{display:inline-flex;align-items:center;justify-content:center;height:26px;min-width:30px;padding:0 4px;border-radius:6px;font:800 12px var(--f-data);background:#2a2926;color:#fff}
+.pp-s.emo{font-size:17px;background:none}
+.pp-s.run{background:#3b3a36;font-size:10px}.pp-s.four{background:#1f5fbf}.pp-s.six{background:#d42a1f}.pp-s.six.hot{background:linear-gradient(135deg,#d42a1f,#ffb020)}
+.pp-s.dot{background:#555;color:#ddd;font-size:16px}.pp-s.dot.good{background:#1f8a4c;color:#fff}
+.pp-s.wkt{background:#d42a1f}.pp-s.mdn{background:#6a3fc1}.pp-s.xtra{background:#8a6d1f;font-size:11px}
+.pp-s.big{background:#ffd23f;color:#141413}.pp-s.keep{background:#2b7a99;font-size:11px}.pp-s.drop{background:#5b2320;color:#ff9b93}
+.pp-l{font:600 13px/1.25 var(--f-body)}.pp-l small{display:block;font:400 11px var(--f-data);color:#a9a49a}
+.pts-pop li b{font:800 16px var(--f-display)}.pts-pop li b.pos{color:#7ee0a2}.pts-pop li b.neg{color:#ff8a80}

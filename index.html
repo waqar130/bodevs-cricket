@@ -1144,7 +1144,7 @@ const moments=balls=>{const b=balls||[];let sad=0,ss=0,was=0;b.forEach((t,i)=>{i
 function weekStats(WM,issue){
   const ws=WM[0].ws,we=new Date(ws);we.setDate(we.getDate()+6);
   const pw=new Map(),tw={};let knock=null,spell=null,hiT=null,runs=0,sixes=0,wkts=0,extras=0;
-  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,was:0,md:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
+  const ent=id=>{if(!pw.has(id))pw.set(id,{id,r:0,b:0,s:0,f:0,sh:0,df:0,dfr:0,dbr:0,sad:0,ss:0,was:0,md:0,bc:0,kc:0,w:0,rc:0,bb:0,db:0,ex:0,h3:0,c:0,ro:0,dr:0,wb:0,at:0,m:new Set()});return pw.get(id)};
   // "at": when he last added to his points, so equal totals go to whoever got there first
   const order=[...WM].sort((a,b)=>a.date-b.date||a.id-b.id),when=new Map(order.map((m,i)=>[m.id,i]));
   const scored=(id,key)=>{const e=ent(id);e.at=Math.max(e.at,key)};
@@ -1159,7 +1159,10 @@ function weekStats(WM,issue){
         if(!spell||x.wickets>spell.w||(x.wickets===spell.w&&x.runs<spell.r))spell={id:x.id,w:x.wickets,r:x.runs,ov:x.overs}});
       (sc.fielding?.catches||[]).forEach(x=>{ent(x.id).c+=x.count;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count)});
       (sc.fielding?.runouts||[]).forEach(x=>{ent(x.id).ro+=x.count||1;scored(x.id,mk+sc.innings_no);add(x.id,sc.bowling_team,"f",x.count||1)});
-      (sc.fielding?.drops||[]).forEach(x=>{const id=x.id||byName.get(x.name);if(id)ent(id).dr+=x.count||1});});
+      (sc.fielding?.drops||[]).forEach(x=>{const id=x.id||byName.get(x.name);if(id)ent(id).dr+=x.count||1});
+      // who took each catch: a set batter (20+) is a big catch; a catch by the keeper counts extra too
+      sc.batting.forEach(x=>{const m=String(x.how||"").match(/^c (.+?) b (.+?)(?: ·|$)/);if(!m)return;const fid=byName.get(m[1]==="&"?m[2]:m[1]);if(!fid)return;
+        if(x.runs>=20)ent(fid).bc++;if(P.get(fid)?.keeper)ent(fid).kc++;});});
     // win bonus: on the winning side and played a part (10+ runs, a wicket, a catch or a run out)
     if(mm.win)did.forEach((d,id)=>{if(d.team===mm.win.name&&(d.r>=10||d.w>0||d.f>0)){ent(id).wb++;scored(id,mk+99)}});
     const names=Object.keys(tot);names.forEach(n=>{tw[n]=tw[n]||{w:0,l:0,for:0,against:0};tw[n].for+=tot[n];names.filter(o=>o!==n).forEach(o=>tw[n].against+=tot[o]);
@@ -1168,8 +1171,8 @@ function weekStats(WM,issue){
   // MVP points, in four parts. #1 MVP, #2 Impact Player, #3 Game Changer.
   // batting: runs, +1 for each 1-3, +2 a four, +3 a six (+1 more after two dots, +1 more after a six), -1 a dot ball faced, -1 more for each dot straight after a dot
   // bowling: 20 a wicket (+5 if straight after being hit for six), +10 for each 2nd, 3rd and 4th wicket in a spell, +1 a dot ball, +1 more for each dot straight after a dot, +10 a maiden, -1 a wide or no-ball
-  // fielding: 10 a catch or run out, -5 a dropped catch (wins no longer score)
-  const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s+e.sad+e.ss-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md,fld:10*(e.c+e.ro)-5*e.dr,win:0});
+  // fielding: 10 a catch (+5 if the batter had 20+, +5 for the keeper), 15 a run out, -5 a dropped catch (wins no longer score)
+  const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s+e.sad+e.ss-e.df-e.dfr,bowl:20*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md,fld:10*e.c+5*e.bc+5*e.kc+15*e.ro-5*e.dr,win:0});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld};
   // most points first; level on points, whoever got there first. Within 10 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
@@ -1380,7 +1383,7 @@ function render(){
       <dl class="race-legend">
         <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · +1 for a 1, 2 or 3 · +2 a four · +3 a six, +1 more for a six straight after two dots or after another six · −1 a dot ball, −1 more for each dot straight after a dot</dd></div>
         <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket, +5 more straight after being hit for six · +10 more for each 2nd, 3rd and 4th wicket in a spell · +1 a dot ball, +1 more for each dot straight after a dot · +10 a maiden · −1 a wide or no-ball</dd></div>
-        <div><dt><i class="rk-c"></i>Field</dt><dd>10 a catch or run out · −5 a dropped catch</dd></div>
+        <div><dt><i class="rk-c"></i>Field</dt><dd>10 a catch, +5 more if the batter had 20+, +5 more for the keeper · 15 a run out · −5 a dropped catch</dd></div>
       </dl>
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
@@ -1718,13 +1721,29 @@ function renderMilestones(){
 /* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
 // "Bat 102 runs +9 1-3s +6 fours +36 sixes −3 dots = 150 · Bowl …" (only the parts that apply)
 function raceSum(x){
-  const n=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t},tip=items=>items.filter(([v])=>v).map(([v,t])=>`${v<0?"−":"+"}${n(Math.abs(v))} ${t}`).join(", ");
-  const g=(cls,lab,tot,items)=>tot||items.some(([v])=>v)?`<span class="rs ${cls}" title="${tip(items)}"><i></i>${lab} <b>${n(tot)}</b></span>`:"";
-  return [g("r","Bat",x.parts.bat,[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[x.sad,"six after two dots"],[x.ss,"sixes in a row"],[-x.df,"dots"],[-x.dfr,"dots in a row"]]),
-    g("w","Bowl",x.parts.bowl,[[20*x.w,"wickets"],[x.db,"dots"],[x.dbr,"dots in a row"],[-x.ex,"extras"],[10*x.h3,"wicket bonus"],[5*x.was,"wicket after a six"],[10*x.md,"maidens"]]),
-    g("c","Field",x.parts.fld,[[10*x.c,"catches"],[10*x.ro,"run outs"],[-5*x.dr,"drops"]]),
-].filter(Boolean).join("");
+  const n=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t};
+  // [symbol, symbol style, label, count, points each, points]
+  const groups=[
+    ["r","Batting",x.parts.bat,[["👟","emo","Runs",x.r,1],["1·2·3","run","Running shots, 1 to 3",x.sh,1],["4","four","Fours",x.f,2],["6","six","Sixes",x.s,3],["6","six hot","Six after two dots",x.sad,1],["66","six hot","Sixes in a row",x.ss,1],["•","dot","Dot balls faced",x.df,-1],["••","dot","Dots in a row",x.dfr,-1]]],
+    ["w","Bowling",x.parts.bowl,[["W","wkt","Wickets",x.w,20],["W+","wkt","2nd, 3rd and 4th wicket in a spell",x.h3,10],["6→W","wkt","Wicket straight after a six",x.was,5],["•","dot good","Dot balls",x.db,1],["••","dot good","Dots in a row",x.dbr,1],["M","mdn","Maidens",x.md,10],["wd","xtra","Wides and no-balls",x.ex,-1]]],
+    ["c","Fielding",x.parts.fld,[["🧤","emo","Catches",x.c,10],["★","big","Big catch (batter on 20+)",x.bc,5],["WK","keep","Keeper catch",x.kc,5],["⚡","emo","Run outs",x.ro,15],["✗","drop","Dropped catches",x.dr,-5]]]];
+  return groups.filter(([,,tot,items])=>tot||items.some(i=>i[3])).map(([cls,lab,tot,items])=>{
+    const rows=items.filter(i=>i[3]).map(([sym,st,l,c,each])=>({sym,st,l,c,each,p:c*each}));
+    return `<button type="button" class="rs ${cls}" data-pts='${esc(JSON.stringify({t:lab,tot:n(tot),rows:rows.map(r=>[r.sym,r.st,r.l,r.c,(r.each>0?"+":"−")+Math.abs(r.each),n(r.p)])}))}'><i></i>${lab==="Batting"?"Bat":lab==="Bowling"?"Bowl":"Field"} <b>${n(tot)}</b></button>`;}).join("");
 }
+// one shared card: opens on hover or tap, closes on leave, tap outside or Escape
+(function(){let pop,open=null;
+  const close=()=>{if(pop){pop.hidden=true;open=null}};
+  const show=btn=>{const d=JSON.parse(btn.dataset.pts);if(!pop){pop=document.createElement("div");pop.className="pts-pop";pop.setAttribute("role","tooltip");document.body.appendChild(pop)}
+    pop.innerHTML=`<p class="pp-h">${d.t}<b>${d.tot}<small> pts</small></b></p><ul>${d.rows.map(([sym,st,l,c,each,p])=>`<li><span class="pp-s ${st}">${sym}</span><span class="pp-l">${l}<small>${c} × ${each}</small></span><b class="${String(p).startsWith("−")?"neg":"pos"}">${String(p).startsWith("−")?p:"+"+p}</b></li>`).join("")}</ul>`;
+    pop.hidden=false;const r=btn.getBoundingClientRect(),w=pop.offsetWidth,hgt=pop.offsetHeight;
+    let left=Math.min(Math.max(8,r.left+r.width/2-w/2),innerWidth-w-8),top=r.top-hgt-10;if(top<70)top=r.bottom+10;
+    pop.style.left=left+scrollX+"px";pop.style.top=top+scrollY+"px";open=btn};
+  document.addEventListener("mouseover",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b&&b!==open)show(b)});
+  document.addEventListener("mouseout",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b&&!b.contains(ev.relatedTarget))close()});
+  document.addEventListener("click",ev=>{const b=ev.target.closest?.(".race-sum .rs");if(b){ev.preventDefault();b===open?close():show(b)}else if(!ev.target.closest?.(".pts-pop"))close()});
+  document.addEventListener("keydown",ev=>{if(ev.key==="Escape")close()});
+  addEventListener("scroll",close,{passive:true});})();
 function initMvp(){
   const track=$("#mvpTrack"),slides=[...track.children],dots=[...document.querySelectorAll(".mvp-dots button")],n=slides.length;
   let cur=0;
