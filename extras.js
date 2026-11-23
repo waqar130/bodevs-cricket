@@ -453,7 +453,7 @@ function recordsThisWeek(W) {
   // one line per category and player; "most runs conceded" is not one to celebrate
   const ids = new Set(W.WM.map(m => m.id)), out = [], seen = new Set();
   ["bat", "bowl", "fld"].forEach(tab => RECS[tab].forEach(cat => !["exp", "exs", "sxc", "lost"].includes(cat.k) && cat.rows.forEach((x, i) => {
-    if (ids.has(x.mm.id) && !seen.has(cat.k + x.id)) { seen.add(cat.k + x.id); out.push({ tab, cat, x, i }); }
+    if (x.mm && ids.has(x.mm.id) && !seen.has(cat.k + x.id)) { seen.add(cat.k + x.id); out.push({ tab, cat, x, i }); }
   })));
   return out.sort((a, b) => a.i - b.i);
 }
