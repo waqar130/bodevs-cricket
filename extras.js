@@ -1304,7 +1304,7 @@ function renderSeasonHero() {
   const head = t === f ? `All square at ${t}–${f}.` : `${t > f ? "Tigers" : "Falcons"} lead ${Math.max(t, f)}–${Math.min(t, f)}.`;
   // three different faces: go down the headline awards, taking a holder (or joint holder) not already shown
   const used = new Set(), picks = [];
-  ["MVP of the season", "Golden Bat", "Golden Ball", "Six King", "Man of the Match", "Safest Hands", "Golden Gloves", "Mr Economy", "Strike Rate King", "Clutch King", "Partnership King", "Run-out King"].some(k => {
+  ["MVP of the season", "Golden Bat", "Golden Ball", "Six King", "Man of the Match", "Safest Hands", "Golden Gloves", "Mr Economy", "Batting Strike Rate King", "Bowling Strike Rate King", "Clutch King", "Partnership King", "Run-out King"].some(k => {
     const a = AWARDS.find(x => x.k === k); if (!a?.list.length) return false; const top = a.n(a.list[0]);
     const p = a.list.find(q => a.n(q) === top && !used.has(q.id)); if (p) { used.add(p.id); picks.push([a, p]); } return picks.length === 3; });
   const starOf = ([a, p]) => p ? `<a class="sh-star ${p.tm.key}" href="${purl(p.id)}"><span class="sh-ph">${p.photo ? `<img src="${p.photo}" alt="" loading="lazy">` : ""}</span><small>${esc(a.k)}${a.list.length > 1 && a.n(a.list[1]) === a.n(a.list[0]) ? " (joint)" : ""}</small><b>${esc(pname(p.id))}</b><em>${a.v(p)} <i>${esc(a.n(p) === 1 && a.u1 ? a.u1 : a.u)}</i></em></a>` : "";
@@ -1330,20 +1330,20 @@ function renderSeasonAwards() {
     const lead = tied ? `${holders.length} players level on ${a.v(h)}${second ? `; next is ${plink(second.id)}, ${fmt(a, gap)} ${a.unit} behind` : ""}.` : !second ? "Only qualifier so far." : `Leads ${plink(second.id)} by ${fmt(a, gap)} ${a.unit}.`;
     // a place is shared by everyone on the same number
     const place = p => a.list.filter(x => a.low ? a.n(x) < a.n(p) : a.n(x) > a.n(p)).length + 1;
-    const chasing = a.ok ? [...P.values()].filter(p => p.matches && !a.ok(p) && (a.k === "Mr Economy" ? p.bowl.b >= 60 : p.bat.b >= 75))
-      .sort((x, y) => a.k === "Mr Economy" ? x.bowl.econ - y.bowl.econ : y.bat.sr - x.bat.sr).slice(0, 2) : [];
+    // the best two not yet qualified, on the award's own measure
+    const chasing = a.ok && a.chase ? [...P.values()].filter(p => p.matches && !a.ok(p) && a.chase.pool(p)).sort((x, y) => a.chase.low ? a.chase.by(x) - a.chase.by(y) : a.chase.by(y) - a.chase.by(x)).slice(0, 2) : [];
     return `<article class="sa-card" id="award-${slugify(a.k)}">
       <p class="kicker">${esc(a.k)}${a.note ? ` <span class="sa-note">(${esc(a.note)})</span>` : ""}</p>
       ${holders.map(x => `<a class="sa-holder ${x.tm.key}" href="${purl(x.id)}">${miniThumb(x)}<span><small>${tied ? "Joint holder" : "Holder"}</small><b>${esc(pname(x.id))}</b></span><span class="sa-v">${a.v(x)}<small>${esc(n === 1 && a.u1 ? a.u1 : a.u)}</small></span></a>`).join("")}
       <p class="sa-lead">${lead}</p>
       <ol class="sa-race">${list.slice(holders.length).map(p => `<li><span class="xr-n">${a.list.filter(x => a.n(x) === a.n(p)).length > 1 ? "=" : ""}${place(p)}</span>${plink(p.id)}<b>${a.v(p)}</b></li>`).join("")}</ol>
-      ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.k === "Mr Economy" ? r1(p.bowl.econ) + " an over" : Math.round(p.bat.sr) + " SR"})`).join("; ")}.</p>` : ""}
+      ${chasing.length ? `<p class="sa-chase">Not yet qualified: ${chasing.map(p => `${plink(p.id)} (${esc(a.need(p))}, ${a.chase.show(p)})`).join("; ")}.</p>` : ""}
     </article>`;
   };
   // awards by kind
   const GROUPS = [["Honours", ["MVP of the season", "Man of the Match", "Clutch King", "Most Valuable per Ball", "Iron Man"]],
-    ["Batting", ["Golden Bat", "Six King", "Strike Rate King", "Powerplay Punisher", "The Wall", "Mr Consistent", "The Finisher", "Over Destroyer", "Partnership King", "The Survivor"]],
-    ["Bowling", ["Golden Ball", "Mr Economy", "Death-over Specialist", "Dot-ball Machine", "Comeback Kid"]],
+    ["Batting", ["Golden Bat", "Six King", "Batting Strike Rate King", "Powerplay Punisher", "The Wall", "Mr Consistent", "The Finisher", "Over Destroyer", "Partnership King", "The Survivor"]],
+    ["Bowling", ["Golden Ball", "Mr Economy", "Bowling Strike Rate King", "Death-over Specialist", "Dot-ball Machine", "Comeback Kid"]],
     ["Fielding & keeping", ["Safest Hands", "Surest Hands", "Golden Gloves", "Run-out King"]]];
   const used = new Set(), groups = GROUPS.map(([g, names]) => { const list = names.map(n => AWARDS.find(a => a.k === n)).filter(Boolean); list.forEach(a => used.add(a)); return [g, list]; });
   const rest = AWARDS.filter(a => !used.has(a)); if (rest.length) groups.push(["More", rest]);
