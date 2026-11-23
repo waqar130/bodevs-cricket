@@ -823,6 +823,11 @@ function renderWeekLines() {
     fld ? box("Best fielder", fld.c + fld.ro, nm(fld.id), `${fld.c} catch${fld.c === 1 ? "" : "es"} · ${fld.ro} run out${fld.ro === 1 ? "" : "s"}`, purl(fld.id)) : "",
     box("Sixes &amp; boundaries", W.sixes, "sixes this week", `${fours} fours · ${W.sixes + fours} boundaries in all`),
     dot ? box("Dot-ball machine", `${Math.round(dot.db / dot.bb * 100)}%`, nm(dot.id), `dot balls bowled · ${dot.db} of ${dot.bb} (2+ overs)`, purl(dot.id)) : "",
+    // the MVP bonus moments: whoever did each most this week (only if someone did)
+    ...[["ss", "Sixes in a row", "six straight after a six", "sixes straight after a six (+1 each)"], ["sad", "Six after two dots", "six after two dots", "sixes straight after two dot balls (+1 each)"],
+      ["was", "Wicket after a six", "wicket after a six", "wickets straight after being hit for six (+5 each)"], ["md", "Maidens", "maiden", "maiden overs (+10 each)"],
+      ["dbr", "The pressure builder", "dot in a row", "dot balls bowled straight after a dot (+1 each)"]].map(([k, kick, , sub]) => {
+      const x = best(E.filter(y => y[k]), (p, q) => q[k] - p[k] || q.pts - p.pts); return x ? box(kick, x[k], nm(x.id), sub, purl(x.id)) : ""; }),
     box("The pace", bls ? r1(W.runs / bls * 6) : "–", `${W.runs.toLocaleString()} runs, ${W.wkts} wickets`, "runs an over this week"),
   ].join("");
 }
