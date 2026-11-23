@@ -1165,10 +1165,10 @@ function weekStats(WM,issue){
   // fielding: 10 a catch or run out, -5 a dropped catch; victories: +5 for each win he played a part in
   const parts=e=>({bat:e.r+e.sh+2*e.f+3*e.s-e.df,bowl:20*e.w+e.db-e.ex+10*e.h3,fld:10*(e.c+e.ro)-5*e.dr,win:5*e.wb});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld+q.win};
-  // most points first; level on points, whoever got there first. Within 5 points of the top is a joint MVP, two at most;
+  // most points first; level on points, whoever got there first. Within 10 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
   const ranked=[...pw.values()].map(e=>({...e,pts:pts(e),parts:parts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
-  const mvps=ranked.filter(e=>pow.pts-e.pts<=5).slice(0,2),joint=mvps.length>1,rest=ranked.slice(mvps.length);
+  const mvps=ranked.filter(e=>pow.pts-e.pts<=10).slice(0,2),joint=mvps.length>1,rest=ranked.slice(mvps.length);
   const podium=[...mvps.map(e=>({...e,role:joint?"Joint MVP":"MVP",n:1})),...rest.slice(0,2).map((e,j)=>({...e,role:j?"Game Changer":"Impact Player",n:mvps.length+j+1}))];
   return{WM,ws,we,pow,mvps,joint,isMvp:id=>mvps.some(e=>e.id===id),podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
 }
@@ -1370,7 +1370,7 @@ function render(){
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
-        <p class="race-rule"><b>How it works:</b> points from batting, bowling, fielding and wins, scored as in the key below. Most points is MVP; within 5 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
+        <p class="race-rule"><b>How it works:</b> points from batting, bowling, fielding and wins, scored as in the key below. Most points is MVP; within 10 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
       <dl class="race-legend">
         <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · +1 for a 1, 2 or 3 · +2 a four · +3 a six · −1 a dot ball</dd></div>
         <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket · +10 more for each 2nd, 3rd and 4th wicket in a spell · +1 a dot ball · −1 a wide or no-ball</dd></div>
@@ -1394,7 +1394,7 @@ function render(){
     const head=n===1?esc(pname(p.id)):and(mv.map(x=>esc(first(x.id))));
     const why=n===1?`<b>${top} points</b>${next?`, ${top-next.pts} clear of ${esc(pname(next.id))}`:""}.`
       :mv.every(x=>x.pts===top)?`Level on <b>${top} points</b>, so they share the week.`
-      :`<b>${and(mv.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-Math.min(...mv.map(x=>x.pts))} point${top-Math.min(...mv.map(x=>x.pts))===1?"":"s"} apart: within 5, so they share the week.`;
+      :`<b>${and(mv.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-Math.min(...mv.map(x=>x.pts))} point${top-Math.min(...mv.map(x=>x.pts))===1?"":"s"} apart: within 10, so they share the week.`;
     const art=n===1?`<a class="cover-art" href="${purl(p.id)}" aria-label="${esc(pname(p.id))} profile" ${i?'tabindex="-1"':""}>
           <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">MVP · Issue ${Wk.issue}</span></div>
           <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt=""></a>`
