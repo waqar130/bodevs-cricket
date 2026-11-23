@@ -1183,10 +1183,10 @@ function weekStats(WM,issue){
   const parPts=(runs,balls)=>Math.round(balls*10/6-runs); // runs under a 10-an-over pace (negative when over it)
   const parts=e=>({bat:2*e.r+srRuns(e)+srSpeed(e)+3*e.sad+3*e.ss+e.st-e.df-e.dfr,bowl:40*e.w+e.db+e.dbr-e.ex+10*e.h3+5*e.was+10*e.md-e.cp+Math.round(wkEco*e.bb/6-e.rc)+(e.w?Math.max(0,Math.round(12-e.bb/e.w)):0)+(e.w?Math.max(0,Math.round(30-e.rc/e.w)):0),fld:10*e.c+5*e.bc+5*e.bc2+5*e.kc+5*e.cb+5*e.mc+(e.c>=2&&!e.dr?5:0)+15*e.ro-5*e.dr-5*e.ds,win:0});
   const pts=e=>{const q=parts(e);return q.bat+q.bowl+q.fld};
-  // most points first; level on points, whoever got there first. Within 25 points of the top is a joint MVP, two at most;
+  // most points first; level on points, whoever got there first. Within 50 points of the top is a joint MVP, two at most;
   // the next two places are Impact Player and Game Changer
   const ranked=[...pw.values()].map(e=>({...e,pts:pts(e),parts:parts(e)})).sort((a,b)=>b.pts-a.pts||a.at-b.at||b.r-a.r),pow=ranked[0];
-  const mvps=ranked.filter(e=>pow.pts-e.pts<=25).slice(0,2),joint=mvps.length>1,rest=ranked.slice(mvps.length);
+  const mvps=ranked.filter(e=>pow.pts-e.pts<=50).slice(0,2),joint=mvps.length>1,rest=ranked.slice(mvps.length);
   const podium=[...mvps.map(e=>({...e,role:joint?"Joint MVP":"MVP",n:1})),...rest.slice(0,2).map((e,j)=>({...e,role:j?"Game Changer":"Impact Player",n:mvps.length+j+1}))];
   return{WM,ws,we,pow,mvps,joint,isMvp:id=>mvps.some(e=>e.id===id),podium,ranked,tw,knock,spell,hiT,runs,sixes,wkts,extras,issue};
 }
@@ -1388,7 +1388,7 @@ function render(){
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
-        <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; within 25 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
+        <p class="race-rule"><b>How it works:</b> points from batting, bowling and fielding, scored as in the key below. Most points is MVP; within 50 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
       ${raceKey()}
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
@@ -1407,7 +1407,7 @@ function render(){
     const head=n===1?esc(pname(p.id)):and(mv.map(x=>esc(first(x.id))));
     const why=n===1?`<b>${top} points</b>${next?`, ${top-next.pts} clear of ${esc(pname(next.id))}`:""}.`
       :mv.every(x=>x.pts===top)?`Level on <b>${top} points</b>, so they share the week.`
-      :`<b>${and(mv.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-Math.min(...mv.map(x=>x.pts))} point${top-Math.min(...mv.map(x=>x.pts))===1?"":"s"} apart: within 25, so they share the week.`;
+      :`<b>${and(mv.map(x=>x.pts)).replace(" &amp; "," and ")} points</b>, ${top-Math.min(...mv.map(x=>x.pts))} point${top-Math.min(...mv.map(x=>x.pts))===1?"":"s"} apart: within 50, so they share the week.`;
     const art=n===1?`<a class="cover-art" href="${purl(p.id)}" aria-label="${esc(pname(p.id))} profile" ${i?'tabindex="-1"':""}>
           <div class="cover-photo ${p.tm.key}">${p.photo?`<img class="portrait" src="${p.photo}" alt="${esc(pname(p.id))}" ${i?'loading="lazy"':""}>`:`<div class="mono">${crest(p.team,"mono-crest")}<span>${esc((p.full_name||p.name).split(" ").map(w=>w[0]).join("").slice(0,2))}</span></div>`}<span class="cover-tag">MVP · Issue ${Wk.issue}</span></div>
           <img class="cover-ball" src="assets/tilde/yellow-seam.png" alt=""></a>`
