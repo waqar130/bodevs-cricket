@@ -701,6 +701,16 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
     </div>
   </section>
 
+  <section class="dept" id="seasonranks">
+    <div class="wrap">
+      <div class="dept-head">
+        <div><p class="kicker">Season rankings</p><h2 class="hd">Who's on top</h2></div>
+        <p>The top five in every ranking, and how far each has come since he was first ranked this season. Full lists and how they're worked out on the <a href="#rankings">Rankings</a> page.</p>
+      </div>
+      <div id="seasonRanksBody"></div>
+    </div>
+  </section>
+
   <section class="dept" id="seasonawards">
     <div class="wrap">
       <div class="dept-head">
@@ -1220,7 +1230,7 @@ function weekStats(WM,issue){
 }
 const weekRange=W=>`${W.ws.getDate()}${W.ws.getMonth()!==W.we.getMonth()?" "+fmtD(W.ws,{month:"short"}):""}–${fmtD(W.we,{day:"numeric",month:"short",year:"numeric"})}`;
 let D,M,P,byName,WEEK,H,FX,BySlug;
-const RESERVED=new Set(["scorenama","teamhero","teambody","teams","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
+const RESERVED=new Set(["seasonranks","scorenama","teamhero","teambody","teams","strategy","rankboard","debut","comparehero","clubhero","playershero","statshero","seasonhero","live","matchups","archive","getapp","seasonbook","seasonawards","weeknumbers","underrated","streaks","weekawards","nextsunday","home","players","stats","season","club","since","digest","story","predict","partners","tactics","phases","fixtures","gallery","compare","shame","awards","form","milestones","records","picker","top","rivalry","numbers","squads","tables","matches","kit","play","main","detail","rankings"]);
 const slugify=t=>String(t).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 // seasons: data/seasons.json lists where each season starts (by match id); ?season=<id> or "all" picks one

@@ -355,7 +355,7 @@ const PAGES = [["live", "Live"], ["home", "This week"], ["players", "Players"], 
 const PAGE_OF = { top: "home", since: "home", weekawards: "home", weeknumbers: "home", nextsunday: "home", digest: "home", picker: "home", predict: "home", matches: "home",
   teamhero: "teams", teambody: "teams", stratboard: "strategy", strategy: "strategy", rankhero: "rankings", rankboard: "rankings", playershero: "players", debut: "players", comparehero: "compare", clubhero: "club", squads: "players", underrated: "players", form: "players", milestones: "players", tables: "players", compare: "compare",
   statshero: "stats", records: "stats", streaks: "stats", matchups: "stats", live: "live", archive: "club", getapp: "club", partners: "stats", tactics: "stats", phases: "stats", shame: "stats",
-  seasonhero: "season", rivalry: "season", seasonawards: "season", seasonbook: "season", story: "season", numbers: "season",
+  seasonhero: "season", rivalry: "season", seasonawards: "season", seasonranks: "season", seasonbook: "season", story: "season", numbers: "season",
   fixtures: "club", gallery: "club", kit: "club", play: "club", scorenama: "scorenama" };
 let CUR_PAGE = null;
 const ANALYSIS = ["rankings", "compare", "strategy"];
@@ -2285,7 +2285,7 @@ window.setWeek = i => { const W = WEEKS[i]; if (!W || W === selW()) return; SELW
 /* ---------------- run everything after the main render ---------------- */
 window.renderExtras = function () {
   addUniqueAwards(); initSearch(); initWeekBar();
-  renderTicker(); renderWeekLines(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
+  renderTicker(); renderWeekLines(); renderSince(); renderWeekAwards(); renderWeekNumbers(); renderNextSunday(); renderStory(); renderXR(); renderUnderrated(); renderTape(); lateNotice(); renderStatsHero(); renderPlayersHero(); renderRankings(); renderStrategy(); renderTeams(); renderDebut(); renderCompareHero(); renderClubHero(); renderSeasonHero(); renderSeasonAwards(); renderSeasonRanks(); renderSeasonBook(); renderMatchups(); renderArchive(); renderLiveCentre(null); renderGetApp(); renderInvite(); renderPoster();
   if (typeof CMP !== "undefined") compareShare(P.get(CMP.a), P.get(CMP.b)); renderPartnerships(); renderTactics(); renderPhases();
   renderDigest(); renderFixtures(); renderGallery(); renderScorenama(); checkLive();
 };
@@ -2505,4 +2505,20 @@ function playerRace(p) {
     <h3 class="tbl-title">Week by week</h3><ol class="race-list pr-race">${wk}</ol>
     <h3 class="tbl-title" style="margin-top:26px">Match by match</h3><ol class="race-list pr-race">${mr}</ol>
     <p class="rank-note">The same points as the weekly MVP race; match points are worked out for each match alone. Tap Bat, Bowl, Field or Full card for the breakdown.</p>`;
+}
+
+/* ---------------- season page: the top five in each ranking, and their climb since first ranked ---------------- */
+function renderSeasonRanks() {
+  const el = $("#seasonRanksBody"); if (!el || !WEEKS?.length) return;
+  const kinds = [["rBat", "Batting", ""], ["rBowl", "Bowling", ""], ["rAll", "All-rounder", ""], ["rFld", "Fielding", ""]];
+  const climbs = [];
+  const card = (title, rows, unit) => `<article class="sr-card"><h3 class="tbl-title">${title}</h3><ol class="sr-list">${rows.map(x => `<li class="${x.p.tm.key}"><span class="sr-n">${x.rank}</span><a class="rec-who" href="${purl(x.id)}">${miniThumb(x.p)}<span>${esc(pname(x.id))}</span></a><b>${x.rating}${unit}</b>${x.season === undefined ? "" : `<small class="${x.season > 0 ? "up" : x.season < 0 ? "down" : ""}">${x.season > 0 ? "▲" + x.season : x.season < 0 ? "▼" + -x.season : "="}</small>`}</li>`).join("")}</ol></article>`;
+  const cards = kinds.map(([k, t, u]) => { const rows = rankRows(k); rows.forEach(x => { if (x.season > 0) climbs.push({ x, t }); }); return card(t, rows.slice(0, 5), u); });
+  // impact: average weekly MVP points (no weekly history, so no climb)
+  const imp = [...P.values()].filter(p => p.kImp).sort((a, b) => a.kImp - b.kImp).slice(0, 5).map(p => ({ p, id: p.id, rank: p.kImp, rating: p.rImp }));
+  cards.push(card("Impact", imp, " pts/wk"));
+  const top = climbs.sort((a, b) => b.x.season - a.x.season).slice(0, 3);
+  el.innerHTML = `${top.length ? `<p class="sr-climb"><span class="label">Biggest climbs this season</span>${top.map(c => `<span><b>▲${c.x.season}</b> ${esc(pname(c.x.id))} <small>${c.t.toLowerCase()}, #${c.x.start} → #${c.x.rank}</small></span>`).join("")}</p>` : ""}
+    <div class="sr-grid">${cards.join("")}</div>
+    <p class="rank-note">▲▼ is places moved since he was first ranked this season. Ratings weight each player's recent matches more. Impact is MVP points a week.</p>`;
 }

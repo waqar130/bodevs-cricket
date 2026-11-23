@@ -1234,3 +1234,18 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 /* teams: top-3 places held */
 .tm-top3{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin:6px 0 10px;font:500 13px var(--f-data)}
 .tm-top3 b{font:900 22px var(--f-display);margin-right:3px}
+
+/* season page: rankings */
+.sr-climb{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 22px;margin:0 0 16px;font:400 14px var(--f-body)}
+.sr-climb b{font:900 24px var(--f-display);color:#1a7a43;margin-right:4px}.sr-climb small{font:500 11px var(--f-data);color:var(--muted)}
+.sr-grid{display:grid;gap:22px}@media(min-width:700px){.sr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(min-width:1050px){.sr-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}}
+.sr-card{border-top:3px solid var(--ink);padding-top:8px;min-width:0}
+.sr-list{list-style:none;margin:0;padding:0}
+.sr-list li{display:grid;grid-template-columns:20px minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--rule)}
+.sr-list li:first-child .sr-n{color:var(--red)}
+.sr-n{font:900 18px var(--f-display);color:var(--muted)}
+.sr-list .rec-who span{font:600 13px var(--f-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-list b{font:800 15px var(--f-data)}
+.sr-list small{font:700 10px var(--f-data);min-width:26px;text-align:right}.sr-list small.up{color:#1a7a43}.sr-list small.down{color:var(--red)}
+.sr-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))!important;gap:20px}
+.sr-list .rec-who span{white-space:normal;overflow:visible;line-height:1.2}
