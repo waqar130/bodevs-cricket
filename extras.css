@@ -1165,3 +1165,28 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 
 /* share the week: the ready-to-post message */
 .dg-msg{white-space:pre-wrap;font:400 13.5px/1.55 var(--f-data);background:var(--paper);border:1px solid var(--rule);padding:14px 16px;margin:14px 0 12px;max-height:340px;overflow:auto}
+
+/* match page leader boxes: same look as the week's */
+.ml-lines{display:block!important;border-top:0!important}
+.ml-lines .wl-g{margin-top:26px}
+.ml-lines .wl-h{display:flex;align-items:center;gap:10px;margin:0;padding-top:8px;border-top:3px solid var(--ink);font:800 18px/1 var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+.ml-lines .wl-h::after{content:"";flex:1;height:1px;background:var(--rule)}
+.ml-lines .wl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--rule)}
+.ml-lines .coverline{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;gap:4px 12px;padding:16px 16px 14px;border:0;border-right:1px solid var(--rule);border-top:1px solid var(--rule);align-items:start}
+.ml-lines .wl-grid .coverline:nth-child(4n){border-right:0}
+.ml-lines .wl-grid .coverline:nth-child(4n+1){padding-left:0}
+.ml-lines .kicker{font-size:10.5px;letter-spacing:.12em}
+.ml-lines .cl-h{font-size:clamp(19px,1.7vw,25px);overflow-wrap:anywhere}
+.ml-lines .cl-n{font-size:clamp(30px,2.8vw,42px);line-height:.9;white-space:nowrap}
+.ml-lines .cl-p{font-size:14px;line-height:1.35}
+.ml-lines .lb-pts{grid-column:1/-1;align-self:end}
+.ml-lines .team .wl-grid{background:var(--ink);border-bottom:0}
+.ml-lines .team .coverline{border-color:#3a3935;padding-left:16px!important}
+.ml-lines .team .cl-h,.ml-lines .team .cl-n{color:#fff}.ml-lines .team .cl-p{color:#b9b3a8}.ml-lines .team .kicker{color:#ffd23f}
+.ml-lines .team .coverline:hover .cl-h{color:#ffd23f}
+@media(max-width:899px){.ml-lines .wl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ml-lines .wl-grid .coverline:nth-child(4n){border-right:1px solid var(--rule)}.ml-lines .wl-grid .coverline:nth-child(2n){border-right:0}
+  .ml-lines .wl-grid .coverline:nth-child(4n+1){padding-left:16px}.ml-lines .wl-grid .coverline:nth-child(2n+1){padding-left:0}}
+@media(max-width:520px){.ml-lines .wl-grid{grid-template-columns:1fr}.ml-lines .wl-grid .coverline{border-right:0!important;padding-left:0}}
+.ml-lines{display:block!important;border-top:0!important;margin-bottom:28px}
+.ml-lines .wl-g:first-child{margin-top:8px}

@@ -2355,3 +2355,34 @@ function renderScorenama() {
     <div class="sn-card"><h3 class="sn-h">Every match on Scorenama</h3>
       <ul class="sn-matches">${ms.map(m => `<li><a href="${mURL(m)}" target="_blank" rel="noopener"><span class="sn-mn">#${m.id}</span><span class="sn-md">${fmtD(m.date, { day: "numeric", month: "short" })}</span><span class="sn-mr ${m.win?.key || ""}">${m.win ? `${esc(m.win.short)} won by ${esc(m.margin)}` : esc(m.m?.status_label || "")}</span><span class="sn-go">↗</span></a></li>`).join("")}</ul></div>`;
 }
+
+/* ---------------- match page: leader boxes for the match, on the same points as the weekly MVP ---------------- */
+function matchLeaders(mm) {
+  if (!mm || typeof weekStats !== "function") return "";
+  const S = weekStats([mm], 0), E = S.ranked, best = (arr, cmp) => [...arr].sort(cmp)[0], nm = id => esc(pname(id)), pl = n => (n === 1 ? "" : "s");
+  const X = buildXR().raw, ovB = X.overBowl.filter(o => o.mm === mm), ovR = X.overBat.filter(o => o.mm === mm);
+  const inns = [], spells = []; mm.s.scorecards.forEach(sc => { sc.batting.forEach(b => inns.push({ id: b.id, r: b.runs, b: b.balls, no: !b.out })); sc.bowling.forEach(b => spells.push({ id: b.id, w: b.wickets, r: b.runs, b: balls(b.overs), ov: b.overs })); });
+  const ptsBtn = id => { const e = E.find(y => y.id === id); return e ? `<button type="button" class="lb-pts" data-pts='${ptsAll(e, "Match points · " + pname(id))}'>${ptsN(e.pts)} pts this match <i>i</i></button>` : ""; };
+  const tag = id => (mm.poms || []).some(p => p.id === id && p.snPom) ? ` <span class="sn-tag">Scorenama POM</span>` : "";
+  const box = (kick, num, id, sub) => id == null ? "" : `<a class="coverline" href="${purl(id)}"><div><span class="kicker">${kick}</span><div class="cl-h">${nm(id)}${tag(id)}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span>${ptsBtn(id)}</a>`;
+  const group = (title, boxes) => { const b = boxes.filter(Boolean); return b.length ? `<section class="wl-g"><h3 class="wl-h">${title}</h3><div class="wl-grid">${b.join("")}</div></section>` : ""; };
+  const bat = best(E.filter(e => e.r), (p, q) => q.r - p.r || p.b - q.b), six = best(E.filter(e => e.s), (p, q) => q.s - p.s || q.r - p.r);
+  const sr = best(E.filter(e => e.b >= 10), (p, q) => q.r / q.b - p.r / p.b), bnd = best(E.filter(e => e.f + e.s), (p, q) => (q.f + q.s) - (p.f + p.s));
+  const bowl = best(E.filter(e => e.w), (p, q) => q.w - p.w || p.rc - q.rc), eco = best(E.filter(e => e.bb >= 6), (p, q) => p.rc / p.bb - q.rc / q.bb || q.w - p.w);
+  const dot = best(E.filter(e => e.bb >= 6), (p, q) => q.db / q.bb - p.db / p.bb), fld = best(E.filter(e => e.c + e.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro));
+  const bo = best(ovB.filter(o => o.w > 0), (p, q) => q.w - p.w || p.r - q.r), big = best(ovR, (p, q) => q.r - p.r);
+  const top = E[0], ss = best(E.filter(e => e.ss), (p, q) => q.ss - p.ss), fin = E.find(e => e.cf), def = E.find(e => e.dl);
+  const hi = best(inns, (p, q) => q.r - p.r || p.b - q.b);
+  return `<div class="coverlines ml-lines">
+    ${group("Points", [top && box((mm.poms || []).length > 1 ? "Joint man of the match" : "Man of the match", ptsN(top.pts), top.id, `points on our MVP system, for this match`)].concat((mm.poms || []).filter(p => p.id !== top?.id).map(p => box("Joint man of the match", ptsN(E.find(e => e.id === p.id)?.pts || 0), p.id, p.line))))}
+    ${group("Batting", [bat && box("Best batter", bat.r, bat.id, `runs off ${bat.b} balls${hi && hi.id === bat.id && hi.no ? ", not out" : ""}`), six && box("Most sixes", six.s, six.id, `sixes · ${six.r} off ${six.b}`),
+      sr && box("Highest strike rate", Math.round(sr.r / sr.b * 100), sr.id, `runs per 100 balls · ${sr.r} off ${sr.b} (10+ balls)`), bnd && box("Most boundaries", bnd.f + bnd.s, bnd.id, `${bnd.s} six${bnd.s === 1 ? "" : "es"} · ${bnd.f} four${pl(bnd.f)}`)])}
+    ${group("Bowling &amp; fielding", [bowl && box("Best bowler", `${bowl.w}/${bowl.rc}`, bowl.id, `in ${Math.floor(bowl.bb / 6)}${bowl.bb % 6 ? "." + bowl.bb % 6 : ""} overs`),
+      eco && box("Best economy", r1(eco.rc / eco.bb * 6), eco.id, `runs an over · ${eco.rc} off ${Math.floor(eco.bb / 6)}${eco.bb % 6 ? "." + eco.bb % 6 : ""} (1+ over)`),
+      dot && box("Dot-ball machine", `${Math.round(dot.db / dot.bb * 100)}%`, dot.id, `of his balls were dots · ${dot.db} of ${dot.bb}`),
+      fld && box("Best fielder", fld.c + fld.ro, fld.id, `${fld.c} catch${fld.c === 1 ? "" : "es"} · ${fld.ro} run out${pl(fld.ro)}`)])}
+    ${group("Moments", [big && big.r >= 15 && box("Biggest over", big.r, big.id, `runs off over ${big.ov}${big.bw ? ` from ${esc(short(big.bw))}` : ""}`), bo && box("Best over", `${bo.w}/${bo.r}`, bo.id, `in over ${bo.ov}`),
+      ss && box("Back-to-back sixes", ss.ss, ss.id, `times he hit a six straight after a six${ss.stl >= 2 ? ` · longest run ${ss.stl}` : ""}`),
+      fin && box("Chase finisher", (fin.cfl || [])[0] || "✓", fin.id, "on strike for the winning ball, not out"), def && box("Defended the last over", "✓", def.id, (def.dll || [])[0] || "")])}
+  </div>`;
+}
