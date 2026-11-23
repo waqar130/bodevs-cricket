@@ -143,6 +143,9 @@ section[id],#top{scroll-margin-top:64px}
 .pcard h4{font:800 24px/.95 var(--f-display);text-transform:uppercase}
 .pcard .job{font-size:14px;color:var(--muted);line-height:1.3}
 .pcard .line{font:500 12px var(--f-data);color:var(--ink-2);border-top:1px solid var(--rule);padding-top:8px;align-self:end}
+.cg-ranks{display:flex;flex-wrap:wrap;gap:3px;align-self:end;margin-top:2px}
+.cg-ranks span{display:inline-flex;align-items:baseline;gap:3px;font:800 12px/1 var(--f-display);padding:3px 6px;border:1px solid var(--rule);border-radius:999px;color:var(--ink)}
+.cg-ranks small{font:600 8.5px var(--f-data);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .cgrid{align-self:end;border-top:1px solid var(--rule);padding-top:6px;display:grid;gap:4px}
 .cg-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
 .cg-row.bowl{border-top:1px dotted var(--rule);padding-top:4px}
@@ -611,7 +614,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 .rk-pts i{display:block;height:3px;background:var(--team);margin-left:auto;margin-top:4px}
 .rank-note{font:400 13px/1.6 var(--f-data);color:var(--muted);max-width:90ch;margin-bottom:48px}
 .ranks{display:flex;flex-wrap:wrap;gap:0;margin-top:18px;border-top:1px solid var(--rule)}
-.ranks a{text-decoration:none;padding:12px 28px 4px 0;display:grid}
+.ranks a{text-decoration:none;padding:12px 22px 4px 0;display:grid}
 .ranks b{font:900 48px/1 var(--f-display);color:var(--red)}
 .ranks small{font:500 12px var(--f-data);color:var(--muted)}
 .err{padding:20px;border:1px solid var(--red);color:var(--red);font:500 14px var(--f-data)}
@@ -1553,7 +1556,8 @@ function render(){
   // career numbers on each card: icon, figure, what it is; "–" until there is something to measure
   const careerGrid=p=>{const B=p.bat,W=p.bowl,m=Math.max(1,p.matches),f=(v,d=1)=>isFinite(v)&&v>0?(d?r1(v):Math.round(v)):"–";
     const c=(ic,v,l,t)=>`<span class="cg-i" title="${t}"><i>${picon(ic)}</i><b>${v}</b><small>${l}</small></span>`;
-    return `<div class="cgrid"><div class="cg-row bat">${c("bat",f(B.r/m),"runs/m","Runs per match")}${c("gauge",f(B.sr,0),"bat SR","Batting strike rate: runs per 100 balls")}${c("scale",f(B.avg),"bat avg","Batting average: runs per dismissal")}${c("four",f(B.f+B.s?B.b/(B.f+B.s):NaN),"balls/4·6","Balls per boundary")}</div>
+    const rk=[["Bat","kBat"],["Bowl","kBowl"],["All","kAll"],["Fld","kFld"],["Imp","kImp"]].filter(([,k])=>p[k]).map(([l,k])=>`<span title="${l==="Imp"?"Impact":l==="Fld"?"Fielding":l==="All"?"All-rounder":l==="Bat"?"Batting":"Bowling"} rank"><small>${l}</small>#${p[k]}</span>`).join("");
+    return `${rk?`<div class="cg-ranks">${rk}</div>`:""}<div class="cgrid"><div class="cg-row bat">${c("bat",f(B.r/m),"runs/m","Runs per match")}${c("gauge",f(B.sr,0),"bat SR","Batting strike rate: runs per 100 balls")}${c("scale",f(B.avg),"bat avg","Batting average: runs per dismissal")}${c("four",f(B.f+B.s?B.b/(B.f+B.s):NaN),"balls/4·6","Balls per boundary")}</div>
       <div class="cg-row bowl">${c("stumps",f(W.w/m,2)==="–"?"–":(W.w/m).toFixed(2),"wkts/m","Wickets per match")}${c("clock",f(W.sr),"bowl SR","Bowling strike rate: balls per wicket")}${c("scale",f(W.avg),"bowl avg","Bowling average: runs per wicket")}${c("hands",p.fld.c?(p.fld.c/m).toFixed(2):"–","ct/m","Catches per match")}</div></div>`};
   const sheet=key=>{const ps=[...P.values()].filter(p=>p.tm.key===key).sort((a,b)=>(b.captain|0)-(a.captain|0)||!!b.photo-!!a.photo||b.bat.r-a.bat.r);
     const name=ps[0]?.team||"";const wins=key==="t"?tWins:fWins;
@@ -2592,7 +2596,7 @@ function playerPage(id,tab){
     <p class="pbadges">${p.title?`<span class="pb cric" title="Cricketing title">${esc(p.title)}</span>`:""}${p.job?`<span class="pb pjob" title="Job at BoDevs">${esc(p.job)}</span>`:""}<span class="pb team ${p.tm.key}">${esc(p.team)}</span>${p.captain?`<span class="pb role">Captain</span>`:""}${p.keeper?`<span class="pb role wk">Wicket-keeper</span>`:""}${p.bowl_style?`<span class="pb style ${p.bowl_style}">${p.bowl_style==="fast"?"Fast bowler":"Spinner"}</span>`:""}${typeof formTag==="function"?formTag(p):""}</p>
     <p class="why">${esc(p.why)}</p>
     ${p.full_name&&!p.full_name.startsWith(p.name)?`<p class="dek">Known on the scorecard as “${esc(p.name)}”.</p>`:""}
-    <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} pts</small></a>`:"").join("")}</div>
+    <div class="ranks">${[["Batting","kBat","rBat"],["Bowling","kBowl","rBowl"],["All-rounder","kAll","rAll"],["Fielding","kFld","rFld"],["Impact","kImp","rImp"]].map(([l,k,r])=>p[k]?`<a href="#tables"><span class="label">${l} rank</span><b>#${p[k]}</b><small>${p[r]} ${k==="kImp"?"pts/wk":"pts"}</small></a>`:"").join("")}</div>
     <div class="facts"><span><b>${p.mvpN}</b> MVP</span>${p.snN?`<span><b>${p.snN}</b> Scorenama MVP</span>`:""}<span><b>${p.impN}</b> Impact Player</span><span><b>${p.gcN}</b> Game Changer</span><span><b>${p.pomN}</b> man of the match</span><span><b>${p.matches}</b> matches</span><span><b>${wins}</b> wins</span><span><b>${B.r}</b> runs</span><span><b>${W.w}</b> wickets</span><span><b>${p.fld.c}</b> catches</span>${p.fld.c+p.fld.drop?`<span><b>${Math.round(p.fld.c/(p.fld.c+p.fld.drop)*100)}%</b> catch rate</span>`:""}${others.length?`<span>Also played for ${others.map(t=>esc(team(t).short)).join(", ")}</span>`:""}</div>
   </div></div></header>`;
   if(!p.matches)return h+`<p class="dek">No matches yet. The first scorecard will fill this page in.</p>`;

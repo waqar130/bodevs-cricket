@@ -1537,7 +1537,7 @@ function weekMore(W, now) {
   const idx = WEEKS.indexOf(W), prev = WEEKS[idx + 1], ids = new Set(W.WM.map(m => m.id)), X = buildXR().raw;
   // rankings movers (measured against today's rankings, so for the current week)
   let movers = "";
-  if (now) { computeMoves(); const L = { kBat: "Batting", kBowl: "Bowling", kAll: "All-rounder" }, list = [];
+  if (now) { computeMoves(); const L = { kBat: "Batting", kBowl: "Bowling", kAll: "All-rounder", kFld: "Fielding", kImp: "Impact" }, list = [];
     MOVES.forEach((d, key) => { const [id, k] = key.split("|"); if (typeof d === "number" && d !== 0) list.push({ id: +id, k, d, now: P.get(+id)?.[k] }); });
     const up = list.filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 5), down = list.filter(x => x.d < 0).sort((a, b) => a.d - b.d).slice(0, 5);
     const row = x => `<li><span class="mv ${x.d > 0 ? "up" : "down"}">${x.d > 0 ? "▲" : "▼"} ${Math.abs(x.d)}</span>${plink(x.id)} <small>${L[x.k]} #${x.now}</small></li>`;
