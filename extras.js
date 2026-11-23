@@ -502,7 +502,7 @@ function renderWeekAwards() {
     ${recs.length ? `<ol class="rb-list">${recs.slice(0, 8).map(r => { const p = P.get(r.x.id);
       return `<li class="${p?.tm.key || ""}"><span class="rb-tag ${r.i ? "" : "top"}">${r.i ? `New #${r.i + 1}` : "New record"}</span><a href="#records" data-rt="${r.tab}" data-rc="${r.cat.k}"><b>${esc(r.cat.t)}</b> · ${esc(pname(r.x.id))} · ${r.cat.big(r.x)} <small>${esc(r.cat.unit(r.x))}</small></a></li>`; }).join("")}</ol>`
       : `<p class="dnb">No record-book entries ${now ? "this" : "that"} week.</p>`}
-    <p class="rank-note" style="margin-top:12px">Weekly points: runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −1 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 10 a catch or run out, −5 a dropped catch; +5 for each win he played a part in (10+ runs, a wicket, a catch or a run out). The podium on the cover uses the same points.</p>`;
+    <p class="rank-note" style="margin-top:12px">Weekly points: runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −1 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 10 a catch or run out, −5 a dropped catch. The podium on the cover uses the same points.</p>`;
   el.querySelectorAll(".rb-list a").forEach(a => a.addEventListener("click", () => { REC.tab = a.dataset.rt; REC.cat[REC.tab] = a.dataset.rc; renderRecords(); }));
 }
 
@@ -793,17 +793,38 @@ function weekResult(W) {
     <div class="wr-score"><span class="${a.k}">${esc(team(a.n).short)}</span><b>${a.w}–${b.w}</b><span class="${b.k}">${esc(team(b.n).short)}</span></div>
     <p class="wr-say">${drawn ? "Drawn week" : `${esc(team(lead.n).short)} win the week`}</p></div>`;
 }
-// the four lines under the cover: the selected week's result, best knock, best spell and pace
+// the week's leaders under the cover: result, best batter and bowler, spells, boundaries, fielding, dots and pace
 function renderWeekLines() {
   const el = $("#weekLines"); if (!el || !WEEK) return;
   const W = selW(), t = Object.entries(W.tw || {}).sort((a, b) => (team(a[0]).key === "t" ? -1 : 1) - (team(b[0]).key === "t" ? -1 : 1));
   const res = t.length === 2 ? (t[0][1].w === t[1][1].w ? `Drawn ${t[0][1].w}–${t[1][1].w}` : `${esc(team((t[0][1].w > t[1][1].w ? t[0] : t[1])[0]).short)} win ${Math.max(t[0][1].w, t[1][1].w)}–${Math.min(t[0][1].w, t[1][1].w)}`) : "—";
-  const k = W.knock, s = W.spell, balls = W.WM.reduce((a, m) => a + m.inns.reduce((x, i) => x + i.b, 0), 0), line = (href, kick, head, num, sub) => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span></a>`;
+  // every innings and spell of the week
+  const inns = [], spells = [];
+  W.WM.forEach(mm => mm.s.scorecards.forEach(sc => {
+    sc.batting.forEach(x => inns.push({ id: x.id, r: x.runs, b: x.balls, no: !x.out }));
+    sc.bowling.forEach(x => spells.push({ id: x.id, w: x.wickets, r: x.runs, b: balls(x.overs), ov: x.overs, dots: x.dots || 0 })); }));
+  const best = (arr, cmp) => [...arr].sort(cmp)[0];
+  const nm = id => esc(pname(id)), pl = (id, s) => `<a href="${purl(id)}">${nm(id)}</a>${s ? " " + s : ""}`;
+  const E = W.ranked, bat = best(E.filter(x => x.r), (p, q) => q.r - p.r || p.b - q.b), bowl = best(E.filter(x => x.w), (p, q) => q.w - p.w || p.rc - q.rc);
+  const innOf = id => best(inns.filter(x => x.id === id), (p, q) => q.r - p.r || p.b - q.b), spellOf = id => best(spells.filter(x => x.id === id), (p, q) => q.w - p.w || p.r - q.r);
+  const topSpell = best(spells.filter(x => x.w), (p, q) => q.w - p.w || p.r - q.r || p.b - q.b), eco = best(spells.filter(x => x.b >= 12), (p, q) => p.r / p.b - q.r / q.b || q.w - p.w);
+  const bnd = best(E.filter(x => x.f + x.s), (p, q) => (q.f + q.s) - (p.f + p.s) || q.s - p.s), fld = best(E.filter(x => x.c + x.ro), (p, q) => (q.c + q.ro) - (p.c + p.ro) || q.c - p.c);
+  const dot = best(E.filter(x => x.bb >= 12), (p, q) => q.db / q.bb - p.db / p.bb);
+  const fours = E.reduce((s, x) => s + x.f, 0), bls = W.WM.reduce((s, m) => s + m.inns.reduce((x, i) => x + i.b, 0), 0);
+  const box = (kick, num, head, sub, href = "#weeknumbers") => `<a class="coverline" href="${href}"><div><span class="kicker">${kick}</span><div class="cl-h">${head}</div></div><span class="cl-n">${num}</span><span class="cl-p">${sub}</span></a>`;
+  const bi = bat && innOf(bat.id), bs = bowl && spellOf(bowl.id);
   el.innerHTML = [
-    line("#weeknumbers", `The week · issue ${W.issue}`, res, W.WM.length, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),
-    k ? line(purl(k.id), "Top score", `${esc(pname(k.id))}'s ${k.r}${k.no ? "*" : ""} off ${k.b}`, Math.round(k.r / Math.max(1, k.b) * 100), `strike rate · ${k.s} six${k.s === 1 ? "" : "es"}`) : "",
-    s ? line(purl(s.id), "Best spell", `${esc(pname(s.id))}'s ${s.w}/${s.r}`, `${s.w}/${s.r}`, `in ${s.ov} overs`) : "",
-    line("#weeknumbers", "The pace", `${W.sixes} sixes, ${W.wkts} wickets`, balls ? r1(W.runs / balls * 6) : "–", `runs an over that week · ${W.runs.toLocaleString()} runs`)].join("");
+    box(`The week · issue ${W.issue}`, W.WM.length, res, `match${W.WM.length === 1 ? "" : "es"}, ${esc(weekRange(W))}`),
+    bat ? box("Best batter", bat.r, `${nm(bat.id)}`, `runs this week · best innings ${bi.r}${bi.no ? "*" : ""} off ${bi.b}`, purl(bat.id)) : "",
+    bowl ? box("Best bowler", bowl.w, `${nm(bowl.id)}`, `wickets this week · best ${bs.w}/${bs.r} in ${bs.ov} overs`, purl(bowl.id)) : "",
+    topSpell ? box("Best spell", `${topSpell.w}/${topSpell.r}`, nm(topSpell.id), `in ${topSpell.ov} overs`, purl(topSpell.id)) : "",
+    eco ? box("Most economical spell", r1(eco.r / eco.b * 6), nm(eco.id), `runs an over · ${eco.w}/${eco.r} in ${eco.ov} overs (2+ overs)`, purl(eco.id)) : "",
+    bnd ? box("Most boundaries", bnd.f + bnd.s, nm(bnd.id), `${bnd.s} six${bnd.s === 1 ? "" : "es"} · ${bnd.f} four${bnd.f === 1 ? "" : "s"}`, purl(bnd.id)) : "",
+    fld ? box("Best fielder", fld.c + fld.ro, nm(fld.id), `${fld.c} catch${fld.c === 1 ? "" : "es"} · ${fld.ro} run out${fld.ro === 1 ? "" : "s"}`, purl(fld.id)) : "",
+    box("Sixes &amp; boundaries", W.sixes, "sixes this week", `${fours} fours · ${W.sixes + fours} boundaries in all`),
+    dot ? box("Dot-ball machine", `${Math.round(dot.db / dot.bb * 100)}%`, nm(dot.id), `dot balls bowled · ${dot.db} of ${dot.bb} (2+ overs)`, purl(dot.id)) : "",
+    box("The pace", bls ? r1(W.runs / bls * 6) : "–", `${W.runs.toLocaleString()} runs, ${W.wkts} wickets`, "runs an over this week"),
+  ].join("");
 }
 // the ticker: only the selected week
 function renderTicker() {
@@ -1457,7 +1478,7 @@ function renderSeasonBook() {
     ${[0, .25, .5, .75, 1].map(g => `<line class="ch-grid" x1="${L}" x2="${CW - R}" y1="${ys(mx * g)}" y2="${ys(mx * g)}"/><text class="ch-ax" x="${L - 6}" y="${ys(mx * g) + 4}" text-anchor="end">${Math.round(mx * g)}</text>`).join("")}
     ${wk.map((w, i) => `<text class="ch-ax" x="${xs(i)}" y="${CH - 10}" text-anchor="middle">${w.issue}</text>`).join("")}
     ${top5.map(([id, arr], j) => `<polyline fill="none" stroke="${pal[j]}" stroke-width="3" points="${arr.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ")}"/><text class="ch-end" x="${CW - R + 8}" y="${ys(arr.at(-1)) + 5}" fill="${pal[j]}">${esc(short(id))} ${arr.at(-1)}</text>`).join("")}
-  </svg><p class="rank-note">Weekly MVP points (runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −1 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 10 a catch or run out, −5 a dropped catch; +5 for each win he played a part in (10+ runs, a wicket, a catch or a run out)), added up issue by issue.</p>`;
+  </svg><p class="rank-note">Weekly MVP points (runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −1 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for each 2nd, 3rd and 4th wicket in a spell; 10 a catch or run out, −5 a dropped catch), added up issue by issue.</p>`;
   // 5. superlatives
   const ps = [...P.values()].filter(p => p.matches);
   const cv = p => { const s = [...p.log.values()].flatMap(l => l.bat.map(b => b.r)); if (s.length < 10) return null; const mean = s.reduce((a, b) => a + b, 0) / s.length; if (mean < 15) return null;

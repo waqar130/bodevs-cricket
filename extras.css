@@ -1025,3 +1025,9 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .wr-score span.t{color:var(--tiger)}.wr-score span.f{color:var(--falcon)}
 .wr-score b{font:900 clamp(84px,14vw,180px)/.85 var(--f-display);color:var(--ink)}
 .wr-say{font:900 clamp(22px,3vw,34px)/1 var(--f-display);text-transform:uppercase;color:var(--wc);margin:8px 0 0}
+
+/* the week's leaders under the cover: a grid that wraps */
+#weekLines{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0}
+#weekLines .coverline{border-bottom:1px solid var(--rule)}
+#weekLines .cl-h{font-size:clamp(20px,2vw,28px)}
+#weekLines .cl-n{font-size:clamp(34px,3.4vw,48px)}
