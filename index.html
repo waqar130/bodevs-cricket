@@ -129,9 +129,9 @@ section[id],#top{scroll-margin-top:64px}
 .sheet-head img{width:56px}
 .sheet-head h3{font:900 40px/.9 var(--f-display);text-transform:uppercase}
 .sheet-head .label{margin-left:auto;text-align:right}
-.roster{display:grid;grid-template-columns:repeat(2,1fr);gap:22px 16px}
-@media(min-width:640px){.roster{grid-template-columns:repeat(3,1fr)}}
-.pcard{text-decoration:none;display:grid;gap:10px;align-content:start}
+.roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 16px}
+@media(min-width:640px){.roster{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.pcard{text-decoration:none;display:grid;gap:10px;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto 1fr;min-width:0}
 .ph{position:relative;aspect-ratio:4/5;overflow:hidden;background:var(--wash)}
 .ph img{width:100%;height:100%;object-fit:cover;transform:scale(1.2);transform-origin:50% 42%;filter:grayscale(1) contrast(1.05);transition:filter .35s,transform .35s}
 .pcard:hover .ph img,.pcard:focus-visible .ph img{filter:none;transform:scale(1.26)}
@@ -142,7 +142,15 @@ section[id],#top{scroll-margin-top:64px}
 .why{font:500 15px var(--f-data);color:var(--red);margin-top:10px}
 .pcard h4{font:800 24px/.95 var(--f-display);text-transform:uppercase}
 .pcard .job{font-size:14px;color:var(--muted);line-height:1.3}
-.pcard .line{font:500 12px var(--f-data);color:var(--ink-2);border-top:1px solid var(--rule);padding-top:8px}
+.pcard .line{font:500 12px var(--f-data);color:var(--ink-2);border-top:1px solid var(--rule);padding-top:8px;align-self:end}
+.cgrid{align-self:end;border-top:1px solid var(--rule);padding-top:6px;display:grid;gap:4px}
+.cg-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
+.cg-row.bowl{border-top:1px dotted var(--rule);padding-top:4px}
+.cg-i{display:grid;justify-items:start;gap:1px;min-width:0;color:var(--ink)}
+.cg-i i{display:inline-grid;width:15px;height:15px;color:var(--muted)}.cg-i i svg{width:15px;height:15px}
+.cg-row.bat .cg-i i{color:var(--team,var(--ink))}.cg-row.bowl .cg-i i{color:var(--red)}
+.cg-i b{font:800 15px/1 var(--f-display);white-space:nowrap}
+.cg-i small{font:500 8.5px/1.1 var(--f-data);letter-spacing:.02em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
 /* tables */
 .tables{display:grid;gap:40px}
@@ -1510,12 +1518,17 @@ function render(){
   $("#highlights").innerHTML=S.map(s=>`<div class="stat ${s.c||""}"><span class="kicker">${s.k}</span><div class="big">${s.v}${s.u?`<small>${s.u}</small>`:""}</div><span class="what">${s.w}</span><p>${s.p}</p></div>`).join("");
 
   // team sheets
+  // career numbers on each card: icon, figure, what it is; "–" until there is something to measure
+  const careerGrid=p=>{const B=p.bat,W=p.bowl,m=Math.max(1,p.matches),f=(v,d=1)=>isFinite(v)&&v>0?(d?r1(v):Math.round(v)):"–";
+    const c=(ic,v,l,t)=>`<span class="cg-i" title="${t}"><i>${picon(ic)}</i><b>${v}</b><small>${l}</small></span>`;
+    return `<div class="cgrid"><div class="cg-row bat">${c("bat",f(B.r/m),"runs/m","Runs per match")}${c("gauge",f(B.sr,0),"bat SR","Batting strike rate: runs per 100 balls")}${c("scale",f(B.avg),"bat avg","Batting average: runs per dismissal")}${c("four",f(B.f+B.s?B.b/(B.f+B.s):NaN),"balls/4·6","Balls per boundary")}</div>
+      <div class="cg-row bowl">${c("stumps",f(W.w/m,2)==="–"?"–":(W.w/m).toFixed(2),"wkts/m","Wickets per match")}${c("clock",f(W.sr),"bowl SR","Bowling strike rate: balls per wicket")}${c("scale",f(W.avg),"bowl avg","Bowling average: runs per wicket")}${c("hands",p.fld.c?(p.fld.c/m).toFixed(2):"–","ct/m","Catches per match")}</div></div>`};
   const sheet=key=>{const ps=[...P.values()].filter(p=>p.tm.key===key).sort((a,b)=>(b.captain|0)-(a.captain|0)||!!b.photo-!!a.photo||b.bat.r-a.bat.r);
     const name=ps[0]?.team||"";const wins=key==="t"?tWins:fWins;
     return `<div class="${key}"><div class="sheet-head">${crest(name)}<h3>${esc(name)}</h3><span class="label">${ps.length} players<br>${wins} wins</span></div>
     <div class="roster">${ps.map(p=>`<a class="pcard ${p.tm.key}" href="${purl(p.id)}">${photo(p)}
       <div><h4>${esc(p.full_name||p.name)}</h4><p class="pbadges sm">${p.title?`<span class="pb cric" title="${esc(p.title)}">${esc(p.title)}</span>`:""}${p.keeper?`<span class="pb role wk">Keeper</span>`:""}</p></div>
-      <div class="line">${p.matches?`${p.bat.r} runs · ${p.bowl.w} wkts · ${p.fld.c} ct`:"Yet to play"}</div></a>`).join("")}</div></div>`};
+      ${p.matches?careerGrid(p):`<div class="line">Yet to play</div>`}</a>`).join("")}</div></div>`};
   $("#sheets").innerHTML=sheet("t")+sheet("f");
 
   // tables
