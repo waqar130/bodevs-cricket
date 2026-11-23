@@ -1370,8 +1370,13 @@ function render(){
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
-        <p class="race-rule"><b>How it's scored:</b> runs, +1 for each 1, 2 or 3, +2 a four, +3 a six, −0.5 a dot ball faced; 20 a wicket, +1 a dot ball bowled, −1 a wide or no-ball, +10 for three wickets in a spell; 10 a catch or run out, −5 a dropped catch; +5 for each win he played a part in (10+ runs, a wicket, a catch or a run out). Most points is MVP; within 5 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
-      <div class="race-key"><span><i class="rk-r"></i>Batting</span><span><i class="rk-w"></i>Bowling</span><span><i class="rk-c"></i>Fielding</span><span><i class="rk-x"></i>Victories × 5</span><span><i class="rk-d"></i>Minus points</span></div>
+        <p class="race-rule"><b>How it works:</b> points from batting, bowling, fielding and wins, scored as in the key below. Most points is MVP; within 5 points of the top shares it, two at most, and level points go to whoever got there first.</p></div></div>
+      <dl class="race-legend">
+        <div><dt><i class="rk-r"></i>Bat</dt><dd>1 a run · +1 for a 1, 2 or 3 · +2 a four · +3 a six · −0.5 a dot ball</dd></div>
+        <div><dt><i class="rk-w"></i>Bowl</dt><dd>20 a wicket · +1 a dot ball · −1 a wide or no-ball · +10 for 3 wickets in a spell</dd></div>
+        <div><dt><i class="rk-c"></i>Field</dt><dd>10 a catch or run out · −5 a dropped catch</dd></div>
+        <div><dt><i class="rk-x"></i>Win</dt><dd>5 for each win he played a part in</dd></div>
+      </dl>
       <ol class="race-list">${rows.map((x,j)=>{const q=P.get(x.id);if(!q)return"";const rl=role.get(x.id),barMax=Math.max(...rows.map(y=>Math.max(0,y.parts.bat)+Math.max(0,y.parts.bowl)+Math.max(0,y.parts.fld)+y.parts.win),1),pc=v=>(v/barMax*100).toFixed(2)+"%";
         return `<li class="${q.tm.key}${rl&&rl.n===1?" win":""}"><span class="race-n">${rl?rl.n:j+1}</span>
           <a class="race-who" href="${purl(q.id)}" ${i?`tabindex="-1"`:""}>${miniThumb(q)}<span><small>${rl?rl.role:"In the running"}</small><b>${esc(pname(q.id))}</b></span></a>
@@ -1712,11 +1717,12 @@ function renderMilestones(){
 /* ---------- MVP slider: manual only (buttons, dots, swipe, arrow keys) ---------- */
 // "Bat 102 runs +9 1-3s +6 fours +36 sixes −3 dots = 150 · Bowl …" (only the parts that apply)
 function raceSum(x){
-  const n=v=>Number.isInteger(v)?v:v.toFixed(1),g=(cls,lab,items,tot)=>{const it=items.filter(([v])=>v);return it.length?`<span class="rs ${cls}"><b>${lab} ${tot<0?"−"+n(-tot):n(tot)}</b> ${it.map(([v,t])=>`${v<0?"−":"+"}${n(Math.abs(v))} ${t}`).join(" ")}</span>`:""};
-  return [g("r","Bat",[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[-0.5*x.df,"dots"]],x.parts.bat),
-    g("w","Bowl",[[20*x.w,"wickets"],[x.db,"dots"],[-x.ex,"extras"],[10*x.h3,"3-wkt spell"]],x.parts.bowl),
-    g("c","Field",[[10*x.c,"catches"],[10*x.ro,"run outs"],[-5*x.dr,"drops"]],x.parts.fld),
-    g("x","Win",[[5*x.wb,"victories"]],x.parts.win)].filter(Boolean).join(" · ");
+  const n=v=>{const t=Number.isInteger(v)?String(Math.abs(v)):Math.abs(v).toFixed(1);return (v<0?"−":"")+t},tip=items=>items.filter(([v])=>v).map(([v,t])=>`${v<0?"−":"+"}${n(Math.abs(v))} ${t}`).join(", ");
+  const g=(cls,lab,tot,items)=>tot||items.some(([v])=>v)?`<span class="rs ${cls}" title="${tip(items)}"><i></i>${lab} <b>${n(tot)}</b></span>`:"";
+  return [g("r","Bat",x.parts.bat,[[x.r,"runs"],[x.sh,"for 1–3s"],[2*x.f,"fours"],[3*x.s,"sixes"],[-0.5*x.df,"dots"]]),
+    g("w","Bowl",x.parts.bowl,[[20*x.w,"wickets"],[x.db,"dots"],[-x.ex,"extras"],[10*x.h3,"3-wicket spell"]]),
+    g("c","Field",x.parts.fld,[[10*x.c,"catches"],[10*x.ro,"run outs"],[-5*x.dr,"drops"]]),
+    g("x","Win",x.parts.win,[[5*x.wb,"victories"]])].filter(Boolean).join("");
 }
 function initMvp(){
   const track=$("#mvpTrack"),slides=[...track.children],dots=[...document.querySelectorAll(".mvp-dots button")],n=slides.length;

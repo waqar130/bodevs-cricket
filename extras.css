@@ -1002,3 +1002,16 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 /* MVP race: grouped breakdown */
 .race-sum .rs b{font-weight:800}
 .race-sum .rs{white-space:normal}
+
+/* MVP race: rules in the legend, four totals per player */
+.race-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 22px;margin:14px 0 6px;padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.race-legend div{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:baseline}
+.race-legend dt{font:800 13px var(--f-data);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.race-legend dt i{display:inline-block;width:12px;height:12px}
+.race-legend dd{margin:0;font:400 12px/1.45 var(--f-data);color:var(--muted)}
+.race-sum{display:flex;flex-wrap:wrap;gap:6px 14px}
+.race-sum .rs{display:inline-flex;align-items:center;gap:5px;font:600 12px var(--f-data);color:var(--muted);cursor:help;text-decoration:none}
+.race-sum .rs i{display:inline-block;width:9px;height:9px}
+.race-sum .rs.r i,.race-legend .rk-r{background:var(--ink)}.race-sum .rs.w i,.race-legend .rk-w{background:var(--red)}
+.race-sum .rs.c i,.race-legend .rk-c{background:#b9b3a6}.race-sum .rs.x i,.race-legend .rk-x{background:#1f8a4c}
+.race-sum .rs b{font:800 15px var(--f-display);color:var(--ink)}
