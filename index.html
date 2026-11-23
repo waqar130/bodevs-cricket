@@ -1408,7 +1408,7 @@ function render(){
     const imp=rest[0]?` <b>${nmF(rest[0])}</b> was Impact Player on ${rest[0].pts}${rest[1]?`, with <b>${nmF(rest[1])}</b> Game Changer on ${rest[1].pts}`:""}.`:"";
     const sn=snx.length?` ${lst(snx.map(x=>`<b>${nmF(x)}</b>`))} also share${snx.length>1?"":"s"} MVP as Scorenama's top scorer (${snx[0].sn} Scorenama points).`:"";
     return top+sn+imp};
-  const race=(Wk,i)=>{const role=new Map(Wk.podium.map(x=>[x.id,x])),rows=[...Wk.mvps,...Wk.ranked.filter(x=>!Wk.mvps.includes(x))],top=Math.max(1,rows[0]?.pts||1);
+  const race=(Wk,i)=>{const role=new Map(Wk.podium.map(x=>[x.id,x])),rows=Wk.ranked,top=Math.max(1,rows[0]?.pts||1);
     return `<section class="race" aria-label="MVP race, issue ${Wk.issue}">
       <div class="race-head"><div><p class="kicker">The MVP race · Issue ${Wk.issue}</p><h2 class="race-t">Impact players of the week</h2></div>
         <div class="race-copy"><p class="race-story">${raceStory(Wk)}</p>
