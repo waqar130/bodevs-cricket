@@ -1159,3 +1159,6 @@ mark.rv-best,mark.rv-second,mark.rv-worst{cursor:help}
 .sn-matches a:hover .sn-mr{color:var(--red)}
 .sn-mn{font:900 18px var(--f-display)}.sn-md{font:500 12px var(--f-data);color:var(--muted)}.sn-mr{font:500 14px var(--f-body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sn-mr.t{color:var(--tiger)}.sn-mr.f{color:var(--falcon)}.sn-go{color:var(--muted)}
+/* match page: Scorenama button under the header */
+.sn-match-cta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:14px 0 0}
+.sn-match-cta span{font:500 12px var(--f-data);color:var(--muted)}
