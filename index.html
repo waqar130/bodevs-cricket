@@ -592,7 +592,7 @@ table.card tfoot tr.ex td.nm{font:600 15px var(--f-body)}
 
 /* rankings */
 .rankings{display:grid;gap:36px;margin-bottom:14px}
-@media(min-width:1000px){.rankings{grid-template-columns:repeat(3,1fr);gap:32px}}
+@media(min-width:700px){.rankings{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}}@media(min-width:1150px){.rankings{grid-template-columns:repeat(4,minmax(0,1fr));gap:26px}}.rankings .rk-recency{grid-column:1/-1;margin-top:-10px}
 .rankings>div{min-width:0}
 .rank-list{list-style:none}
 .rank-list a{display:grid;grid-template-columns:34px 44px 1fr 92px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule);text-decoration:none}
@@ -1374,12 +1374,18 @@ function assignTitles(){
 // Player ratings (international-rankings style, 0–1000). Batting: blended average x strike rate. Bowling: wickets per over x league RR / economy.
 function rateAll(){
   const ps=[...P.values()];
-  ps.forEach(p=>{const B=p.bat,W=p.bowl;
-    const avg=B.inns?((B.inns-B.no?B.r/(B.inns-B.no):B.r)+B.r/B.inns)/2:0;
-    p.rBat=B.inns>=3?Math.min(999,Math.round(avg*(B.sr/100)*6*Math.min(1,B.inns/15))):0;
-    p.rBowl=W.b>=36&&W.econ?Math.min(999,Math.round(W.w/(W.b/6)*10*(SEASON_RR/W.econ)*230*Math.min(1,W.b/180))):0;
-    p.rAll=Math.round(p.rBat*p.rBowl/1000);});
-  [["rBat","kBat"],["rBowl","kBowl"],["rAll","kAll"]].forEach(([r,k])=>ps.filter(p=>p[r]>0).sort((a,b)=>b[r]-a[r]).forEach((p,i)=>p[k]=i+1));
+  // recency: a match counts half as much for every 8 matches played since, so recent form moves the ratings.
+  // Qualifying (3 innings, 6 overs) and the confidence ramp still use real counts.
+  const order=[...M].sort((a,b)=>a.date-b.date||a.id-b.id),age=new Map(order.map((m,i)=>[m.id,order.length-1-i])),wt=m=>Math.pow(.5,(age.get(m.id)||0)/8);
+  ps.forEach(p=>{let inn=0,no=0,r=0,b=0,bb=0,br=0,bw=0,nInn=0,nB=0;
+    [...p.log.values()].forEach(l=>{const w=wt(l.mm);l.bat.forEach(x=>{inn+=w;nInn++;if(x.no)no+=w;r+=x.r*w;b+=x.b*w});l.bowl.forEach(x=>{bb+=x.b*w;br+=x.r*w;bw+=x.w*w;nB+=x.b})});
+    const avg=inn?((inn-no>0?r/(inn-no):r)+r/inn)/2:0,sr=b?r/b*100:0,econ=bb?br/bb*6:0;
+    p.rBat=nInn>=3?Math.min(999,Math.round(avg*(sr/100)*6*Math.min(1,nInn/15))):0;
+    p.rBowl=nB>=36&&econ?Math.min(999,Math.round(bw/(bb/6)*10*(SEASON_RR/econ)*230*Math.min(1,nB/180))):0;
+    p.rAll=Math.round(p.rBat*p.rBowl/1000);
+    // impact: average weekly MVP points over the weeks he played (3 weeks or more)
+    const wk=WEEKS.map(W=>W.ranked.find(e=>e.id===p.id)).filter(Boolean);p.impW=wk.length;p.rImp=wk.length>=3?Math.round(wk.reduce((s,e)=>s+e.pts,0)/wk.length):0;});
+  [["rBat","kBat"],["rBowl","kBowl"],["rAll","kAll"],["rImp","kImp"]].forEach(([r,k])=>{ps.forEach(p=>p[k]=0);ps.filter(p=>p[r]>0).sort((a,b)=>b[r]-a[r]).forEach((p,i)=>p[k]=i+1)});
 }
 let SEASON_RR=0;const teamWins=k=>M.filter(m=>m.win?.key===k).length;
 const short=id=>P.get(id)?.name||"?";
@@ -1587,7 +1593,9 @@ function render(){
   const pm=(v,p)=>p.matches?(v/p.matches):0,nz=v=>isFinite(v)?r1(v):"–";
   $("#rankings").innerHTML=rankCol("Batting","rBat","kBat",p=>`Avg ${nz(p.bat.avg)} · SR ${Math.round(p.bat.sr)||"–"} · ${r1(pm(p.bat.s,p))} sixes/m`)
     +rankCol("Bowling","rBowl","kBowl",p=>`${pm(p.bowl.w,p).toFixed(2)} wkts/m · econ ${nz(p.bowl.econ)} · ${p.bowl.b?Math.round(p.bowl.dots/p.bowl.b*100):0}% dots`)
-    +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl} · ${r1(pm(p.bat.r,p))} runs, ${pm(p.bowl.w,p).toFixed(1)} wkts/m`);
+    +rankCol("All-rounder","rAll","kAll",p=>`Bat ${p.rBat} · Bowl ${p.rBowl} · ${r1(pm(p.bat.r,p))} runs, ${pm(p.bowl.w,p).toFixed(1)} wkts/m`)
+    +rankCol("Impact","rImp","kImp",p=>`MVP points a week · ${p.impW} weeks · ${p.mvpN} MVP · ${p.pomN} MOM`)
+    +`<p class="rank-note rk-recency">Batting, bowling and all-rounder ratings weight recent matches more: a match counts half as much for every 8 matches played since. Impact is a player's average MVP points a week, over the weeks he played (3 or more).</p>`;
 
   AWARDS=buildAwards();renderForm();renderMilestones();
   renderPicker();

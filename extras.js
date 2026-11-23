@@ -399,15 +399,16 @@ function markEmpty(id, empty) {
 // Ratings as they stood before the latest week (same formula as rateAll in index.html; keep the two in step).
 function ranksBefore(skip) { return ratingsFrom(M.filter(m => !skip.has(m.id))).rk; }
 function ratingsFrom(ms) {
-  const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0 }); return g.get(id); };
+  const g = new Map(), e = id => { if (!g.has(id)) g.set(id, { id, inns: 0, no: 0, r: 0, b: 0, wb: 0, wr: 0, w: 0, n: 0, nb: 0 }); return g.get(id); };
+  const ord = [...ms].sort((a, b) => a.date - b.date || a.id - b.id), age = new Map(ord.map((m, i) => [m.id, ord.length - 1 - i])), wt = m => Math.pow(0.5, (age.get(m.id) || 0) / 8);
   let tr = 0, tb = 0;
   ms.forEach(mm => { mm.inns.forEach(i => { tr += i.runs; tb += i.b; });
-    mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id); a.inns++; a.r += x.runs; a.b += x.balls; if (!x.out) a.no++; });
-      sc.bowling.forEach(x => { const a = e(x.id); a.wb += balls(x.overs); a.wr += x.runs; a.w += x.wickets; }); }); });
+    const w = wt(mm); mm.s.scorecards.forEach(sc => { sc.batting.forEach(x => { const a = e(x.id); a.inns += w; a.n++; a.r += x.runs * w; a.b += x.balls * w; if (!x.out) a.no += w; });
+      sc.bowling.forEach(x => { const a = e(x.id), bb = balls(x.overs); a.wb += bb * w; a.nb += bb; a.wr += x.runs * w; a.w += x.wickets * w; }); }); });
   const RR = tb ? tr / tb * 6 : 0, out = new Map();
   g.forEach(a => { const avg = a.inns ? ((a.inns - a.no ? a.r / (a.inns - a.no) : a.r) + a.r / a.inns) / 2 : 0, sr = a.b ? a.r / a.b * 100 : 0;
-    const rBat = a.inns >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.inns / 15))) : 0;
-    const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.wb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.wb / 180))) : 0;
+    const rBat = a.n >= 3 ? Math.min(999, Math.round(avg * (sr / 100) * 6 * Math.min(1, a.n / 15))) : 0;
+    const econ = a.wb ? a.wr / a.wb * 6 : NaN, rBowl = a.nb >= 36 && econ ? Math.min(999, Math.round(a.w / (a.wb / 6) * 10 * (RR / econ) * 230 * Math.min(1, a.nb / 180))) : 0;
     out.set(a.id, { rBat, rBowl, rAll: Math.round(rBat * rBowl / 1000) }); });
   const rk = {}; ["rBat", "rBowl", "rAll"].forEach(r => { rk[r] = new Map(); [...out.entries()].filter(([, v]) => v[r] > 0).sort((a, b) => b[1][r] - a[1][r]).forEach(([id], i) => rk[r].set(id, i + 1)); });
   return { val: out, rk };
@@ -416,7 +417,9 @@ let MOVES = new Map(); // "id|kBat" -> places moved (+ up, - down, "new")
 function computeMoves() {
   MOVES = new Map(); if (!WEEK) return [];
   const prev = ranksBefore(new Set(WEEK.WM.map(m => m.id))), list = [];
-  [["kBat", "rBat", "batting"], ["kBowl", "rBowl", "bowling"], ["kAll", "rAll", "all-rounder"]].forEach(([k, r, label]) => P.forEach(p => {
+  { const m = new Map(); WEEKS.filter(W => W !== WEEK).forEach(W => W.ranked.forEach(e => { const v = m.get(e.id) || { s: 0, n: 0 }; v.s += e.pts; v.n++; m.set(e.id, v); }));
+    prev.rImp = new Map([...m].filter(([, v]) => v.n >= 3).sort((a, b) => b[1].s / b[1].n - a[1].s / a[1].n).map(([id], i) => [id, i + 1])); }
+  [["kBat", "rBat", "batting"], ["kBowl", "rBowl", "bowling"], ["kAll", "rAll", "all-rounder"], ["kImp", "rImp", "impact"]].forEach(([k, r, label]) => P.forEach(p => {
     if (!p[k]) return; const before = prev[r].get(p.id);
     const d = before ? before - p[k] : "new"; MOVES.set(p.id + "|" + k, d);
     if (d === "new" || d > 0) list.push({ p, k, label, d, now: p[k] }); }));
@@ -437,12 +440,12 @@ function renderSince() {
   P.forEach(p => { const first = [...p.log.values()].sort((a, b) => a.mm.date - b.mm.date || a.mm.id - b.mm.id)[0]; if (first && firstIds.has(first.mm.id)) items.push(`<a class="sc-item" href="${purl(p.id)}"><span class="sc-k">Debut</span>${esc(pname(p.id))}</a>`); });
   el.innerHTML = `<span class="label sc-lab">${now ? "Since last Monday" : `Issue ${W.issue} · ${esc(weekRange(W))}`}</span><div class="sc-row">${items.join("")}</div>`;
   // rank-change arrows in the rankings lists
-  const keys = ["kBat", "kBowl", "kAll"];
+  const keys = ["kBat", "kBowl", "kAll", "kImp"];
   document.querySelectorAll("#rankings .rank-col").forEach((col, ci) => col.querySelectorAll(".rank-list a").forEach(a => {
     const id = BySlug.get(a.getAttribute("href").slice(1)) ?? +(a.getAttribute("href").match(/player-(\d+)/) || [])[1], d = MOVES.get(id + "|" + keys[ci]);
     if (d === undefined || d === 0 || a.querySelector(".mv")) return;
     const e = WEEK.ranked.find(y => y.id === id), bat = e && e.b ? `${e.r} off ${e.b}` : "", bowl = e && e.bb ? `${e.w}/${e.rc}` : "";
-    const why = !e ? "did not play this week" : keys[ci] === "kBat" ? (bat ? `${bat} this week` : "did not bat this week") : keys[ci] === "kBowl" ? (bowl ? `${bowl} this week` : "did not bowl this week") : [bat, bowl].filter(Boolean).join(" and ") + " this week";
+    const why = !e ? "did not play this week" : keys[ci] === "kImp" ? `${ptsN(e.pts)} points this week` : keys[ci] === "kBat" ? (bat ? `${bat} this week` : "did not bat this week") : keys[ci] === "kBowl" ? (bowl ? `${bowl} this week` : "did not bowl this week") : [bat, bowl].filter(Boolean).join(" and ") + " this week";
     a.querySelector(".rk-pts")?.insertAdjacentHTML("afterbegin", d === "new" ? `<span class="mv new">New</span>` : `<span class="mv ${d > 0 ? "up" : "down"}" title="${d > 0 ? "Up" : "Down"} ${Math.abs(d)} since last week: ${why}">${d > 0 ? "▲" : "▼"}${Math.abs(d)}</span>`);
     if (d !== "new") a.querySelector(".rk-who")?.insertAdjacentHTML("beforeend", `<small class="mv-why ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"}${Math.abs(d)} after ${esc(why)}</small>`); }));
 }
@@ -956,21 +959,26 @@ function renderRankings() {
 // how each rating is worked out, with the No. 1's own numbers as a worked example (same formula as rateAll in index.html)
 function rankHow(k, top) {
   const rr = typeof SEASON_RR !== "undefined" ? SEASON_RR : 0, p = top?.p, n0 = v => Math.round(v).toLocaleString();
-  const bat = p => { const B = p.bat, outs = B.inns - B.no, a1 = outs ? B.r / outs : B.r, a2 = B.r / B.inns, avg = (a1 + a2) / 2, exp = Math.min(1, B.inns / 15);
-    return { B, outs, a1, a2, avg, exp, raw: avg * (B.sr / 100) * 6 * exp }; };
-  const bowl = p => { const W = p.bowl, wpo = W.w / (W.b / 6), exp = Math.min(1, W.b / 180);
-    return { W, wpo, exp, raw: wpo * 10 * (rr / W.econ) * 230 * exp }; };
+  // recency-weighted totals, exactly as the rating uses them: a match counts half as much for every 8 matches played since
+  const ord = [...M].sort((a, b) => a.date - b.date || a.id - b.id), age = new Map(ord.map((m, i) => [m.id, ord.length - 1 - i])), wt = m => Math.pow(0.5, (age.get(m.id) || 0) / 8);
+  const agg = p => { const a = { inn: 0, no: 0, r: 0, b: 0, bb: 0, br: 0, bw: 0, n: 0, nb: 0 }; [...p.log.values()].forEach(l => { const w = wt(l.mm); l.bat.forEach(z => { a.inn += w; a.n++; if (z.no) a.no += w; a.r += z.r * w; a.b += z.b * w; }); l.bowl.forEach(z => { a.bb += z.b * w; a.nb += z.b; a.br += z.r * w; a.bw += z.w * w; }); }); return a; };
+  const bat = p => { const a = agg(p), outs = a.inn - a.no, a1 = outs > 0 ? a.r / outs : a.r, a2 = a.r / a.inn, avg = (a1 + a2) / 2, sr = a.r / a.b * 100, exp = Math.min(1, a.n / 15);
+    return { B: { r: a.r, inns: a.inn, sr }, n: a.n, outs, a1, a2, avg, exp, raw: avg * (sr / 100) * 6 * exp }; };
+  const bowl = p => { const a = agg(p), econ = a.br / a.bb * 6, wpo = a.bw / (a.bb / 6), exp = Math.min(1, a.nb / 180);
+    return { W: { w: a.bw, b: a.bb, econ }, wpo, exp, raw: wpo * 10 * (rr / econ) * 230 * exp }; };
   const batHow = `<div class="rk-how-c"><h4>Batting rating</h4>
     <p class="rk-f">(<b>average</b> × <b>strike rate</b> ÷ 100) × 6 × <b>experience</b></p>
     <ul><li><b>Average</b> is the mean of two averages, so not-outs don't flatter it: runs per dismissal, and runs per innings.</li>
       <li><b>Strike rate</b> is runs per 100 balls.</li>
       <li><b>Experience</b> is innings ÷ 15, up to 1. Full weight from 15 innings.</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
       <li>Needs 3 innings to be rated. Highest possible rating is 999.</li></ul></div>`;
   const bowlHow = `<div class="rk-how-c"><h4>Bowling rating</h4>
     <p class="rk-f"><b>wickets per over</b> × 10 × (<b>league run rate</b> ÷ <b>economy</b>) × 230 × <b>experience</b></p>
     <ul><li><b>Wickets per over</b> is wickets ÷ overs bowled.</li>
       <li><b>League run rate</b> is runs per over across every innings this season, now <b>${r1(rr)}</b>. Conceding less than that lifts the rating, more lowers it.</li>
       <li><b>Experience</b> is overs ÷ 30, up to 1. Full weight from 30 overs (180 balls).</li>
+      <li><b>Recent form counts more:</b> each match counts half as much for every 8 matches played since.</li>
       <li>Needs 6 overs to be rated. Highest possible rating is 999.</li></ul></div>`;
   const allHow = `<div class="rk-how-c"><h4>All-rounder rating</h4>
     <p class="rk-f"><b>batting rating</b> × <b>bowling rating</b> ÷ 1,000</p>
@@ -978,8 +986,8 @@ function rankHow(k, top) {
       <li>Needs a batting and a bowling rating.</li></ul></div>`;
   let ex = "";
   if (p) {
-    if (k === "rBat") { const x = bat(p); ex = `${esc(pname(p.id))}: ${x.B.r} runs, ${x.outs} outs, ${x.B.inns} innings → average (${r1(x.a1)} + ${r1(x.a2)}) ÷ 2 = <b>${r1(x.avg)}</b>; strike rate <b>${r1(x.B.sr)}</b>; experience ${Math.min(x.B.inns, 15)}/15 = <b>${r1(x.exp)}</b>. ${r1(x.avg)} × ${r1(x.B.sr)} ÷ 100 × 6 × ${r1(x.exp)} = <b>${n0(Math.min(999, x.raw))}</b>.`; }
-    if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}: ${x.W.w} wickets in ${ovs(x.W.b)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
+    if (k === "rBat") { const x = bat(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.B.r)} runs, ${r1(x.outs)} outs, ${r1(x.B.inns)} innings → average (${r1(x.a1)} + ${r1(x.a2)}) ÷ 2 = <b>${r1(x.avg)}</b>; strike rate <b>${r1(x.B.sr)}</b>; experience ${Math.min(x.n, 15)}/15 innings = <b>${r1(x.exp)}</b>. ${r1(x.avg)} × ${r1(x.B.sr)} ÷ 100 × 6 × ${r1(x.exp)} = <b>${n0(Math.min(999, x.raw))}</b>.`; }
+    if (k === "rBowl") { const x = bowl(p); ex = `${esc(pname(p.id))}, recency-weighted: ${r1(x.W.w)} wickets in ${r1(x.W.b / 6)} overs → <b>${x.wpo.toFixed(3)}</b> an over; economy <b>${r1(x.W.econ)}</b> against the league's ${r1(rr)}; experience <b>${r1(x.exp)}</b>. ${x.wpo.toFixed(3)} × 10 × (${r1(rr)} ÷ ${r1(x.W.econ)}) × 230 × ${r1(x.exp)} = <b>${n0(x.raw)}</b>${x.raw > 999 ? ", capped at 999" : ""}.`; }
     if (k === "rAll") ex = `${esc(pname(p.id))}: batting ${p.rBat} × bowling ${p.rBowl} ÷ 1,000 = <b>${p.rAll}</b>.`;
   }
   return `<div class="rk-how"><h3 class="xr-h">How it's calculated</h3>
